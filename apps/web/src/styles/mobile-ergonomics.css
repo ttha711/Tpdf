@@ -1,0 +1,228 @@
+/* Mobile reader controls occupy layout space, never cover page content. */
+.tpdf-mobile-dock { display: none; }
+.tpdf-mobile-viewer-flex { width: 100%; height: 100%; min-height: 0; }
+.tpdf-mobile-document-name { display: none; }
+
+@media (max-width: 900px) {
+  .app:has(.tpdf-mobile-dock) {
+    grid-template-rows: auto minmax(0, 1fr) 0;
+  }
+  .app:has(.tpdf-mobile-dock) > [data-tpdf-region="status-bar"] {
+    display: none;
+  }
+  .app:has(.tpdf-mobile-dock) .ai-float-toggle-btn {
+    display: none !important;
+  }
+  .app:has(.tpdf-mobile-dock) .tpdf-right-panel-restore {
+    display: none;
+  }
+  .app:has(.tpdf-mobile-dock) .tpdf-mobile-filmstrip {
+    bottom: 0;
+  }
+  :is(body, .app):has([data-embedpdf-overlay="open"]) .tpdf-mobile-dock,
+  body[data-embedpdf-overlay="open"] .tpdf-mobile-dock {
+    display: none !important;
+  }
+  .viewer-area:has(.tpdf-mobile-dock) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .tpdf-mobile-viewer-flex {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    position: relative;
+  }
+  .tpdf-mobile-viewer-flex > * { height: 100%; }
+  .tpdf-mobile-edit-toolbar { display: none !important; }
+  .tpdf-mobile-dock {
+    display: block;
+    position: relative;
+    z-index: 25;
+    flex: 0 0 auto;
+    background: var(--bg-toolbar);
+    border-top: 1px solid var(--border-color);
+    padding: 4px 4px max(5px, env(safe-area-inset-bottom));
+    box-shadow: 0 -2px 8px rgb(0 0 0 / 6%);
+  }
+  .tpdf-mobile-dock-status {
+    min-height: 32px;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 12px 2px;
+    color: var(--text-secondary);
+    font-size: 11px;
+  }
+  .tpdf-mobile-page-action {
+    background: transparent;
+    border: 0;
+    color: var(--text-primary);
+    font-weight: 600;
+    padding: 4px 8px;
+    min-height: 32px;
+    border-radius: 8px;
+  }
+  .tpdf-mobile-dock-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 2px;
+  }
+  .tpdf-mobile-dock-row--tools {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 3px;
+    margin-bottom: 3px;
+  }
+  .tpdf-mobile-dock-action {
+    min-width: 0;
+    min-height: 48px;
+    padding: 3px 1px;
+    border: 0;
+    border-radius: 9px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    background: transparent;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.1;
+    touch-action: manipulation;
+  }
+  .tpdf-mobile-dock-action[aria-pressed="true"] {
+    color: var(--acrobat-blue);
+    background: var(--ui-accent-bg);
+  }
+  .tpdf-mobile-dock-action:focus-visible,
+  .tpdf-mobile-tool-sheet button:focus-visible {
+    outline: 2px solid var(--acrobat-blue);
+    outline-offset: -2px;
+  }
+  .tpdf-mobile-tool-sheet-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+  }
+  .tpdf-mobile-tool-sheet-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 48%);
+    border: 0;
+  }
+  .tpdf-mobile-tool-sheet {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 20px 20px 0 0;
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    box-shadow: 0 -8px 35px rgb(0 0 0 / 24%);
+    padding: 16px 12px max(18px, env(safe-area-inset-bottom));
+    max-height: min(84dvh, 680px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .tpdf-mobile-tool-sheet-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .tpdf-mobile-tool-sheet-heading strong { font-size: 17px; }
+  .tpdf-mobile-tool-sheet-heading p {
+    margin: 5px 0 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-secondary);
+  }
+  .tpdf-mobile-tool-sheet-close {
+    min-width: 48px;
+    min-height: 48px;
+    font-size: 26px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--ui-hover-bg);
+  }
+  .tpdf-mobile-tool-sheet-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .tpdf-mobile-tool-sheet-item {
+    display: flex;
+    min-height: 76px;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-toolbar);
+    color: var(--text-primary);
+    font-size: 11px;
+  }
+  .tpdf-mobile-tool-sheet-item[aria-pressed="true"] {
+    border-color: var(--acrobat-blue);
+    color: var(--acrobat-blue);
+    background: var(--ui-accent-bg);
+  }
+  .tpdf-mobile-tool-sheet-extras {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    padding-top: 16px;
+    margin-top: 16px;
+    border-top: 1px solid var(--border-color);
+  }
+  .tpdf-mobile-tool-sheet-extras .tpdf-mobile-dock-action {
+    min-height: 68px;
+    border: 1px solid var(--border-color);
+  }
+  .tpdf-right-panel-restore {
+    min-width: 48px;
+    touch-action: manipulation;
+  }
+  .tpdf-topbar .tpdf-mobile-document-name {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 0;
+    overflow: hidden;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+  }
+  .tpdf-mobile-document-name strong {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 13px;
+  }
+  .tpdf-mobile-document-name small {
+    font-size: 10px;
+    color: var(--text-secondary);
+  }
+  .tpdf-header-tabs { display: none !important; }
+  .tpdf-topbar .tpdf-open-btn { display: none; }
+  .tpdf-topbar .tpdf-mobile-tab-btn,
+  .tpdf-topbar .tpdf-header-icon-btn,
+  .tpdf-topbar .tpdf-mobile-header-save {
+    min-width: 44px;
+    min-height: 44px;
+    flex: 0 0 44px;
+  }
+}
+@media (max-width: 380px) {
+  .tpdf-mobile-dock-action { font-size: 9px; }
+  .tpdf-mobile-tool-sheet-grid,
+  .tpdf-mobile-tool-sheet-extras { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

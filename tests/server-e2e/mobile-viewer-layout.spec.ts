@@ -44,13 +44,18 @@ test.describe("mobile layout and scrolling", () => {
       const home = document.querySelector<HTMLElement>(".tpdf-home");
       home?.scrollTo({ top: 350 });
     });
+    expect(await page.evaluate(() => document.querySelector<HTMLElement>(".tpdf-home")?.scrollTop ?? 0)).toBeGreaterThan(0);
 
     // Verify mouse wheel / gesture scrolling works on .tpdf-home
+    await page.evaluate(() => {
+      const home = document.querySelector<HTMLElement>(".tpdf-home");
+      home?.scrollTo({ top: 0 });
+    });
     await page.locator(".tpdf-home").hover({ position: { x: 190, y: 300 } });
     await page.mouse.wheel(0, 200);
     await expect.poll(async () => {
       return page.evaluate(() => document.querySelector<HTMLElement>(".tpdf-home")?.scrollTop ?? 0);
-    }).toBeGreaterThan(300);
+    }).toBeGreaterThan(0);
   });
 
   test("document viewer renders properly in mobile viewport", async ({ page, request }) => {
@@ -64,18 +69,22 @@ test.describe("mobile layout and scrolling", () => {
     await page.goto("/?open=" + encodeURIComponent(document.filePath));
     const viewer = page.locator("[data-tpdf-engine='pdfium-wasm']");
     await expect(viewer).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator(".tpdf-mobile-page-action")).toContainText("Page 1 / 2");
 
     const layout = await page.evaluate(() => {
       const workspace = document.querySelector<HTMLElement>(".workspace");
       const viewerArea = document.querySelector<HTMLElement>(".viewer-area");
       const statusBar = document.querySelector<HTMLElement>('[data-tpdf-region="status-bar"]');
-      const mobileToolbar = document.querySelector<HTMLElement>(".tpdf-mobile-edit-toolbar");
+      const mobileToolbar = document.querySelector<HTMLElement>(".tpdf-mobile-dock");
+      const pdfContent = document.querySelector<HTMLElement>(".tpdf-mobile-viewer-flex");
       return {
         workspaceGridCols: workspace ? getComputedStyle(workspace).gridTemplateColumns : "",
         viewerWidth: viewerArea?.offsetWidth ?? 0,
         viewerHeight: viewerArea?.offsetHeight ?? 0,
         statusBarHeight: statusBar?.offsetHeight ?? 0,
         mobileToolbarVisible: mobileToolbar ? getComputedStyle(mobileToolbar).display !== "none" : false,
+        pdfBottom: pdfContent?.getBoundingClientRect().bottom ?? 0,
+        dockTop: mobileToolbar?.getBoundingClientRect().top ?? 0,
       };
     });
 
@@ -83,6 +92,19 @@ test.describe("mobile layout and scrolling", () => {
     expect(layout.viewerHeight).toBeGreaterThan(600);
     expect(layout.workspaceGridCols).toBe("390px");
     expect(layout.mobileToolbarVisible).toBe(true);
+    expect(layout.pdfBottom).toBeLessThanOrEqual(layout.dockTop + 1);
+    await expect(page.locator('[data-tpdf-region="status-bar"]')).toBeHidden();
+    await expect(page.locator('[data-tpdf-action="open-ai"]')).toBeHidden();
+    await page.locator(".tpdf-mobile-page-action").click();
+    await expect(page.locator(".tpdf-mobile-filmstrip")).toBeVisible();
+    await page.getByRole("button", { name: "Close page previews" }).click();
+    await expect(page.locator(".tpdf-mobile-filmstrip")).toBeHidden();
+    await expect(page.locator('[data-tpdf-region="mobile-file-name"]')).toContainText("mobile-viewer-test.pdf");
+    await page.getByRole("button", { name: "Tools", exact: true }).last().click();
+    await expect(page.locator('[data-tpdf-mobile-tools="open"]')).toBeVisible();
+    await expect(page.locator('[data-tpdf-mobile-tool="measure"]')).toBeVisible();
+    await page.locator('[data-tpdf-mobile-tool="draw"]').click();
+    await expect(page.locator('[data-tpdf-region="mobile-dock"]').getByRole("button", { name: "Draw" })).toHaveAttribute("aria-pressed", "true");
 
     // Verify opening and closing right panel drawer on mobile
     const aiToggleBtn = page.locator("[data-tpdf-action='open-ai']");

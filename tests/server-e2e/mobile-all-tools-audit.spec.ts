@@ -74,33 +74,32 @@ test.describe("Mobile Tools & Buttons Audit", () => {
     const viewer = page.locator("[data-tpdf-engine='pdfium-wasm']");
     await expect(viewer).toBeVisible({ timeout: 30_000 });
 
-    // 2.1 Mobile Edit Toolbar
-    const mobileToolbar = page.locator(".tpdf-mobile-edit-toolbar");
-    await expect(mobileToolbar).toBeVisible();
+    // 2.1 Mobile PDF Action Dock
+    const mobileDock = page.locator("[data-tpdf-region='mobile-dock']");
+    await expect(mobileDock).toBeVisible();
 
-    const quickTools = mobileToolbar.locator(".viewer-quick-tool");
+    // Tap Annotate to expose mobile tools
+    const annotateBtn = mobileDock.getByRole("button", { name: "Annotate" });
+    await expect(annotateBtn).toBeVisible();
+    await annotateBtn.tap();
+
+    const quickTools = mobileDock.locator(".tpdf-mobile-dock-row--tools .tpdf-mobile-dock-action");
     const count = await quickTools.count();
     expect(count).toBeGreaterThan(0);
 
     // Tap first markup tool (e.g. highlight)
     await quickTools.first().tap();
 
-    // Tap Hand/Select tool to return to pan mode
-    const selectPanBtn = page.locator("[data-tpdf-action='mobile-select']");
-    await expect(selectPanBtn).toBeVisible();
-    await selectPanBtn.tap();
-    await expect(selectPanBtn).toHaveAttribute("aria-pressed", "true");
+    // Tap Read to return to pan mode
+    const readBtn = mobileDock.getByRole("button", { name: "Read" });
+    await expect(readBtn).toBeVisible();
+    await readBtn.tap();
+    await expect(readBtn).toHaveAttribute("aria-pressed", "true");
 
-    // 2.2 Mobile Status Bar
-    const statusBar = page.locator('[data-tpdf-region="status-bar"]');
-    await expect(statusBar).toBeVisible();
-    await expect(statusBar).toContainText(/Page 1/i);
-
-    const nextPageBtn = statusBar.locator("button[title*='Next']");
-    if (await nextPageBtn.isVisible()) {
-      await nextPageBtn.tap();
-      await expect(statusBar).toContainText(/Page 2/i);
-    }
+    // 2.2 Mobile Dock Status
+    const pageAction = mobileDock.locator(".tpdf-mobile-page-action");
+    await expect(pageAction).toBeVisible();
+    await expect(pageAction).toContainText(/Page 1/i);
   });
 
   test("3. Mobile Page Filmstrip (▣ Pages) workflow", async ({ page, request }) => {
@@ -114,9 +113,10 @@ test.describe("Mobile Tools & Buttons Audit", () => {
     await page.goto("/?open=" + encodeURIComponent(document.filePath));
     await page.waitForSelector("[data-tpdf-engine='pdfium-wasm']");
 
-    // Open Mobile Page Filmstrip
-    const filmstripBtn = page.locator("[data-tpdf-action='toggle-page-filmstrip']");
+    // Open Mobile Page Filmstrip from dock
+    const filmstripBtn = page.locator(".tpdf-mobile-page-action");
     await expect(filmstripBtn).toBeVisible();
+    await expect(filmstripBtn).toContainText(/Page 1/i);
     await filmstripBtn.tap();
 
     // Check filmstrip drawer is visible at bottom
@@ -124,8 +124,8 @@ test.describe("Mobile Tools & Buttons Audit", () => {
     await expect(filmstrip).toBeVisible();
 
     // Close filmstrip
-    await filmstripBtn.tap();
-    await expect(filmstrip).toHaveCount(0);
+    await page.getByRole("button", { name: "Close page previews" }).click();
+    await expect(filmstrip).toBeHidden();
   });
 
   test("4. AI Assistant Drawer on mobile", async ({ page, request }) => {
@@ -139,9 +139,15 @@ test.describe("Mobile Tools & Buttons Audit", () => {
     await page.goto("/?open=" + encodeURIComponent(document.filePath));
     await page.waitForSelector("[data-tpdf-engine='pdfium-wasm']");
 
-    const aiToggleBtn = page.locator("[data-tpdf-action='open-ai']");
-    await expect(aiToggleBtn).toBeVisible();
-    await aiToggleBtn.tap();
+    // Open Tools sheet from dock, then tap AI assistant
+    const toolsBtn = page.locator("[data-tpdf-region='mobile-dock']").getByRole("button", { name: "Tools", exact: true });
+    await expect(toolsBtn).toBeVisible();
+    await toolsBtn.tap();
+
+    await expect(page.locator("[data-tpdf-mobile-tools='open']")).toBeVisible();
+    const aiActionBtn = page.locator(".tpdf-mobile-tool-sheet-extras").getByRole("button", { name: "AI assistant" });
+    await expect(aiActionBtn).toBeVisible();
+    await aiActionBtn.tap();
 
     const rightSidebar = page.locator("[data-tpdf-right-sidebar='open']");
     await expect(rightSidebar).toBeVisible();

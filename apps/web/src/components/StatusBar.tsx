@@ -33,6 +33,12 @@ export function StatusBar({
     if (!hasDocument) setPagePreviewOpen(false);
   }, [hasDocument]);
 
+  useEffect(() => {
+    const handleToggle = () => setPagePreviewOpen((open) => !open);
+    window.addEventListener("tpdf:toggle-page-filmstrip", handleToggle);
+    return () => window.removeEventListener("tpdf:toggle-page-filmstrip", handleToggle);
+  }, []);
+
   return (
     <>
       <footer
