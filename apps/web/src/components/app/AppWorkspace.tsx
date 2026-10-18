@@ -188,10 +188,6 @@ export function AppWorkspace({
             onShowTools={() => state.setShowDashboard(true)}
             onShowInfo={() => setIsRightCollapsed(false)}
             onShowAi={() => { setIsAiPanelOpen(true); setIsRightCollapsed(false); }}
-            onTogglePdfToolbar={() => {
-              const root = document.querySelector(".tpdf-mobile-viewer-flex");
-              root?.classList.toggle("tpdf-mobile-native-toolbar-visible");
-            }}
             isPublic={Boolean(window.__TPDF_RUNTIME__ !== "server" && !window.tpdf)}
           />
           {state.activeTool === "select" && selectedTextForEdit?.tabId === activeTab.id && selectedTextForEdit.documentKey === state.sourceIdentity ? (
