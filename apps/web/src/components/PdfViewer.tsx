@@ -889,7 +889,7 @@ export function PdfViewer({
         key={sourceUrl}
         config={config as any}
         onReady={(registry: any) => setReadyViewer({ sourceUrl, registry })}
-        style={{ width: "100%", height: "100%", display: "block" }}
+        style={{ width: "100%", height: "100%", minHeight: 0, flex: "1 1 0%", display: "block" }}
       />
     </div>
   );
