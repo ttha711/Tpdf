@@ -66,6 +66,19 @@ test.describe("Mobile EmbedPDF swipeable modes and complete tools grid", () => {
     await sheet.locator('[data-tpdf-mobile-tool="rectangle"]').click();
     await expect(sheet).toBeHidden();
     await expect(strip.getByRole("tab", { name: "Shapes" })).toHaveAttribute("aria-selected", "true");
+    // Complete a real shape gesture. The PDF working-copy host must not restart
+    // just because an annotation was committed.
+    const canvas = await page.locator('[data-tpdf-engine="pdfium-wasm"]').boundingBox();
+    expect(canvas).not.toBeNull();
+    if (canvas) {
+      await page.mouse.move(canvas.x + canvas.width * .35, canvas.y + canvas.height * .48);
+      await page.mouse.down();
+      await page.mouse.move(canvas.x + canvas.width * .62, canvas.y + canvas.height * .63, { steps: 7 });
+      await page.mouse.up();
+      await page.waitForTimeout(350);
+    }
+    expect(await page.evaluate(() => document.querySelector("embedpdf-container") ===
+      (window as typeof window & { __originalEmbedHost?: Element | null }).__originalEmbedHost)).toBe(true);
     await strip.getByRole("button", { name: "All PDF tools" }).click();
     await sheet.locator('[data-tpdf-mobile-tool="highlight"]').click();
     await expect(strip.getByRole("tab", { name: "Annotate" })).toHaveAttribute("aria-selected", "true");
