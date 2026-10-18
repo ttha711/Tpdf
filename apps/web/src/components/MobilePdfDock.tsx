@@ -16,6 +16,10 @@ const MOBILE_TOOLS: MobileTool[] = [
 
 type Props = {
   activeTool: ActiveTool;
+  page: number;
+  totalPages: number;
+  zoom: number;
+  onShowPages: () => void;
   onToolChange: (tool: ActiveTool) => void;
   onDoneEditing: () => void;
   onUndo: () => void;
@@ -29,7 +33,7 @@ type Props = {
 };
 
 export function MobilePdfDock({
-  activeTool, onToolChange, onDoneEditing, onUndo, onRedo, onSave,
+  activeTool, page, totalPages, zoom, onShowPages, onToolChange, onDoneEditing, onUndo, onRedo, onSave,
   onFindCommands, onShowTools, onShowInfo, onShowAi, isPublic,
 }: Props) {
   const [editing, setEditing] = useState(false);
@@ -66,6 +70,11 @@ export function MobilePdfDock({
 
   return (
     <nav className="tpdf-mobile-dock" data-tpdf-region="mobile-dock" aria-label="Mobile PDF actions">
+      <div className="tpdf-mobile-dock-status">
+        <button type="button" className="tpdf-mobile-page-action" onClick={onShowPages}
+          aria-label="Choose page">Page {page} / {totalPages || "…"}</button>
+        <span aria-label={`Zoom ${Math.round(zoom * 100)} percent`}>{Math.round(zoom * 100)}%</span>
+      </div>
       {contentEdit ? (
         <div className="tpdf-mobile-dock-row">
           {secondary("Done editing", "view", onDoneEditing)}
