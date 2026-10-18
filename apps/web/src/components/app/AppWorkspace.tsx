@@ -1,6 +1,8 @@
 // tpdf-file-size-allow: legacy workspace shell composes all tools and routes; this change only adds the reader-to-editor handoff, while splitting the shell is a separate refactor.
 import { useState } from "react";
 import { AdaptivePdfViewer } from "../AdaptivePdfViewer";
+import { MobilePdfDock } from "../MobilePdfDock";
+import { undoNativeContentEdit, redoNativeContentEdit } from "../../lib/nativeContentHistory";
 import { AiAssistantPanel } from "../AiAssistantPanel";
 import { DocumentMarkupPanel } from "../DocumentMarkupPanel";
 import { DocumentToolPanel } from "../DocumentToolPanel";
@@ -164,9 +166,34 @@ export function AppWorkspace({
           aria-label="PDF viewer area"
           style={{ gridColumn: 1 }}
         >
-          <ViewerErrorBoundary>
-            <AdaptivePdfViewer {...viewerProps} getDocumentBytes={getNativeEditBytes} />
-          </ViewerErrorBoundary>
+          <div className="tpdf-mobile-viewer-flex">
+            <ViewerErrorBoundary>
+              <AdaptivePdfViewer {...viewerProps} getDocumentBytes={getNativeEditBytes} />
+            </ViewerErrorBoundary>
+          </div>
+          <MobilePdfDock
+            activeTool={state.activeTool}
+            onToolChange={state.setActiveTool}
+            onDoneEditing={() => {
+              void commitPendingNativeInlineEdit()
+                .then(() => state.setActiveTool("select"))
+                .catch((error) => state.setViewerError(error instanceof Error ? error.message : String(error)));
+            }}
+            onUndo={() => state.activeTool === "edit-content"
+              ? void undoNativeContentEdit() : headerProps.undoAnnotations()}
+            onRedo={() => state.activeTool === "edit-content"
+              ? void redoNativeContentEdit() : headerProps.redoAnnotations()}
+            onSave={headerProps.savePdf}
+            onFindCommands={() => window.dispatchEvent(new Event("tpdf:open-command-palette"))}
+            onShowTools={() => state.setShowDashboard(true)}
+            onShowInfo={() => setIsRightCollapsed(false)}
+            onShowAi={() => { setIsAiPanelOpen(true); setIsRightCollapsed(false); }}
+            onTogglePdfToolbar={() => {
+              const root = document.querySelector(".tpdf-mobile-viewer-flex");
+              root?.classList.toggle("tpdf-mobile-native-toolbar-visible");
+            }}
+            isPublic={Boolean(window.__TPDF_RUNTIME__ !== "server" && !window.tpdf)}
+          />
           {state.activeTool === "select" && selectedTextForEdit?.tabId === activeTab.id && selectedTextForEdit.documentKey === state.sourceIdentity ? (
             <button
               type="button"
@@ -343,7 +370,7 @@ export function AppWorkspace({
       {rightAvailable && isRightCollapsed ? (
         <button
           type="button"
-          className="absolute right-0 top-1/2 z-30 flex h-16 w-5 -translate-y-1/2 items-center justify-center rounded-l bg-[var(--acrobat-blue)] text-white"
+          className="tpdf-right-panel-restore absolute right-0 top-1/2 z-30 flex h-16 w-12 -translate-y-1/2 items-center justify-center rounded-l bg-[var(--acrobat-blue)] text-white"
           data-tpdf-action="expand-right-panel"
           onClick={() => setIsRightCollapsed(false)}
           title={state.activeTool === "edit-content" ? "Open advanced edit settings" : "Expand right sidebar"}
