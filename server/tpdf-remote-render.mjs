@@ -67,11 +67,14 @@ export function createRemoteRenderService(env = process.env) {
     const timer = setTimeout(() => finish(false), 5000);
     child.stdout.on("data", (part) => {
       output += part.toString();
-      if (output.length > 1024) return finish(false);
-      const newline = output.indexOf("\n");
-      if (newline === -1) return;
-      try { finish(JSON.parse(output.slice(0, newline)).ready === true); }
-      catch { finish(false); }
+      if (output.length > 2048) return finish(false);
+      for (const line of output.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("{")) continue;
+        try {
+          if (JSON.parse(trimmed).ready === true) return finish(true);
+        } catch {}
+      }
     });
     child.on("error", () => finish(false));
     child.on("exit", () => finish(false));

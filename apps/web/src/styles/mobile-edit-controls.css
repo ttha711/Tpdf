@@ -73,7 +73,13 @@
   :is(body, .app):has(.tpdf-mobile-filmstrip) .tpdf-mobile-edit-toolbar,
   :is(body, .app):has(.tpdf-mobile-filmstrip) .ai-float-toggle-btn,
   :is(body, .app):has([data-tpdf-dialog]) .tpdf-mobile-edit-toolbar,
-  :is(body, .app):has([data-tpdf-dialog]) .ai-float-toggle-btn {
+  :is(body, .app):has([data-tpdf-dialog]) .ai-float-toggle-btn,
+  :is(body, .app):has([data-embedpdf-overlay="open"]) .tpdf-mobile-edit-toolbar,
+  :is(body, .app):has([data-embedpdf-overlay="open"]) .ai-float-toggle-btn,
+  :is(body, .app):has([data-embedpdf-overlay="open"]) [data-tpdf-upload-state],
+  body[data-embedpdf-overlay="open"] .tpdf-mobile-edit-toolbar,
+  body[data-embedpdf-overlay="open"] .ai-float-toggle-btn,
+  body[data-embedpdf-overlay="open"] [data-tpdf-upload-state] {
     display: none !important;
   }
 }
