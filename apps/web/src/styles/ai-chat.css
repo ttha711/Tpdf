@@ -770,3 +770,8 @@
   animation: floatPulse 2.4s infinite;
   pointer-events: none;
 }
+
+.ai-settings-panel select { width: 100%; margin: 8px 0; padding: 8px; border: 1px solid gray; border-radius: 8px; background: transparent; color: inherit; }
+.ai-task-history { padding: 8px 12px; max-height: 24vh; overflow-y: auto; font-size: 12px; }
+.ai-task-history li { margin: 6px 0; overflow-wrap: anywhere; }
+.ai-task-history pre { overflow: auto; max-height: 130px; white-space: pre-wrap; }

@@ -108,7 +108,7 @@ async function start() {
   process.once("SIGTERM", stop);
   const heartbeat = async () => {
     try {
-      await request("/api/tpdf/agent/heartbeat", { method: "POST", headers: auth(token) });
+      await request("/api/tpdf/agent/heartbeat", { method: "POST", headers: { ...auth(token), "Content-Type": "application/json" }, body: JSON.stringify({ providers: [provider] }) });
     } catch (error) {
       console.error("Agent heartbeat:", String(error));
     }
@@ -121,6 +121,7 @@ async function start() {
         const next = await request("/api/tpdf/agent/tasks/next", { headers: auth(token) });
         if (!next.task) { await sleep(1250); continue; }
         const { id, query, leaseToken } = next.task;
+        if (next.task.provider && next.task.provider !== provider) throw new Error("Task routed to wrong provider.");
         controller = new AbortController();
         let leaseLost = false;
         let renewing = false;

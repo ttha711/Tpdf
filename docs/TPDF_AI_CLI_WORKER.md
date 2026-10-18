@@ -37,3 +37,15 @@ npm run typecheck
 ```
 
 Tests mock provider output. Live CLI login, authenticated end-to-end document edits, Windows .cmd launch, and deployment smoke checks remain mandatory before production rollout.
+
+## Web AI workspace and provider routing
+
+Open the gear icon in the AI panel, pair a worker, and select a provider advertised by an online worker. Auto selects an available machine. Each worker currently advertises one provider; run separate paired processes for different providers.
+
+The server persists machine pairing, tasks, and project-scoped task history in TPDF_DATA_DIR/agent-state.json. Back it up with its matching pairing secret; never publish this file.
+
+After server restart, running jobs are safely requeued and can invoke a model again. Native PDF actions only execute in the authenticated browser and are never replayed automatically from the queue.
+
+The current persistence is local-file based and supports one server process only. Multiple server nodes need a transactional shared queue before production use.
+
+The browser polls a model decision for up to six minutes; individual provider calls default to 90 seconds. Live Windows process launching and authenticated end-to-end tests remain outstanding.

@@ -39,7 +39,10 @@ export function useAiAssistant() {
       serial.current = queued.tail;
       return queued.result;
     },
-    onProgress: () => {},
+    onProgress: (message) => {
+      setMessages((current) => current.map((entry) => entry.isPending && entry.sender === "assistant"
+        ? { ...entry, text: message } : entry));
+    },
   });
 
   const drainQueued = () => {
@@ -151,6 +154,11 @@ export function useAiAssistant() {
     stopJob, undoLast,
     messages, inputValue, setInputValue, chatEndRef,
     jobs, showSettings, setShowSettings,
+    aiProvider: machineBridge.provider,
+    setAiProvider: machineBridge.chooseProvider,
+    availableProviders: machineBridge.availableProviders,
+    agentHistory: machineBridge.history,
+    refreshAgentHistory: machineBridge.refreshHistory,
     handleSubmit, handleConfirmInline, handleSuggestionClick: submitText,
     machineAgentConnected: machineBridge.connected,
     machineAgentCount: machineBridge.agents.filter((agent) => agent.online).length,

@@ -96,6 +96,7 @@ const loginRateLimiter = createLoginRateLimiter(process.env);
 const pageIndexApi = createPageIndexApi({ storage, tenantRuntime, readJsonBody, sendJson, sendError, pythonPath });
 const agentPairing = createAgentPairingBroker(
   process.env.TPDF_AGENT_PAIRING_SECRET || process.env.TPDF_AUTH_SECRET || "tpdf-local-agent-pairing-development-secret-2026",
+  { persistPath: join(dataDir, "agent-state.json") },
 );
 let shuttingDown = false;
 
@@ -759,7 +760,8 @@ async function handleApi(req, res, url) {
       ? req.headers.authorization.slice(7).trim() : "";
     const agent = agentPairing.verifyAgentToken(bearer);
     if (!agent) return sendError(res, 401, "Machine agent token is invalid or expired.");
-    agentPairing.heartbeatAgent(agent);
+    const heartbeat = await readJsonBody(req, 16 * 1024);
+    agentPairing.heartbeatAgent(agent, heartbeat);
     return sendJson(res, 200, { ok: true });
   }
 
@@ -875,11 +877,17 @@ async function handleApi(req, res, url) {
       agents: agentPairing.listAgents(user, projectId),
     });
   }
+  if (url.pathname === "/api/tpdf/agent/history" && req.method === "GET") {
+    return sendJson(res, 200, { tasks: agentPairing.listTasks(user, projectId) });
+  }
 
   if (url.pathname === "/api/tpdf/agent/chat" && req.method === "POST") {
     const body = await readJsonBody(req, 256 * 1024);
     if (typeof body.query !== "string" || !body.query.trim()) {
       return sendError(res, 400, "query is required.");
+    }
+    if (body.provider && !["dify", "claude", "codex", "gemini"].includes(body.provider)) {
+      return sendError(res, 400, "Unknown agent provider.");
     }
     const task = agentPairing.createTask(user, projectId, body);
     return task
