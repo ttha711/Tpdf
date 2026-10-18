@@ -34,6 +34,8 @@ import {
   type MeasurementUnit,
 } from "../lib/measurement";
 import { useEmbedPdfOverlaySync } from "../hooks/useEmbedPdfOverlaySync";
+import { MobilePdfModeStrip } from "./MobilePdfModeStrip";
+import { MOBILE_PDF_GROUPS, type MobilePdfMode } from "../lib/mobilePdfTools";
 
 const DOCUMENT_ID = "tpdf-active-document";
 const SIDEBAR_PREF_KEY = "tpdf-embedpdf-sidebar";
@@ -75,6 +77,21 @@ export function PdfViewer({
   const pendingPositionRef = useRef<{ x: number; y: number } | null>(null);
   const activeToolRef = useRef(activeTool);
   activeToolRef.current = activeTool;
+  const dirtyCallbackRef = useRef(onViewerDirty);
+  dirtyCallbackRef.current = onViewerDirty;
+  const dirtyDebounceRef = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (dirtyDebounceRef.current !== null) window.clearTimeout(dirtyDebounceRef.current);
+  }, []);
+  const notifyAnnotationDirty = () => {
+    if (dirtyDebounceRef.current !== null) window.clearTimeout(dirtyDebounceRef.current);
+    // A long ink stroke can publish dozens of events. Commit dirty state once
+    // after painting settles, instead of forcing React layout every frame.
+    dirtyDebounceRef.current = window.setTimeout(() => {
+      dirtyDebounceRef.current = null;
+      dirtyCallbackRef.current?.();
+    }, 220);
+  };
   const lastPageRef = useRef(page);
   const lastScaleRef = useRef(scale);
   const [measurementMode, setMeasurementMode] = useState<MeasurementMode>(() => {
@@ -239,7 +256,13 @@ export function PdfViewer({
       },
       tabBar: "never",
       chrome: (base: any, helpers: any) =>
-        helpers?.removeItems ? helpers.removeItems(base, ["document:menu"]) : base,
+        helpers?.removeItems ? helpers.removeItems(base, [
+          "document:menu",
+          ...(window.innerWidth <= 900 ? [
+            "mode:view", "mode:annotate", "mode:shapes",
+            "mode:insert", "mode:form", "mode:redact",
+          ] : []),
+        ]) : base,
       theme: { preference: "light" },
       annotations: { annotationAuthor: "TPDF" },
       pan: { defaultMode: "mobile" },
@@ -412,7 +435,7 @@ export function PdfViewer({
         const off = annotationApi.onAnnotationEvent((event: any) => {
           if (event?.documentId && event.documentId !== DOCUMENT_ID) return;
           if (event?.type === "create" || event?.type === "update" || event?.type === "delete") {
-            onViewerDirty?.();
+            notifyAnnotationDirty();
           }
           if (event?.type !== "create" || activeToolRef.current !== "measure") return;
 
@@ -661,6 +684,73 @@ export function PdfViewer({
   }, [activeRegistry, activeTool, measurementMode, sourceUrl]);
 
   useEffect(() => {
+    if (!activeRegistry) return;
+    const registry = activeRegistry as {
+      execute?: (id: string, documentId?: string) => void | Promise<void>;
+      resolve?: (id: string, documentId?: string) => { active?: boolean; visible?: boolean; enabled?: boolean } | null;
+      watch?: (read: () => string, changed: (value: string) => void) => () => void;
+    };
+    // Use the same commands as EmbedPDF's own buttons; do not simulate DOM clicks.
+    const run = (event: Event) => {
+      const command = (event as CustomEvent<{ command?: string }>).detail?.command;
+      if (!command || !registry.execute) return;
+      const descriptor = registry.resolve?.(command, DOCUMENT_ID);
+      if (registry.resolve && (!descriptor || descriptor.visible === false || descriptor.enabled === false)) return;
+      try {
+        void Promise.resolve(registry.execute(command, DOCUMENT_ID)).catch(error => {
+          onError?.(error instanceof Error ? error.message : String(error));
+        });
+      } catch (error) {
+        onError?.(error instanceof Error ? error.message : String(error));
+      }
+    };
+    const measure = (event: Event) => {
+      const target = (event as CustomEvent<{ mode?: string }>).detail?.mode;
+      if (target === "calibrate") {
+        if (lastMeasuredPdfValueRef.current) setShowCalibrationDialog(true);
+      } else if (target === "distance" || target === "perimeter" || target === "area") {
+        setMeasurementMode(target);
+        setMeasurementResult(null);
+        lastMeasuredPdfValueRef.current = null;
+        onActiveToolChange?.("measure");
+      }
+    };
+    const snapshot = () => {
+      const group = MOBILE_PDF_GROUPS.find(item =>
+        item.id !== "measure" && registry.resolve?.(`mode:${item.id}`, DOCUMENT_ID)?.active
+      );
+      const current = (group?.id ?? "view") as MobilePdfMode;
+      const activeCommand = group?.tools.find(item =>
+        item.command && registry.resolve?.(item.command, DOCUMENT_ID)?.active
+      )?.command ?? "";
+      return current + "|" + activeCommand;
+    };
+    const broadcast = (value: string) => {
+      const [mode, command] = value.split("|");
+      if (activeToolRef.current !== "measure") {
+        window.dispatchEvent(new CustomEvent("tpdf:embedpdf-mode-changed", { detail: { mode } }));
+      }
+      window.dispatchEvent(new CustomEvent("tpdf:embedpdf-tool-changed", { detail: { command } }));
+    };
+    const availability = Object.fromEntries(MOBILE_PDF_GROUPS.flatMap(group =>
+      group.tools.filter(tool => tool.command).map(tool => [
+        tool.command!, Boolean(registry.resolve?.(tool.command!, DOCUMENT_ID)?.visible !== false &&
+          registry.resolve?.(tool.command!, DOCUMENT_ID)),
+      ])
+    ));
+    window.dispatchEvent(new CustomEvent("tpdf:embedpdf-command-availability", { detail: availability }));
+    broadcast(snapshot());
+    window.addEventListener("tpdf:embedpdf-command", run);
+    window.addEventListener("tpdf:mobile-measure-mode", measure);
+    const stopWatch = registry.watch?.(snapshot, broadcast);
+    return () => {
+      stopWatch?.();
+      window.removeEventListener("tpdf:embedpdf-command", run);
+      window.removeEventListener("tpdf:mobile-measure-mode", measure);
+    };
+  }, [activeRegistry, onActiveToolChange, onError]);
+
+  useEffect(() => {
     window.localStorage.setItem("tpdf-measure-mode", measurementMode);
   }, [measurementMode]);
 
@@ -791,6 +881,9 @@ export function PdfViewer({
           onResetCalibration={resetCalibration}
           onClose={() => onActiveToolChange?.("select")}
         />
+      ) : null}
+      {onActiveToolChange ? (
+        <MobilePdfModeStrip activeTool={activeTool} onActiveToolChange={onActiveToolChange} />
       ) : null}
       <EmbedPdfViewer
         key={sourceUrl}
