@@ -1,5 +1,5 @@
 // tpdf-file-size-allow: legacy workspace shell composes all tools and routes; this change only adds the reader-to-editor handoff, while splitting the shell is a separate refactor.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AdaptivePdfViewer } from "../AdaptivePdfViewer";
 import { MobilePdfDock } from "../MobilePdfDock";
 import { undoNativeContentEdit, redoNativeContentEdit } from "../../lib/nativeContentHistory";
@@ -100,6 +100,14 @@ export function AppWorkspace({
     setIsDraggingRight,
   } = sidebars;
   const [selectedTextForEdit, setSelectedTextForEdit] = useState<{ text: string; page: number; tabId: string; documentKey: string } | null>(null);
+  useEffect(() => {
+    const onSelectTool = (event: Event) => {
+      const tool = (event as CustomEvent<"text" | "draw" | "measure">).detail;
+      if (tool === "text" || tool === "draw" || tool === "measure") state.setActiveTool(tool);
+    };
+    window.addEventListener("tpdf:select-mobile-tool", onSelectTool);
+    return () => window.removeEventListener("tpdf:select-mobile-tool", onSelectTool);
+  }, [state.setActiveTool]);
   const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
   const getNativeEditBytes = useNativeEditBytes(state);
   const rightAvailable = state.hasDocument || Boolean(state.activeDashboardTool) ||
