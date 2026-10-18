@@ -19,6 +19,10 @@
   .app:has(.tpdf-mobile-dock) .tpdf-mobile-filmstrip {
     bottom: 0;
   }
+  :is(body, .app):has([data-embedpdf-overlay="open"]) .tpdf-mobile-dock,
+  body[data-embedpdf-overlay="open"] .tpdf-mobile-dock {
+    display: none !important;
+  }
   .viewer-area:has(.tpdf-mobile-dock) {
     display: flex;
     flex-direction: column;

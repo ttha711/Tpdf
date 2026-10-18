@@ -14,7 +14,7 @@ async function createFixturePdf() {
 test.describe("Mobile EmbedPDF Modes & Tools UI/UX Audit", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test("hides floating AI button and bottom toolbar when EmbedPDF sheets open", async ({ page }) => {
+  test("hides mobile dock when EmbedPDF sheets open", async ({ page }) => {
     await page.goto("/", { waitUntil: "networkidle" });
 
     // Open fixture PDF
@@ -27,12 +27,10 @@ test.describe("Mobile EmbedPDF Modes & Tools UI/UX Audit", () => {
     await page.waitForSelector("[data-tpdf-engine='pdfium-wasm']", { timeout: 30000 });
     await page.waitForTimeout(1000);
 
-    const aiButton = page.locator(".ai-float-toggle-btn");
-    const bottomToolbar = page.locator(".tpdf-mobile-edit-toolbar");
+    const mobileDock = page.locator("[data-tpdf-region='mobile-dock']");
 
-    // Initially when viewing without sheets open, quick toolbar and AI button are present
-    await expect(aiButton).toBeVisible();
-    await expect(bottomToolbar).toBeVisible();
+    // Initially when viewing without sheets open, mobile dock is present
+    await expect(mobileDock).toBeVisible();
 
     // 1. Open Mode Picker Sheet
     await page.evaluate(() => {
@@ -45,9 +43,8 @@ test.describe("Mobile EmbedPDF Modes & Tools UI/UX Audit", () => {
 
     // Verify overlay sync attribute is set
     await expect(page.locator("body")).toHaveAttribute("data-embedpdf-overlay", "open");
-    // Verify floating UI is cleanly hidden to prevent collision
-    await expect(aiButton).toBeHidden();
-    await expect(bottomToolbar).toBeHidden();
+    // Verify dock is cleanly hidden to prevent collision
+    await expect(mobileDock).toBeHidden();
 
     // Verify mode buttons in sheet are visible
     const sheetItems = await page.evaluate(() => {
@@ -72,9 +69,9 @@ test.describe("Mobile EmbedPDF Modes & Tools UI/UX Audit", () => {
     });
     await page.waitForTimeout(600);
 
-    // Overlay is closed, tools should reappear
+    // Overlay is closed, dock should reappear
     await expect(page.locator("body")).not.toHaveAttribute("data-embedpdf-overlay", "open");
-    await expect(aiButton).toBeVisible();
+    await expect(mobileDock).toBeVisible();
 
     // 3. Open Rubber Stamps sheet in Insert mode
     await page.evaluate(() => {
@@ -85,10 +82,9 @@ test.describe("Mobile EmbedPDF Modes & Tools UI/UX Audit", () => {
     });
     await page.waitForTimeout(500);
 
-    // Verify overlay sync attribute and hidden floating UI during Rubber Stamps
+    // Verify overlay sync attribute and hidden dock during Rubber Stamps
     await expect(page.locator("body")).toHaveAttribute("data-embedpdf-overlay", "open");
-    await expect(aiButton).toBeHidden();
-    await expect(bottomToolbar).toBeHidden();
+    await expect(mobileDock).toBeHidden();
 
     // 4. Dismiss by tapping backdrop overlay
     await page.evaluate(() => {
@@ -100,8 +96,7 @@ test.describe("Mobile EmbedPDF Modes & Tools UI/UX Audit", () => {
 
     // Overlay dismissed
     await expect(page.locator("body")).not.toHaveAttribute("data-embedpdf-overlay", "open");
-    await expect(aiButton).toBeVisible();
-    await expect(bottomToolbar).toBeVisible();
+    await expect(mobileDock).toBeVisible();
   });
 
   test("activates tools on first click and switches tools smoothly without viewer remount", async ({ page, request }) => {
@@ -116,19 +111,30 @@ test.describe("Mobile EmbedPDF Modes & Tools UI/UX Audit", () => {
     const viewer = page.locator("[data-tpdf-engine='pdfium-wasm']");
     await expect(viewer).toBeVisible({ timeout: 30000 });
 
-    const sequence = ["Highlight", "Note", "Text", "Draw", "Rectangle", "Redact", "Measure"];
+    const dock = page.locator("[data-tpdf-region='mobile-dock']");
+    await expect(dock).toBeVisible();
 
-    for (const toolName of sequence) {
-      const btn = page.locator(`.viewer-quick-tool[title='${toolName}'], .viewer-quick-tool[aria-label='${toolName}']`).first();
+    // Tap Annotate in dock to reveal quick tools
+    await dock.getByRole("button", { name: "Annotate" }).click();
+
+    const dockTools = ["Highlight", "Add text", "Draw", "Rectangle"];
+    for (const toolName of dockTools) {
+      const btn = dock.locator(`.tpdf-mobile-dock-row--tools button[aria-label='${toolName}']`);
       await expect(btn).toBeVisible();
       await btn.click();
       // Must activate on the very first click
       await expect(btn).toHaveAttribute("aria-pressed", "true", { timeout: 3000 });
     }
 
-    // Return to select
-    const selectBtn = page.locator("[data-tpdf-action='mobile-select']").first();
-    await selectBtn.click();
-    await expect(selectBtn).toHaveAttribute("aria-pressed", "true");
+    // Open sheet for secondary tools
+    await dock.getByRole("button", { name: "Tools", exact: true }).click();
+    await expect(page.locator("[data-tpdf-mobile-tools='open']")).toBeVisible();
+    await page.locator('[data-tpdf-mobile-tool="measure"]').click();
+    await expect(dock.getByRole("button", { name: "Annotate" })).toHaveAttribute("aria-pressed", "true");
+
+    // Return to Read mode
+    const readBtn = dock.getByRole("button", { name: "Read" });
+    await readBtn.click();
+    await expect(readBtn).toHaveAttribute("aria-pressed", "true");
   });
 });
