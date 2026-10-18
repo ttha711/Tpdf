@@ -176,7 +176,11 @@ async function runAgentAction(
     case "go-prev-page": return actions.goPrevPage?.();
     case "go-next-page": return actions.goNextPage?.();
     case "go-to-page": {
-      const page = clampPage(Number(args.page), state.totalPages);
+      const page = typeof args.page === "number" ? args.page :
+        (typeof args.page === "string" && /^[0-9]+$/.test(args.page.trim()) ? Number(args.page) : NaN);
+      if (!Number.isSafeInteger(page) || page < 1 || page > state.totalPages) {
+        return { status: "input_required", message: `Page must be a whole number between 1 and ${state.totalPages}.`, missingArgs: ["page"] };
+      }
       return actions.setPage?.(page);
     }
     case "zoom-in": {
@@ -194,7 +198,12 @@ async function runAgentAction(
     }
     case "zoom-out": return actions.zoomOut?.();
     case "reset-zoom": return actions.resetZoom?.();
-    case "set-view-mode": return actions.setViewMode?.(normalizeViewMode(args.mode));
+    case "set-view-mode": {
+      if (args.mode !== "page" && args.mode !== "continuous") {
+        return { status: "input_required", message: "View mode must be page or continuous.", missingArgs: ["mode"] };
+      }
+      return actions.setViewMode?.(args.mode);
+    }
     case "rotate-view-left": return actions.rotateLeft?.();
     case "rotate-view-right": return actions.rotateRight?.();
     case "undo-annotations": return actions.undoAnnotations?.();

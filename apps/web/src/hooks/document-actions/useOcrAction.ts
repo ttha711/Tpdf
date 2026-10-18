@@ -27,7 +27,7 @@ export function useOcrAction({
   setViewerError: Dispatch<SetStateAction<string | null>>;
 }) {
   async function runOcr() {
-    if (!fileName) return;
+    if (!fileName) throw new Error("No document loaded for OCR.");
     try {
       const sourceBytes = (await getDocumentBytes()) ?? docBytes;
       if (!sourceBytes || sourceBytes.length === 0) {
@@ -61,6 +61,7 @@ export function useOcrAction({
       if (result.status === "failed") {
         throw new Error(result.error || "OCR failed");
       }
+      if (!result.outputBytes || result.outputBytes.length === 0) throw new Error("OCR did not produce a PDF.");
       if (result.outputBytes && result.outputBytes.length > 0) {
         if (!isLikelyPdf(result.outputBytes)) {
           throw new Error("OCR output is invalid (not a PDF).");
@@ -91,6 +92,7 @@ export function useOcrAction({
       setTimeout(() => setViewerError(null), 3000);
     } catch (error) {
       setViewerError(error instanceof Error ? error.message : "OCR failed");
+      throw error;
     }
   }
 

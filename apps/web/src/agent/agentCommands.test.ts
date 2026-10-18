@@ -83,6 +83,26 @@ describe("agent command registry", () => {
     expect(result.status).toBe("unavailable");
   });
 
+  it("rejects boolean page values instead of coercing true into page one", async () => {
+    const ctx = createContext();
+    const result = await executeAgentCommand({ tool: "go-to-page", args: { page: true } }, ctx);
+    expect(result.status).toBe("input_required");
+    expect(ctx.actions.setPage).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid navigation page instead of silently going to page one", async () => {
+    const ctx = createContext();
+    const result = await executeAgentCommand({ tool: "go-to-page", args: { page: "abc" } }, ctx);
+    expect(result.status).toBe("input_required");
+    expect(ctx.actions.setPage).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid viewing mode", async () => {
+    const ctx = createContext();
+    const result = await executeAgentCommand({ tool: "set-view-mode", args: { mode: "bogus" } }, ctx);
+    expect(result.status).toBe("input_required");
+  });
+
   it("runs safe commands immediately when state and arguments are sufficient", async () => {
     const ctx = createContext();
     const result = await executeAgentCommand({ tool: "compress-pdf" }, ctx);

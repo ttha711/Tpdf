@@ -21,9 +21,9 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
-      - name: Typecheck web (PR)
+      - name: Typecheck web and editor (PR)
         if: github.event_name == 'pull_request'
-        run: npm run build -w @tpdf/core && npm run typecheck -w @tpdf/web
+        run: npm run build -w @tpdf/core && npm run typecheck -w @tpdf/web && npm run typecheck -w @tpdf/editor
       - name: Typecheck all (main)
         if: github.event_name == 'push'
         run: npm run typecheck
@@ -32,21 +32,19 @@ jobs:
       - run: npm run check:file-size
       - run: npm run test:cli
       - run: npm run test -w @tpdf/web
-      - name: Build web (PR)
+      - name: Build web and editor (PR)
         if: github.event_name == 'pull_request'
-        run: npm run build -w @tpdf/web
+        run: npm run build -w @tpdf/web && npm run build -w @tpdf/editor
       - name: Build all (main)
         if: github.event_name == 'push'
         run: npm run build
-      - if: github.event_name == 'push'
-        run: npm run server-smoke
+      - run: npm run server-smoke
       - run: npm run server-auth-smoke
       - if: github.event_name == 'push'
         run: npm run server-s3-smoke
       - if: github.event_name == 'push'
         run: npm run server-production-smoke
-      - if: github.event_name == 'push'
-        run: npm run server-reliability
+      - run: npm run server-reliability
       - if: github.event_name == 'push'
         run: npm run backup-smoke
       - if: github.event_name == 'pull_request'

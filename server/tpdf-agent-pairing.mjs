@@ -209,13 +209,14 @@ export function createAgentPairingBroker(secret, options = {}) {
     const context = payload.context && typeof payload.context === "object" && !Array.isArray(payload.context)
       ? payload.context : {};
     if (Buffer.byteLength(JSON.stringify(context), "utf8") > MAX_CONTEXT_BYTES) return null;
+    if (typeof payload.query !== "string" || payload.query.length > 20000) return null;
     const id = randomUUID();
     const task = {
       id,
       userId: user.id,
       projectId,
       status: "queued",
-      query: String(payload.query || "").slice(0, 20000),
+      query: String(payload.query || ""),
       context,
       provider: requested || null,
       createdAt: now(),

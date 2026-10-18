@@ -60,7 +60,7 @@ export function useAgentBridge(context: AgentActionContext) {
         for (const command of commands) {
           results.push(await queue.enqueue(command));
           const last = results[results.length - 1];
-          if (last.status === "input_required" || last.status === "confirmation_required" || last.status === "failed") {
+          if (last.status === "input_required" || last.status === "confirmation_required" || last.status === "failed" || last.status === "unavailable") {
             break;
           }
         }

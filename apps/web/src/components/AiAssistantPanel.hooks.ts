@@ -7,7 +7,7 @@ import { useMachineAgentBridge } from "../hooks/useMachineAgentBridge";
 import { useAiCommandRuntime } from "./useAiCommandRuntime";
 import { enqueueAbortable } from "../agent/enqueueAbortable";
 
-type Job = { id: string; goal: string; status: "queued" | "running" | "approval" | "completed" | "failed"; checkpoint?: HarnessCheckpoint; steps?: string[] };
+type Job = { id: string; goal: string; status: "queued" | "running" | "approval" | "input" | "completed" | "failed"; checkpoint?: HarnessCheckpoint; steps?: string[] };
 const id = () => globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
 
 export function useAiAssistant() {
@@ -44,7 +44,7 @@ export function useAiAssistant() {
 
   const drainQueued = () => {
     // Queue mode runs in FIFO order after all active immediate jobs finish.
-    if (active.current.size > 0 || jobsRef.current.some((job) => job.status === "approval")) return;
+    if (active.current.size > 0 || jobsRef.current.some((job) => job.status === "approval" || job.status === "input")) return;
     const first = jobsRef.current.find((job) => job.status === "queued");
     if (first) void run(first);
   };
@@ -71,6 +71,9 @@ export function useAiAssistant() {
           jobId: job.id,
         });
         update({ ...job, status: "approval", checkpoint: result.checkpoint });
+      } else if (result.status === "input_required") {
+        update({ ...job, status: "input", checkpoint: { ...result.checkpoint, awaitingInput: result.message } });
+        addMessage("assistant", result.message, { jobId: job.id });
       } else {
         const status = result.status === "completed" ? "completed" : "failed";
         update({ ...job, status });
@@ -94,6 +97,24 @@ export function useAiAssistant() {
   const submitText = (text: string, mode: "now" | "queue" = "now") => {
     const goal = text.trim();
     if (!goal) return;
+    const waiting = jobsRef.current.filter((item) => item.status === "input");
+    const old = waiting.length === 1 ? waiting[0] : undefined;
+    const savedCheckpoint = old?.checkpoint;
+    if (old && savedCheckpoint && mode === "now") {
+      const updated: Job = {
+        ...old, status: "queued",
+        checkpoint: {
+          ...savedCheckpoint,
+          awaitingInput: undefined,
+          observations: [...savedCheckpoint.observations,
+            { action: "user_input", detail: savedCheckpoint.awaitingInput || "User clarified the pending request", result: goal }],
+        },
+      };
+      update(updated);
+      addMessage("user", goal, { jobId: old.id });
+      void run(updated);
+      return;
+    }
     const job: Job = { id: id(), goal, status: "queued" };
     jobsRef.current.push(job);
     setJobs([...jobsRef.current]);
@@ -130,7 +151,7 @@ export function useAiAssistant() {
     if (!job || job.status === "completed" || job.status === "failed") return;
     stopped.current.add(jobId);
     jobControllers.current.get(jobId)?.abort();
-    if (job.status === "queued" || job.status === "approval") {
+    if (job.status === "queued" || job.status === "approval" || job.status === "input") {
       update({ ...job, status: "failed", checkpoint: undefined });
       setMessages((items) => items.map((item) =>
         item.jobId === jobId && item.confirmation ? { ...item, confirmation: undefined } : item,
@@ -142,7 +163,7 @@ export function useAiAssistant() {
     }
   };
   const undoLast = async () => {
-    if (active.current.size || jobsRef.current.some((job) => job.status === "approval")) {
+    if (active.current.size || jobsRef.current.some((job) => job.status === "approval" || job.status === "input")) {
       addMessage("assistant", "Finish, stop or resolve pending actions before undoing the last edit.");
       return;
     }
