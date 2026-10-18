@@ -76,11 +76,13 @@ export function MobilePdfDock({
     setSheetOpen(false);
     setMode(groupMode);
     if (tool.measureMode) {
-      if (tool.measureMode !== "calibrate") setMeasureSelection(tool.measureMode);
+      if (tool.measureMode !== "calibrate") {
+        setMeasureSelection(tool.measureMode);
+        onToolChange("measure");
+      }
       window.dispatchEvent(new CustomEvent("tpdf:mobile-measure-mode", {
         detail: { mode: tool.measureMode },
       }));
-      if (tool.measureMode !== "calibrate") onToolChange("measure");
       return;
     }
     const needsCustomToolExit = activeTool === "edit-content" || activeTool === "measure";
