@@ -8,6 +8,7 @@ import {
   serializePdfPagesForStorage,
 } from "../lib/pdfToHtmlEditorGuards";
 import { sanitizeHtml } from "../lib/sanitizer";
+import DOMPurify from "dompurify";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
@@ -407,15 +408,15 @@ export function usePdfToHtml(setErrorMessage: (msg: string | null) => void) {
 
   const buildSelectionReplacementHtml = (sourceHtml: string, replacementHtml: string) => {
     const sourceContainer = document.createElement("div");
-    sourceContainer.innerHTML = sourceHtml.trim();
+    sourceContainer.innerHTML = DOMPurify.sanitize(sourceHtml.trim());
     const replacementContainer = document.createElement("div");
-    replacementContainer.innerHTML = replacementHtml.trim();
+    replacementContainer.innerHTML = DOMPurify.sanitize(replacementHtml.trim());
 
     const sourceRoot = sourceContainer.firstElementChild;
     const replacementRoot = replacementContainer.firstElementChild;
 
     if (!sourceRoot) {
-      return replacementHtml.trim();
+      return DOMPurify.sanitize(replacementHtml.trim());
     }
 
     const copyPresentationAttrs = (targetEl: Element) => {
@@ -436,7 +437,7 @@ export function usePdfToHtml(setErrorMessage: (msg: string | null) => void) {
     const tagName = sourceRoot.tagName.toLowerCase();
     const wrapper = document.createElement(tagName === "br" ? "span" : tagName);
     copyPresentationAttrs(wrapper);
-    wrapper.innerHTML = replacementHtml.trim();
+    wrapper.innerHTML = DOMPurify.sanitize(replacementHtml.trim());
     return wrapper.outerHTML;
   };
 
@@ -455,7 +456,8 @@ export function usePdfToHtml(setErrorMessage: (msg: string | null) => void) {
       : selectedPdfSelection.range?.cloneRange() || null;
 
     const temp = document.createElement("div");
-    temp.innerHTML = replacementHtml.trim();
+    const safeReplacementHtml = DOMPurify.sanitize(replacementHtml.trim());
+    temp.innerHTML = safeReplacementHtml;
     const fragment = document.createDocumentFragment();
     while (temp.firstChild) {
       fragment.appendChild(temp.firstChild);
@@ -470,14 +472,14 @@ export function usePdfToHtml(setErrorMessage: (msg: string | null) => void) {
       let updatedString = editorDiv.innerHTML;
 
       if (updatedString.includes(targetSub)) {
-        updatedString = updatedString.replace(targetSub, replacementHtml);
+        updatedString = updatedString.replace(targetSub, safeReplacementHtml);
       } else if (updatedString.includes(selectedPdfSelection.text)) {
-        updatedString = updatedString.replace(selectedPdfSelection.text, replacementHtml);
+        updatedString = updatedString.replace(selectedPdfSelection.text, safeReplacementHtml);
       } else {
-        updatedString = updatedString.replace(selectedPdfSelection.html, replacementHtml);
+        updatedString = updatedString.replace(selectedPdfSelection.html, safeReplacementHtml);
       }
 
-      editorDiv.innerHTML = updatedString;
+      editorDiv.innerHTML = DOMPurify.sanitize(updatedString);
     }
 
     setPdfPages(prev =>
@@ -509,8 +511,8 @@ export function usePdfToHtml(setErrorMessage: (msg: string | null) => void) {
       }
 
       const replacementHtml = preservePresentation
-        ? buildSelectionReplacementHtml(selectedPdfSelection.html, data.html)
-        : data.html;
+        ? buildSelectionReplacementHtml(selectedPdfSelection.html, DOMPurify.sanitize(String(data.html ?? "")))
+        : DOMPurify.sanitize(String(data.html ?? ""));
 
       const replaced = replaceSelectionHtml(replacementHtml);
       if (!replaced) {

@@ -94,7 +94,7 @@ export async function generateAiPatch(request: AiPatchRequest): Promise<LivePatc
     const payload = await window.tpdf.applyAiPatch(request);
     if (!isPatch(payload)) {
       const loose = tryBuildPatchFromLoosePayload(payload, request);
-      if (loose) return loose;
+      if (loose && isPatch(loose)) return ensurePatchTargets(loose, request);
       throw new Error("Desktop AI patch response is invalid.");
     }
     return ensurePatchTargets(payload, request);
@@ -115,7 +115,7 @@ export async function generateAiPatch(request: AiPatchRequest): Promise<LivePatc
   const payload: unknown = await res.json();
   if (!isPatch(payload)) {
     const loose = tryBuildPatchFromLoosePayload(payload, request);
-    if (loose) return loose;
+    if (loose && isPatch(loose)) return ensurePatchTargets(loose, request);
     throw new Error("AI patch response is invalid.");
   }
   return ensurePatchTargets(payload, request);

@@ -93,6 +93,9 @@ function unavailableCapability(definition: AgentToolDefinition, actions: AgentAc
   if (definition.markupTool && !actions.runConfiguredMarkupTool) {
     return `${definition.title} requires the configured markup engine.`;
   }
+  if (definition.panelTool && !actions.runHeadlessConversion && !actions.setActiveDashboardTool) {
+    return `${definition.title} needs a converter or an available tool panel.`;
+  }
   if (definition.id === "watermark-pdf" && !actions.runConfiguredWatermark) {
     return "Watermark requires the configured watermark engine.";
   }
