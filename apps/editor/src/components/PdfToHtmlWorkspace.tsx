@@ -1,3 +1,4 @@
+import { sanitizeHtml } from "../lib/sanitizer";
 import React from "react";
 import * as pdfjsLib from "pdfjs-dist";
 // @ts-ignore
@@ -234,7 +235,7 @@ export default function PdfToHtmlWorkspace({
                 className={page.htmlContent.includes("slide-container")
                   ? "w-full h-auto select-text selection:bg-indigo-100 bg-white"
                   : "prose prose-slate max-w-none text-slate-800 text-xs leading-relaxed p-[20mm] bg-white print:p-[20mm] selection:bg-indigo-100"}
-                dangerouslySetInnerHTML={{ __html: page.htmlContent }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(page.htmlContent || "") }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-white p-0">

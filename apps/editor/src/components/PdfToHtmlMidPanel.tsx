@@ -1,3 +1,4 @@
+import { sanitizeHtml } from "../lib/sanitizer";
 import React from "react";
 import { Sparkles, Compass, Loader2, FileText, Download, RefreshCw } from "lucide-react";
 import { PageResult } from "../types";
@@ -137,7 +138,7 @@ export default function PdfToHtmlMidPanel({
                   </span>
                   <div className="border border-slate-250 rounded-xl bg-white p-5 max-h-[450px] overflow-y-auto select-all prose text-xs">
                     {page?.htmlContent ? (
-                      <div dangerouslySetInnerHTML={{ __html: page.htmlContent || "" }} />
+                      <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(page.htmlContent || "") }} />
                     ) : (
                       <p className="text-center text-slate-400 py-12">Chưa chuẩn bị bản chỉnh sửa cho trang này.</p>
                     )}

@@ -185,7 +185,7 @@ describe("agent command registry", () => {
 
   it("does not pretend Document Health is available without the server action", async () => {
     const result = await executeAgentCommand({ tool: "analyze-document-health" }, createContext());
-    expect(result.status).toBe("input_required");
+    expect(result.status).toBe("unavailable");
   });
 
   it("serializes commands through a queue", async () => {
