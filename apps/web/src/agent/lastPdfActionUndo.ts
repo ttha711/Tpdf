@@ -25,15 +25,21 @@ export function isPdfEditingTool(tool: AgentToolId) {
 }
 
 async function digest(snapshot: PdfUndoSnapshot): Promise<string> {
-  const bytes = snapshot.bytes;
-  const hash = await crypto.subtle.digest("SHA-256", Uint8Array.from(bytes).buffer);
-  return Array.from(new Uint8Array(hash), (n) => n.toString(16).padStart(2, "0")).join("");
+  // Include annotation changes: they can be edited without modifying the PDF bytes yet.
+  const [bytesHash, annotationsHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", Uint8Array.from(snapshot.bytes).buffer),
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(snapshot.annotations ?? [])).buffer),
+  ]);
+  const hex = (hash: ArrayBuffer) =>
+    Array.from(new Uint8Array(hash), (n) => n.toString(16).padStart(2, "0")).join("");
+  return hex(bytesHash) + ":" + hex(annotationsHash);
 }
 
 type UndoEntry = {
   before: PdfUndoSnapshot;
   afterHash: string;
   fileName: string;
+  sourceIdentity: string;
 };
 
 export class LastPdfActionUndo {
@@ -77,6 +83,7 @@ export class LastPdfActionUndo {
       before: { ...before, bytes: before.bytes.slice() },
       afterHash,
       fileName: after.fileName,
+      sourceIdentity: after.sourceIdentity,
     };
     return result;
   }
@@ -86,7 +93,8 @@ export class LastPdfActionUndo {
     const entry = this.entry;
     if (!entry) return { tool, status: "input_required", message: "No recent PDF-editing command can be undone." };
     const current = await capture().catch(() => null);
-    if (!current || current.fileName !== entry.fileName || (await digest(current)) !== entry.afterHash) {
+    if (!current || current.fileName !== entry.fileName ||
+        current.sourceIdentity !== entry.sourceIdentity || (await digest(current)) !== entry.afterHash) {
       this.entry = null;
       return {
         tool, status: "failed",

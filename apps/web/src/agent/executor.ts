@@ -35,6 +35,12 @@ export async function executeAgentCommand(command: AgentCommand, context: AgentA
     };
   }
 
+  // A missing UI handler must never be mistaken for a successful PDF mutation.
+  const missingCapability = unavailableCapability(definition, context.actions);
+  if (missingCapability) {
+    return { status: "unavailable", tool: command.tool, message: missingCapability };
+  }
+
   try {
     const outcome = await runAgentAction(definition, args, context, command.confirmed === true);
     if (outcome?.status === "input_required") {
@@ -55,6 +61,42 @@ export async function executeAgentCommand(command: AgentCommand, context: AgentA
     context.actions.setViewerError?.(message);
     return { status: "failed", tool: command.tool, message };
   }
+}
+
+const necessaryHandlers: Partial<Record<AgentToolDefinition["id"], keyof AgentActionContext["actions"]>> = {
+  "close-document": "closeDocument", "export-pdf": "exportPdf", "save-pdf": "savePdf",
+  "compress-pdf": "compressDocument", "run-ocr": "runOcr", "ocr-pdf": "runOcr",
+  "analyze-document-health": "analyzeDocumentHealth", "convert-to-images": "convertToImages",
+  "go-prev-page": "goPrevPage", "go-next-page": "goNextPage", "go-to-page": "setPage",
+  "zoom-in": "zoomIn", "zoom-out": "zoomOut", "reset-zoom": "resetZoom",
+  "set-view-mode": "setViewMode", "rotate-view-left": "rotateLeft", "rotate-view-right": "rotateRight",
+  "undo-annotations": "undoAnnotations", "redo-annotations": "redoAnnotations",
+  "select-tool": "setActiveTool", "highlight-tool": "setActiveTool",
+  "note-tool": "setActiveTool", "shape-tool": "setActiveTool",
+  "redact-tool": "setActiveTool", "signature-tool": "setActiveTool",
+  "ai-content-editor": "setActiveTool", "measure-drawing": "setActiveTool",
+  "edit-content": "setActiveTool", "replace-text": "replaceText",
+  "open-tools-dashboard": "setShowDashboard", "open-tool-panel": "setActiveDashboardTool",
+  "redact-pdf": "runAppTool", "compare-pdf": "runAppTool", "sign-pdf": "runAppTool",
+  "advanced-pdf": "runAppTool", "print-pdf": "runAppTool",
+};
+
+function unavailableCapability(definition: AgentToolDefinition, actions: AgentActionContext["actions"]): string | null {
+  const needed = necessaryHandlers[definition.id];
+  if (needed && typeof actions[needed] !== "function") {
+    return `${definition.title} is unavailable: missing ${needed} handler.`;
+  }
+  // The fallback UI document tool opens a form; it has not executed the requested edit.
+  if (definition.documentTool && !actions.runConfiguredDocumentTool) {
+    return `${definition.title} requires the configured document engine.`;
+  }
+  if (definition.markupTool && !actions.runConfiguredMarkupTool) {
+    return `${definition.title} requires the configured markup engine.`;
+  }
+  if (definition.id === "watermark-pdf" && !actions.runConfiguredWatermark) {
+    return "Watermark requires the configured watermark engine.";
+  }
+  return null;
 }
 
 function buildConfirmationPrompt(definition: AgentToolDefinition, args: Record<string, unknown>) {
@@ -116,7 +158,8 @@ async function runAgentAction(
     }
     case "export-pdf": return actions.exportPdf?.();
     case "save-pdf": {
-      await actions.savePdf?.();
+      const saved = await actions.savePdf?.();
+      if (saved === false) throw new Error("PDF save did not complete.");
       return;
     }
     case "compress-pdf": return actions.compressDocument?.();
@@ -188,10 +231,7 @@ async function runAgentAction(
         return actions.runConfiguredMarkupTool?.(definition.markupTool, normalizeMarkupOptions(args));
       }
       if (definition.documentTool) {
-        if (actions.runConfiguredDocumentTool) {
-          return actions.runConfiguredDocumentTool(definition.documentTool, normalizeDocumentToolOptions(args));
-        }
-        return actions.runDocumentTool?.(definition.documentTool);
+        return actions.runConfiguredDocumentTool!(definition.documentTool, normalizeDocumentToolOptions(args));
       }
       if (definition.id === "watermark-pdf") {
         return actions.runConfiguredWatermark?.(normalizeWatermarkOptions(args));

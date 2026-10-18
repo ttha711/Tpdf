@@ -72,12 +72,10 @@ Trả về DUY NHẤT một chuỗi JSON thuần tuý, không chứa ký từ b�
       return res.json(validation.data);
     }
     console.warn("[generate-document] Schema validation warning:", (validation as { success: false; error: string }).error);
-    try {
-      const parsedData = JSON.parse(responseText.trim());
-      return res.json(parsedData);
-    } catch {
-      return res.status(500).json({ error: "AI trả về dữ liệu không hợp lệ. Vui lòng thử lại.", code: "AI_VALIDATION_FAILED" });
-    }
+    return res.status(422).json({
+      error: "AI trả về cấu trúc tài liệu không hợp lệ. Không áp dụng dữ liệu.",
+      code: "AI_VALIDATION_FAILED",
+    });
   } catch (error: any) {
     console.error("Generate Document API Error:", error);
     return res.status(500).json({ error: formatGeminiError(error) });
@@ -127,12 +125,10 @@ Lưu ý quan trọng:
       return res.json(validation.data);
     }
     console.warn("[refine-document] Schema validation warning:", (validation as { success: false; error: string }).error);
-    try {
-      const parsedData = JSON.parse(responseText.trim());
-      return res.json(parsedData);
-    } catch {
-      return res.status(500).json({ error: "AI trả về dữ liệu không hợp lệ. Vui lòng thử lại.", code: "AI_VALIDATION_FAILED" });
-    }
+    return res.status(422).json({
+      error: "AI trả về cấu trúc tài liệu không hợp lệ. Không áp dụng dữ liệu.",
+      code: "AI_VALIDATION_FAILED",
+    });
   } catch (error: any) {
     console.error("Refine Document API Error:", error);
     return res.status(500).json({ error: formatGeminiError(error) });

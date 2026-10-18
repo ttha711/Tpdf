@@ -64,6 +64,25 @@ describe("agent command registry", () => {
     expect(ctx.actions.runConfiguredDocumentTool).not.toHaveBeenCalled();
   });
 
+  it("does not claim success when a PDF handler is missing", async () => {
+    const ctx = createContext({ actions: { ...createContext().actions, compressDocument: undefined } });
+    const result = await executeAgentCommand({ tool: "compress-pdf" }, ctx);
+    expect(result.status).toBe("unavailable");
+  });
+
+  it("refuses to claim a saved document when save returns false", async () => {
+    const ctx = createContext({ actions: { ...createContext().actions, savePdf: vi.fn(async () => false) } });
+    const result = await executeAgentCommand({ tool: "save-pdf" }, ctx);
+    expect(result.status).toBe("failed");
+    expect(result.message).toContain("did not complete");
+  });
+
+  it("requires a headless document engine instead of opening an input dialog as success", async () => {
+    const ctx = createContext({ actions: { ...createContext().actions, runConfiguredDocumentTool: undefined } });
+    const result = await executeAgentCommand({ tool: "delete-pages", args: { pages: "2" }, confirmed: true }, ctx);
+    expect(result.status).toBe("unavailable");
+  });
+
   it("runs safe commands immediately when state and arguments are sufficient", async () => {
     const ctx = createContext();
     const result = await executeAgentCommand({ tool: "compress-pdf" }, ctx);
