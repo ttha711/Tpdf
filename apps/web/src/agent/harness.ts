@@ -166,6 +166,7 @@ export async function runAgentHarness(
     const approved = await adapter.execute({ ...pending, confirmed: true });
     observe("execute", pending.tool, approved);
     if (approved.status !== "completed") {
+      checkpoint.unresolvedFailure = approved.status !== "input_required";
       return { status: approved.status === "input_required" ? "input_required" : "failed", message: approved.message, checkpoint };
     }
   }

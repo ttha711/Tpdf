@@ -38,15 +38,13 @@ jobs:
       - name: Build all (main)
         if: github.event_name == 'push'
         run: npm run build
-      - if: github.event_name == 'push'
-        run: npm run server-smoke
+      - run: npm run server-smoke
       - run: npm run server-auth-smoke
       - if: github.event_name == 'push'
         run: npm run server-s3-smoke
       - if: github.event_name == 'push'
         run: npm run server-production-smoke
-      - if: github.event_name == 'push'
-        run: npm run server-reliability
+      - run: npm run server-reliability
       - if: github.event_name == 'push'
         run: npm run backup-smoke
       - if: github.event_name == 'pull_request'
