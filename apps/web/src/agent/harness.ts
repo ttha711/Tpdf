@@ -6,6 +6,7 @@ export type HarnessCheckpoint = {
   observations: HarnessObservation[];
   pending?: AgentCommand;
   discoveredTools?: Array<{ id: string; description: string; requiredArgs: string[]; optionalArgs: string[]; risk: string }>;
+  awaitingInput?: string;
 };
 export type HarnessOutcome = {
   status: "completed" | "confirmation_required" | "input_required" | "failed";
@@ -194,6 +195,7 @@ export async function runAgentHarness(
       return { status: "completed", message: decision.message, checkpoint };
     }
     if (decision.action === "ask") {
+      checkpoint.awaitingInput = decision.message;
       return { status: "input_required", message: decision.message, checkpoint };
     }
     if (decision.action === "discover") {

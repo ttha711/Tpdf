@@ -7,7 +7,7 @@ import { useMachineAgentBridge } from "../hooks/useMachineAgentBridge";
 import { useAiCommandRuntime } from "./useAiCommandRuntime";
 import { enqueueAbortable } from "../agent/enqueueAbortable";
 
-type Job = { id: string; goal: string; status: "queued" | "running" | "approval" | "completed" | "failed"; checkpoint?: HarnessCheckpoint; steps?: string[] };
+type Job = { id: string; goal: string; status: "queued" | "running" | "approval" | "input" | "completed" | "failed"; checkpoint?: HarnessCheckpoint; steps?: string[] };
 const id = () => globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
 
 export function useAiAssistant() {
@@ -71,6 +71,9 @@ export function useAiAssistant() {
           jobId: job.id,
         });
         update({ ...job, status: "approval", checkpoint: result.checkpoint });
+      } else if (result.status === "input_required") {
+        update({ ...job, status: "input", checkpoint: { ...result.checkpoint, awaitingInput: result.message } });
+        addMessage("assistant", result.message, { jobId: job.id });
       } else {
         const status = result.status === "completed" ? "completed" : "failed";
         update({ ...job, status });
@@ -94,6 +97,22 @@ export function useAiAssistant() {
   const submitText = (text: string, mode: "now" | "queue" = "now") => {
     const goal = text.trim();
     if (!goal) return;
+    const waiting = jobsRef.current.filter((item) => item.status === "input");
+    if (waiting.length === 1 && mode === "now" && waiting[0].checkpoint) {
+      const old = waiting[0];
+      const updated: Job = {
+        ...old, status: "queued",
+        checkpoint: {
+          ...old.checkpoint,
+          awaitingInput: undefined,
+          observations: [...old.checkpoint.observations, { action: "user_input", detail: "User clarified the pending request", result: goal }],
+        },
+      };
+      update(updated);
+      addMessage("user", goal, { jobId: old.id });
+      void run(updated);
+      return;
+    }
     const job: Job = { id: id(), goal, status: "queued" };
     jobsRef.current.push(job);
     setJobs([...jobsRef.current]);
