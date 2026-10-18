@@ -58,8 +58,9 @@ export function AiAssistantPanel({ isOpen, onClose, align = "right", docked = fa
         <div ref={chatEndRef} />
       </div>
       <details className="ai-task-history">
-        <summary>Task history ({agentHistory.length})</summary>
+        <summary>Model request history ({agentHistory.length})</summary>
         <button type="button" onClick={() => { void refreshAgentHistory(); }}>Refresh history</button>
+        <p>History records model decisions, not completed PDF edits.</p>
         {agentHistory.length === 0 ? <p>No recorded tasks.</p> : <ol>
           {agentHistory.slice(0, 30).map((task) => <li key={task.id}>
             <strong>{task.status}</strong> · {task.provider || "auto"} · {task.query?.slice(0, 110) || "Task"}
@@ -74,6 +75,7 @@ export function AiAssistantPanel({ isOpen, onClose, align = "right", docked = fa
         {jobs.filter((job) => job.status === "running" || job.status === "queued" || job.status === "approval").map((job) => (
           <div key={job.id} data-tpdf-job={job.id}>
             <span>{job.status}: {job.goal.slice(0, 80)} </span>
+            {job.steps?.length ? <details><summary>{job.steps.length} execution steps</summary><ol>{job.steps.map((step, index) => <li key={index}>{step}</li>)}</ol></details> : null}
             <button type="button" onClick={() => stopJob(job.id)}>{job.status === "running" ? "Stop" : "Cancel"}</button>
           </div>
         ))}

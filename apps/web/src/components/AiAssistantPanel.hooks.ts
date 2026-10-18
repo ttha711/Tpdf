@@ -7,7 +7,7 @@ import { useMachineAgentBridge } from "../hooks/useMachineAgentBridge";
 import { useAiCommandRuntime } from "./useAiCommandRuntime";
 import { enqueueAbortable } from "../agent/enqueueAbortable";
 
-type Job = { id: string; goal: string; status: "queued" | "running" | "approval" | "completed" | "failed"; checkpoint?: HarnessCheckpoint };
+type Job = { id: string; goal: string; status: "queued" | "running" | "approval" | "completed" | "failed"; checkpoint?: HarnessCheckpoint; steps?: string[] };
 const id = () => globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
 
 export function useAiAssistant() {
@@ -39,10 +39,7 @@ export function useAiAssistant() {
       serial.current = queued.tail;
       return queued.result;
     },
-    onProgress: (message) => {
-      setMessages((current) => current.map((entry) => entry.isPending && entry.sender === "assistant"
-        ? { ...entry, text: message } : entry));
-    },
+    onProgress: () => {},
   });
 
   const drainQueued = () => {
@@ -60,7 +57,10 @@ export function useAiAssistant() {
     update({ ...job, status: "running" });
     const pendingId = addMessage("assistant", "Processing: " + job.goal, { isPending: true });
     try {
-      const result = await harness.run(job.goal, job.checkpoint, approval, () => stopped.current.has(job.id), controller.signal);
+      const result = await harness.run(job.goal, job.checkpoint, approval, () => stopped.current.has(job.id), controller.signal, (step) => {
+        const current = jobsRef.current.find((candidate) => candidate.id === job.id);
+        if (current && !stopped.current.has(job.id)) update({ ...current, steps: [...(current.steps || []), step].slice(-40) });
+      });
       setMessages((items) => items.filter((item) => item.id !== pendingId));
       if (stopped.current.has(job.id)) {
         update({ ...job, status: "failed" });
