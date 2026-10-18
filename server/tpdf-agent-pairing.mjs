@@ -4,6 +4,8 @@ import { dirname } from "node:path";
 
 const PROVIDERS = new Set(["dify", "claude", "codex", "gemini"]);
 const HISTORY_LIMIT = 250;
+const MAX_OUTSTANDING_TASKS_PER_USER = 10;
+const MAX_CONTEXT_BYTES = 64 * 1024;
 
 function loadState(path) {
   if (!path || !existsSync(path)) return {};
@@ -199,6 +201,13 @@ export function createAgentPairingBroker(secret, options = {}) {
         (!requested || (agent.providers || ["dify"]).includes(requested)),
     );
     if (!available) return null;
+    const outstanding = [...tasks.values()].filter((task) =>
+      task.userId === user.id && task.projectId === projectId &&
+      (task.status === "queued" || task.status === "running")).length;
+    if (outstanding >= MAX_OUTSTANDING_TASKS_PER_USER) return null;
+    const context = payload.context && typeof payload.context === "object" && !Array.isArray(payload.context)
+      ? payload.context : {};
+    if (Buffer.byteLength(JSON.stringify(context), "utf8") > MAX_CONTEXT_BYTES) return null;
     const id = randomUUID();
     const task = {
       id,
@@ -206,7 +215,7 @@ export function createAgentPairingBroker(secret, options = {}) {
       projectId,
       status: "queued",
       query: String(payload.query || "").slice(0, 20000),
-      context: payload.context && typeof payload.context === "object" ? payload.context : {},
+      context,
       provider: requested || null,
       createdAt: now(),
       expiresAt: now() + taskTtlMs,

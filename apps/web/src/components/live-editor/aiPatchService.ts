@@ -60,35 +60,6 @@ const tryBuildPatchFromLoosePayload = (payload: unknown, request: AiPatchRequest
   return null;
 };
 
-const fallbackPatch = (request: AiPatchRequest): LivePatch => {
-  const { prompt, selectedBlocks, allBlocks } = request;
-  const targets = selectedBlocks.length > 0 ? selectedBlocks : allBlocks;
-  const wantsHeading = /heading|tiêu đề/i.test(prompt);
-  const wantsBullets = /bullet|danh sách|list/i.test(prompt);
-  const wantsNoto = /noto\s*sans/i.test(prompt);
-  return {
-    updates: targets.map((b) => {
-      let html = b.html;
-      let type = b.type;
-      const style = { ...b.style };
-      if (wantsHeading && b.type !== "heading") {
-        type = "heading";
-        html = `<h3>${b.content}</h3>`;
-        style.size = 16;
-      }
-      if (wantsBullets && b.type !== "list") {
-        const items = b.content.split(/[.;]\s+/).filter(Boolean).map((item) => `<li>${item.trim()}</li>`).join("");
-        if (items) {
-          type = "list";
-          html = `<ul>${items}</ul>`;
-        }
-      }
-      if (wantsNoto) style.font = "Noto Sans";
-      return { id: b.id, type, html, style };
-    }),
-  };
-};
-
 export async function generateAiPatch(request: AiPatchRequest): Promise<LivePatch> {
   if (window.tpdf?.applyAiPatch) {
     const payload = await window.tpdf.applyAiPatch(request);
