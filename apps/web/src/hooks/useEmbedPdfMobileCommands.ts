@@ -88,6 +88,17 @@ export function useEmbedPdfMobileCommands(
       try {
         const command = commands.resolve(id, documentId);
         if (command.visible === false || command.disabled) return;
+        if (id.startsWith("mode:")) {
+          const annotation = registry.getPlugin?.("annotation")?.provides?.() as {
+            forDocument?: (id: string) => { setActiveTool?: (tool: string | null) => void };
+          } | undefined;
+          annotation?.forDocument?.(documentId)?.setActiveTool?.(null);
+          const redaction = registry.getPlugin?.("redaction")?.provides?.() as {
+            forDocument?: (id: string) => { isRedactActive?: () => boolean; toggleRedact?: () => void };
+          } | undefined;
+          const redact = redaction?.forDocument?.(documentId);
+          if (redact?.isRedactActive?.()) redact.toggleRedact?.();
+        }
         commands.execute(id, documentId, "ui");
         schedule();
       } catch (error) {
