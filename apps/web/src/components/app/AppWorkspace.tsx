@@ -184,7 +184,7 @@ export function AppWorkspace({
             page={state.page}
             totalPages={state.totalPages}
             zoom={state.scale}
-            onShowPages={() => document.querySelector<HTMLButtonElement>(".tpdf-mobile-pages-button")?.click()}
+            onShowPages={() => window.dispatchEvent(new Event("tpdf:toggle-page-filmstrip"))}
             onToolChange={state.setActiveTool}
             onDoneEditing={() => {
               void commitPendingNativeInlineEdit()

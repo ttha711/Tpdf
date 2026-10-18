@@ -44,13 +44,18 @@ test.describe("mobile layout and scrolling", () => {
       const home = document.querySelector<HTMLElement>(".tpdf-home");
       home?.scrollTo({ top: 350 });
     });
+    expect(await page.evaluate(() => document.querySelector<HTMLElement>(".tpdf-home")?.scrollTop ?? 0)).toBeGreaterThan(0);
 
     // Verify mouse wheel / gesture scrolling works on .tpdf-home
+    await page.evaluate(() => {
+      const home = document.querySelector<HTMLElement>(".tpdf-home");
+      home?.scrollTo({ top: 0 });
+    });
     await page.locator(".tpdf-home").hover({ position: { x: 190, y: 300 } });
     await page.mouse.wheel(0, 200);
     await expect.poll(async () => {
       return page.evaluate(() => document.querySelector<HTMLElement>(".tpdf-home")?.scrollTop ?? 0);
-    }).toBeGreaterThan(300);
+    }).toBeGreaterThan(0);
   });
 
   test("document viewer renders properly in mobile viewport", async ({ page, request }) => {
@@ -64,6 +69,7 @@ test.describe("mobile layout and scrolling", () => {
     await page.goto("/?open=" + encodeURIComponent(document.filePath));
     const viewer = page.locator("[data-tpdf-engine='pdfium-wasm']");
     await expect(viewer).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator(".tpdf-mobile-page-action")).toContainText("Page 1 / 2");
 
     const layout = await page.evaluate(() => {
       const workspace = document.querySelector<HTMLElement>(".workspace");
@@ -92,6 +98,7 @@ test.describe("mobile layout and scrolling", () => {
     await page.locator(".tpdf-mobile-page-action").click();
     await expect(page.locator(".tpdf-mobile-filmstrip")).toBeVisible();
     await page.getByRole("button", { name: "Close page previews" }).click();
+    await expect(page.locator(".tpdf-mobile-filmstrip")).toBeHidden();
     await expect(page.locator('[data-tpdf-region="mobile-file-name"]')).toContainText("mobile-viewer-test.pdf");
     await page.getByRole("button", { name: "Tools", exact: true }).last().click();
     await expect(page.locator('[data-tpdf-mobile-tools="open"]')).toBeVisible();
