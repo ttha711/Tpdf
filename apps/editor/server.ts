@@ -17,7 +17,13 @@ async function startServer() {
     throw new Error("Public editor binding requires TPDF_EDITOR_API_TOKEN.");
   }
   const sessionCookie = apiToken ? "tpdf_editor_session=" + encodeURIComponent(apiToken) : "";
-  app.post("/auth/editor", express.json({ limit: "2kb" }), (req, res) => {
+  app.get("/auth/editor/status", (req, res) => {
+    if (!apiToken) return res.json({ authenticated: true });
+    const hasSession = (req.headers.cookie || "").split(";")
+      .some((part) => part.trim() === sessionCookie);
+    return res.json({ authenticated: hasSession });
+  });
+  app.post("/auth/editor", generalLimiter, express.json({ limit: "2kb" }), (req, res) => {
     if (!apiToken || req.body?.token !== apiToken) {
       res.status(401).json({ code: "UNAUTHORIZED" }); return;
     }
