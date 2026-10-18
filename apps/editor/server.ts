@@ -10,13 +10,25 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
   const bindHost = process.env.TPDF_EDITOR_BIND_HOST || "127.0.0.1";
+  // Standalone editor uses a same-origin session cookie after one-time token exchange.
+  // A bearer-only API gate cannot work with existing browser fetch callers.
   const apiToken = process.env.TPDF_EDITOR_API_TOKEN;
   if (bindHost !== "127.0.0.1" && bindHost !== "::1" && !apiToken) {
     throw new Error("Public editor binding requires TPDF_EDITOR_API_TOKEN.");
   }
+  const sessionCookie = apiToken ? "tpdf_editor_session=" + encodeURIComponent(apiToken) : "";
+  app.post("/auth/editor", express.json({ limit: "2kb" }), (req, res) => {
+    if (!apiToken || req.body?.token !== apiToken) {
+      res.status(401).json({ code: "UNAUTHORIZED" }); return;
+    }
+    res.cookie("tpdf_editor_session", apiToken, { httpOnly: true, sameSite: "strict", secure: process.env.NODE_ENV === "production", path: "/api" });
+    res.status(204).end();
+  });
   const protectApi: express.RequestHandler = (req, res, next) => {
     if (!apiToken) return next();
-    if (req.get("Authorization") !== `Bearer ${apiToken}`) {
+    const cookies = req.headers.cookie || "";
+    const hasSession = cookies.split(";").some((part) => part.trim() === sessionCookie);
+    if (req.get("Authorization") !== `Bearer ${apiToken}` && !hasSession) {
       res.status(401).json({ code: "UNAUTHORIZED" });
       return;
     }

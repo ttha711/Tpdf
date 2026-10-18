@@ -1,3 +1,4 @@
+// tpdf-file-size-allow: Legacy PDF command dispatcher exceeds 300 lines; this follow-up changes execution truthfulness without a risky behavioral rewrite.
 import type { ActiveTool, ViewMode } from "../lib/app-types";
 import type { DocumentTool } from "../lib/document-tools";
 import type { DocumentToolOptions, MarkupOptions, MarkupTool, WatermarkOptions } from "../hooks/useDocumentActions";
@@ -217,7 +218,7 @@ async function runAgentAction(
         return { status: "input_required", message: `${definition.title} is unavailable in this app runtime.` };
       }
       await actions.runAppTool(definition.id);
-      return;
+      return { status: "input_required", message: `${definition.title} opened its interactive workflow; the PDF operation is not yet completed.` };
     }
     case "replace-text": {
       if (!actions.replaceText) {

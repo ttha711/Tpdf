@@ -1,3 +1,4 @@
+// tpdf-file-size-allow: Persisted pairing broker exceeds 300 lines; preserve lease/state behavior pending dedicated refactor.
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";

@@ -124,7 +124,7 @@ describe("agent command registry", () => {
     const ctx = createContext({ actions: { ...createContext().actions, runAppTool } });
     for (const tool of ["print-pdf", "compare-pdf", "redact-pdf", "sign-pdf", "advanced-pdf"] as const) {
       const result = await executeAgentCommand({ tool }, ctx);
-      expect(result.status).toBe("completed");
+      expect(result.status).toBe("input_required");
       expect(runAppTool).toHaveBeenLastCalledWith(tool);
     }
     expect(runAppTool).toHaveBeenCalledTimes(5);
