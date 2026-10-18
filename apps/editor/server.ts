@@ -1,5 +1,7 @@
 import express from "express";
 import path from "path";
+import { randomBytes, timingSafeEqual } from "node:crypto";
+import rateLimit from "express-rate-limit";
 import { createServer as createViteServer } from "vite";
 import apiRouter from "./server/routes/index";
 import largePdfJobsRouter from "./server/routes/largePdfJobs";
@@ -16,27 +18,66 @@ async function startServer() {
   if (bindHost !== "127.0.0.1" && bindHost !== "::1" && !apiToken) {
     throw new Error("Public editor binding requires TPDF_EDITOR_API_TOKEN.");
   }
-  const sessionCookie = apiToken ? "tpdf_editor_session=" + encodeURIComponent(apiToken) : "";
+  // Cookies contain random opaque session IDs, never the underlying long-lived API secret.
+  const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+  const sessions = new Map<string, number>();
+  const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10,
+    standardHeaders: "draft-7", legacyHeaders: false });
+  const validSecret = (candidate: unknown) => {
+    if (!apiToken || typeof candidate !== "string") return false;
+    const received = Buffer.from(candidate);
+    const expected = Buffer.from(apiToken);
+    return received.length === expected.length && timingSafeEqual(received, expected);
+  };
+  const hasSession = (req: express.Request) => {
+    const cookie = (req.headers.cookie || "").split(";").map((item) => item.trim())
+      .find((item) => item.startsWith("tpdf_editor_session="));
+    const token = cookie?.slice("tpdf_editor_session=".length);
+    if (!token) return false;
+    const expiresAt = sessions.get(token);
+    if (!expiresAt || expiresAt <= Date.now()) {
+      sessions.delete(token); return false;
+    }
+    return true;
+  };
+  const checkOrigin: express.RequestHandler = (req, res, next) => {
+    const origin = req.get("Origin");
+    if (req.get("Sec-Fetch-Site") === "cross-site" ||
+        (origin && origin !== `${req.protocol}://${req.get("host")}`)) {
+      res.status(403).json({ code: "INVALID_ORIGIN" }); return;
+    }
+    next();
+  };
   app.get("/auth/editor/status", (req, res) => {
-    if (!apiToken) return res.json({ authenticated: true });
-    const hasSession = (req.headers.cookie || "").split(";")
-      .some((part) => part.trim() === sessionCookie);
-    return res.json({ authenticated: hasSession });
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ authenticated: !apiToken || hasSession(req) });
   });
-  app.post("/auth/editor", generalLimiter, express.json({ limit: "2kb" }), (req, res) => {
-    if (!apiToken || req.body?.token !== apiToken) {
+  app.post("/auth/editor", checkOrigin, loginLimiter, express.json({ limit: "2kb" }), (req, res) => {
+    if (!validSecret(req.body?.token)) {
       res.status(401).json({ code: "UNAUTHORIZED" }); return;
     }
-    res.cookie("tpdf_editor_session", apiToken, { httpOnly: true, sameSite: "strict", secure: process.env.NODE_ENV === "production", path: "/api" });
+    if (sessions.size >= 1000) for (const [id, expiry] of sessions) {
+      if (expiry < Date.now()) sessions.delete(id);
+    }
+    const session = randomBytes(32).toString("base64url");
+    sessions.set(session, Date.now() + SESSION_TTL_MS);
+    res.cookie("tpdf_editor_session", session, {
+      httpOnly: true, sameSite: "strict", secure: process.env.NODE_ENV === "production",
+      path: "/", maxAge: SESSION_TTL_MS,
+    });
+    res.status(204).end();
+  });
+  app.post("/auth/editor/logout", checkOrigin, (req, res) => {
+    const cookie = (req.headers.cookie || "").split(";").map((item) => item.trim())
+      .find((item) => item.startsWith("tpdf_editor_session="));
+    if (cookie) sessions.delete(cookie.slice("tpdf_editor_session=".length));
+    res.clearCookie("tpdf_editor_session", { path: "/" });
     res.status(204).end();
   });
   const protectApi: express.RequestHandler = (req, res, next) => {
     if (!apiToken) return next();
-    const cookies = req.headers.cookie || "";
-    const hasSession = cookies.split(";").some((part) => part.trim() === sessionCookie);
-    if (req.get("Authorization") !== `Bearer ${apiToken}` && !hasSession) {
-      res.status(401).json({ code: "UNAUTHORIZED" });
-      return;
+    if (!validSecret(req.get("Authorization")?.replace(/^Bearer /i, "")) && !hasSession(req)) {
+      res.status(401).json({ code: "UNAUTHORIZED" }); return;
     }
     next();
   };
@@ -45,13 +86,13 @@ async function startServer() {
 
   // Stream multi-hundred-MB PDFs directly to disk before any JSON parser.
   // This keeps large-file jobs out of Node/Express body buffers.
-  app.use("/api/pdf-jobs", protectApi, generalLimiter, largePdfJobsRouter);
+  app.use("/api/pdf-jobs", checkOrigin, protectApi, generalLimiter, largePdfJobsRouter);
 
   // JSON APIs remain intentionally bounded; large PDFs must use /api/pdf-jobs.
   app.use(express.json({ limit: "50mb" }));
 
   // Global rate limit
-  app.use("/api", protectApi, generalLimiter);
+  app.use("/api", checkOrigin, protectApi, generalLimiter);
 
   // Register all modular api sub-routes
   app.use("/api", apiRouter);
