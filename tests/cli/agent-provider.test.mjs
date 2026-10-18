@@ -25,7 +25,7 @@ test("CLI envelopes", () => {
 test("Dify still works", async () => {
   const out = await runModelDecision("a goal", {
     env: {TPDF_DIFY_URL:"https://dify.example/v1",TPDF_DIFY_API_KEY:"test"},
-    fetchImpl:async () => ({ok:true,text:async () => '{"answer":"{\"action\":\"ask\",\"message\":\"Which page?\"}"}'}),
+    fetchImpl:async () => ({ok:true,text:async () => JSON.stringify({ answer: JSON.stringify({action:"ask",message:"Which page?"}) })}),
   });
   assert.equal(JSON.parse(out.answer).action, "ask");
 });
