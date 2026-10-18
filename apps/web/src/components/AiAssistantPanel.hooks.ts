@@ -44,7 +44,7 @@ export function useAiAssistant() {
 
   const drainQueued = () => {
     // Queue mode runs in FIFO order after all active immediate jobs finish.
-    if (active.current.size > 0 || jobsRef.current.some((job) => job.status === "approval")) return;
+    if (active.current.size > 0 || jobsRef.current.some((job) => job.status === "approval" || job.status === "input")) return;
     const first = jobsRef.current.find((job) => job.status === "queued");
     if (first) void run(first);
   };
@@ -163,7 +163,7 @@ export function useAiAssistant() {
     }
   };
   const undoLast = async () => {
-    if (active.current.size || jobsRef.current.some((job) => job.status === "approval")) {
+    if (active.current.size || jobsRef.current.some((job) => job.status === "approval" || job.status === "input")) {
       addMessage("assistant", "Finish, stop or resolve pending actions before undoing the last edit.");
       return;
     }

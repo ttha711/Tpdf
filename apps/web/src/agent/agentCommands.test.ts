@@ -83,6 +83,13 @@ describe("agent command registry", () => {
     expect(result.status).toBe("unavailable");
   });
 
+  it("rejects boolean page values instead of coercing true into page one", async () => {
+    const ctx = createContext();
+    const result = await executeAgentCommand({ tool: "go-to-page", args: { page: true } }, ctx);
+    expect(result.status).toBe("input_required");
+    expect(ctx.actions.setPage).not.toHaveBeenCalled();
+  });
+
   it("rejects an invalid navigation page instead of silently going to page one", async () => {
     const ctx = createContext();
     const result = await executeAgentCommand({ tool: "go-to-page", args: { page: "abc" } }, ctx);
