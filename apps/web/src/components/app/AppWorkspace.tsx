@@ -181,6 +181,10 @@ export function AppWorkspace({
           </div>
           <MobilePdfDock
             activeTool={state.activeTool}
+            page={state.page}
+            totalPages={state.totalPages}
+            zoom={state.scale}
+            onShowPages={() => document.querySelector<HTMLButtonElement>(".tpdf-mobile-pages-button")?.click()}
             onToolChange={state.setActiveTool}
             onDoneEditing={() => {
               void commitPendingNativeInlineEdit()
