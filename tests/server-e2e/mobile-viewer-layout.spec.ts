@@ -91,7 +91,7 @@ test.describe("mobile layout and scrolling", () => {
     await expect(page.locator('[data-tpdf-action="open-ai"]')).toBeHidden();
     await page.locator(".tpdf-mobile-page-action").click();
     await expect(page.locator(".tpdf-mobile-filmstrip")).toBeVisible();
-    await page.locator(".tpdf-mobile-page-action").click();
+    await page.locator(".tpdf-mobile-filmstrip__header button").click();
     await expect(page.locator('[data-tpdf-region="mobile-file-name"]')).toContainText("mobile-viewer-test.pdf");
     await page.getByRole("button", { name: "Tools", exact: true }).last().click();
     await expect(page.locator('[data-tpdf-mobile-tools="open"]')).toBeVisible();
