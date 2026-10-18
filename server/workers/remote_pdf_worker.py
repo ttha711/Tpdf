@@ -9,7 +9,10 @@ import json
 import sys
 
 try:
-    import fitz
+    try:
+        import pymupdf as fitz
+    except ImportError:
+        import fitz
     from PIL import Image
 except ImportError as exc:
     sys.stdout.write(json.dumps({"error": "Install PyMuPDF and Pillow: " + str(exc)}) + "\n")
