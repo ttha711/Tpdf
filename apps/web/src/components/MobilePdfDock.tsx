@@ -81,10 +81,16 @@ export function MobilePdfDock({
       if (tool.measureMode !== "calibrate") onToolChange("measure");
       return;
     }
-    if (activeTool === "edit-content" || activeTool === "measure") onToolChange("select");
-    if (groupMode !== mode) switchMobilePdfMode(groupMode);
-    if (tool.command) runMobilePdfCommand(tool.command);
-    setNativeCommand(tool.command ?? "");
+    const needsCustomToolExit = activeTool === "edit-content" || activeTool === "measure";
+    if (needsCustomToolExit) onToolChange("select");
+    const run = () => {
+      if (groupMode !== mode) switchMobilePdfMode(groupMode);
+      if (tool.command) runMobilePdfCommand(tool.command);
+    };
+    // Let React finish leaving the custom editor before arming a native tool:
+    // otherwise the outgoing tool's cleanup can cancel the just-selected shape.
+    if (needsCustomToolExit) window.requestAnimationFrame(run);
+    else run();
   };
 
   return (
