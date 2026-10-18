@@ -11,6 +11,7 @@ export type PaletteCommand = {
   needsFullAccess?: boolean;
   tool: AgentToolId;
   toolId?: string;
+  mobileTool?: "text" | "draw" | "measure";
 };
 
 export const PALETTE_COMMANDS: PaletteCommand[] = [
@@ -19,6 +20,9 @@ export const PALETTE_COMMANDS: PaletteCommand[] = [
   { id: "edit", title: "Edit PDF content", group: "Editing", icon: "edit", keywords: "change text objects images", requiresDocument: true, tool: "ai-content-editor" },
   { id: "select", title: "Select", group: "Editing", icon: "page", keywords: "pointer cursor", requiresDocument: true, tool: "select-tool" },
   { id: "highlight", title: "Highlight", group: "Review", icon: "highlight", keywords: "markup", requiresDocument: true, tool: "highlight-tool" },
+  { id: "annotate-text", title: "Add text annotation", group: "Review", icon: "text", keywords: "text type textbox insert typewrite", requiresDocument: true, tool: "select-tool", mobileTool: "text" },
+  { id: "freehand", title: "Draw freehand", group: "Review", icon: "draw", keywords: "ink pen pencil annotation write", requiresDocument: true, tool: "select-tool", mobileTool: "draw" },
+  { id: "measure", title: "Measure drawing", group: "Review", icon: "measure", keywords: "distance area perimeter scale ruler", requiresDocument: true, tool: "select-tool", mobileTool: "measure" },
   { id: "note", title: "Add comment", group: "Review", icon: "note", keywords: "sticky note annotation", requiresDocument: true, tool: "note-tool" },
   { id: "shape", title: "Draw rectangle", group: "Review", icon: "rectangle", keywords: "shape box", requiresDocument: true, tool: "shape-tool" },
   { id: "redact", title: "Redaction tool", group: "Review", icon: "redact", keywords: "blackout mask", requiresDocument: true, tool: "redact-tool" },
