@@ -684,7 +684,7 @@ export function PdfViewer({
   }, [activeRegistry, activeTool, measurementMode, sourceUrl]);
 
   useEffect(() => {
-    if (!activeRegistry) return;
+    if (!activeRegistry || documentReadySource !== sourceUrl) return;
     const registry = activeRegistry as {
       execute?: (id: string, documentId?: string) => void | Promise<void>;
       resolve?: (id: string, documentId?: string) => { active?: boolean; visible?: boolean; enabled?: boolean } | null;
@@ -748,7 +748,7 @@ export function PdfViewer({
       window.removeEventListener("tpdf:embedpdf-command", run);
       window.removeEventListener("tpdf:mobile-measure-mode", measure);
     };
-  }, [activeRegistry, onActiveToolChange, onError]);
+  }, [activeRegistry, documentReadySource, sourceUrl, onActiveToolChange, onError]);
 
   useEffect(() => {
     window.localStorage.setItem("tpdf-measure-mode", measurementMode);
