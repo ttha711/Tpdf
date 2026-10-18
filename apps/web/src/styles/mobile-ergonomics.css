@@ -4,6 +4,21 @@
 .tpdf-mobile-document-name { display: none; }
 
 @media (max-width: 900px) {
+  .app:has(.tpdf-mobile-dock) {
+    grid-template-rows: auto minmax(0, 1fr) 0;
+  }
+  .app:has(.tpdf-mobile-dock) > [data-tpdf-region="status-bar"] {
+    display: none;
+  }
+  .app:has(.tpdf-mobile-dock) .ai-float-toggle-btn {
+    display: none !important;
+  }
+  .app:has(.tpdf-mobile-dock) .tpdf-right-panel-restore {
+    display: none;
+  }
+  .app:has(.tpdf-mobile-dock) .tpdf-mobile-filmstrip {
+    bottom: 0;
+  }
   .viewer-area:has(.tpdf-mobile-dock) {
     display: flex;
     flex-direction: column;
@@ -26,6 +41,25 @@
     border-top: 1px solid var(--border-color);
     padding: 4px 4px max(5px, env(safe-area-inset-bottom));
     box-shadow: 0 -2px 8px rgb(0 0 0 / 6%);
+  }
+  .tpdf-mobile-dock-status {
+    min-height: 32px;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 12px 2px;
+    color: var(--text-secondary);
+    font-size: 11px;
+  }
+  .tpdf-mobile-page-action {
+    background: transparent;
+    border: 0;
+    color: var(--text-primary);
+    font-weight: 600;
+    padding: 4px 8px;
+    min-height: 32px;
+    border-radius: 8px;
   }
   .tpdf-mobile-dock-row {
     display: grid;
