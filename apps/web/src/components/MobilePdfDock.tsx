@@ -29,6 +29,7 @@ export function MobilePdfDock({
   const [mode, setMode] = useState<MobilePdfMode>("view");
   const [nativeCommand, setNativeCommand] = useState("");
   const [availability, setAvailability] = useState<Record<string, boolean>>({});
+  const [measureSelection, setMeasureSelection] = useState("distance");
 
   useEffect(() => {
     const open = () => setSheetOpen(true);
@@ -75,6 +76,7 @@ export function MobilePdfDock({
     setSheetOpen(false);
     setMode(groupMode);
     if (tool.measureMode) {
+      if (tool.measureMode !== "calibrate") setMeasureSelection(tool.measureMode);
       window.dispatchEvent(new CustomEvent("tpdf:mobile-measure-mode", {
         detail: { mode: tool.measureMode },
       }));
@@ -135,7 +137,7 @@ export function MobilePdfDock({
                   {group.tools.map(tool => {
                     const disabled = Boolean(tool.command && availability[tool.command] === false);
                     const pressed = tool.measureMode
-                      ? mode === "measure" && activeTool === "measure"
+                      ? mode === "measure" && activeTool === "measure" && tool.measureMode === measureSelection
                       : Boolean(tool.command && nativeCommand === tool.command);
                     return (
                       <button type="button" key={tool.id}
