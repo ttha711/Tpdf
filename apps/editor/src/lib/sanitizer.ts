@@ -59,6 +59,7 @@ export const sanitizeHtml = (htmlContent: string): string => {
     return doc.body.innerHTML;
   } catch (err) {
     console.error("Sanitation error, using fallback:", err);
-    return htmlContent;
+    // Sanitization failures must never return unsanitized HTML.
+    return "";
   }
 };
