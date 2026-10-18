@@ -11,7 +11,21 @@ const isPatch = (value: unknown): value is LivePatch => {
   if (!value || typeof value !== "object") return false;
   const updates = (value as { updates?: unknown }).updates;
   if (!Array.isArray(updates)) return false;
-  return updates.every((item) => item && typeof item === "object" && typeof (item as { id?: unknown }).id === "string");
+  return updates.length <= 300 && updates.every((item) => {
+    if (!item || typeof item !== "object") return false;
+    const patch = item as Record<string, unknown>;
+    return typeof patch.id === "string" && patch.id.length > 0 && patch.id.length <= 200 &&
+      (patch.html === undefined || (typeof patch.html === "string" && patch.html.length <= 1_000_000)) &&
+      (patch.content === undefined || (typeof patch.content === "string" && patch.content.length <= 1_000_000));
+  });
+};
+
+const ensurePatchTargets = (patch: LivePatch, request: AiPatchRequest): LivePatch => {
+  const allowed = new Set((request.selectedBlocks.length > 0 ? request.selectedBlocks : request.allBlocks).map((block) => block.id));
+  if (patch.updates.some((update) => !allowed.has(update.id))) {
+    throw new Error("AI patch attempted to modify a block outside the allowed selection.");
+  }
+  return patch;
 };
 
 const tryBuildPatchFromLoosePayload = (payload: unknown, request: AiPatchRequest): LivePatch | null => {
@@ -46,48 +60,19 @@ const tryBuildPatchFromLoosePayload = (payload: unknown, request: AiPatchRequest
   return null;
 };
 
-const fallbackPatch = (request: AiPatchRequest): LivePatch => {
-  const { prompt, selectedBlocks, allBlocks } = request;
-  const targets = selectedBlocks.length > 0 ? selectedBlocks : allBlocks;
-  const wantsHeading = /heading|tiêu đề/i.test(prompt);
-  const wantsBullets = /bullet|danh sách|list/i.test(prompt);
-  const wantsNoto = /noto\s*sans/i.test(prompt);
-  return {
-    updates: targets.map((b) => {
-      let html = b.html;
-      let type = b.type;
-      const style = { ...b.style };
-      if (wantsHeading && b.type !== "heading") {
-        type = "heading";
-        html = `<h3>${b.content}</h3>`;
-        style.size = 16;
-      }
-      if (wantsBullets && b.type !== "list") {
-        const items = b.content.split(/[.;]\s+/).filter(Boolean).map((item) => `<li>${item.trim()}</li>`).join("");
-        if (items) {
-          type = "list";
-          html = `<ul>${items}</ul>`;
-        }
-      }
-      if (wantsNoto) style.font = "Noto Sans";
-      return { id: b.id, type, html, style };
-    }),
-  };
-};
-
 export async function generateAiPatch(request: AiPatchRequest): Promise<LivePatch> {
   if (window.tpdf?.applyAiPatch) {
     const payload = await window.tpdf.applyAiPatch(request);
     if (!isPatch(payload)) {
       const loose = tryBuildPatchFromLoosePayload(payload, request);
-      if (loose) return loose;
+      if (loose && isPatch(loose)) return ensurePatchTargets(loose, request);
       throw new Error("Desktop AI patch response is invalid.");
     }
-    return payload;
+    return ensurePatchTargets(payload, request);
   }
 
   const endpoint = localStorage.getItem("tpdf-live-editor-ai-endpoint");
-  if (!endpoint) return fallbackPatch(request);
+  if (!endpoint) throw new Error("AI endpoint is not configured. Connect an AI provider before applying AI changes.");
   const apiKey = localStorage.getItem("tpdf-live-editor-ai-key");
   const res = await fetch(endpoint, {
     method: "POST",
@@ -101,8 +86,8 @@ export async function generateAiPatch(request: AiPatchRequest): Promise<LivePatc
   const payload: unknown = await res.json();
   if (!isPatch(payload)) {
     const loose = tryBuildPatchFromLoosePayload(payload, request);
-    if (loose) return loose;
+    if (loose && isPatch(loose)) return ensurePatchTargets(loose, request);
     throw new Error("AI patch response is invalid.");
   }
-  return payload;
+  return ensurePatchTargets(payload, request);
 }

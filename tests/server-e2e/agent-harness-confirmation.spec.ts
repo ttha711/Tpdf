@@ -40,6 +40,25 @@ test("a destructive model action pauses inline; approval only replays exact pend
   ]);
 });
 
+test("a successful first tool does not mask a later failed tool", async () => {
+  const answers = [
+    { action: "execute", tool: "save-pdf", args: {} },
+    { action: "execute", tool: "save-pdf", args: {} },
+    { action: "finish", message: "Saved" },
+  ];
+  let calls = 0;
+  const result = await runAgentHarness({ goal: "save twice", observations: [] }, {
+    model: async () => answers.shift(),
+    listTools: () => tools,
+    getState: () => ({ hasDocument: true }),
+    execute: async () => (++calls === 1
+      ? { status: "completed" as const, message: "saved" }
+      : { status: "failed" as const, message: "disk full" }),
+  });
+  expect(result.status).toBe("failed");
+  expect(result.message).toContain("last PDF action");
+});
+
 test("rejecting inline action does not execute it", async () => {
   let calls = 0;
   const result = await runAgentHarness(

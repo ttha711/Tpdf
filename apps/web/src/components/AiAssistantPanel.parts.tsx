@@ -44,7 +44,7 @@ export function ChatMessageBubble({ message, onConfirmInline }: ChatMessageBubbl
               <strong>Approval required</strong>
               <p>Tool: <code>{confirmation.tool}</code></p>
               {confirmation.args && Object.keys(confirmation.args).length > 0 ? (
-                <details><summary>Arguments</summary><pre>{JSON.stringify(confirmation.args, null, 2)}</pre></details>
+                <details><summary>Arguments</summary><pre>{JSON.stringify(confirmation.args, (key, value) => /password|secret|token|api.?key|authorization|credential/i.test(key) ? "[REDACTED]" : value, 2)}</pre></details>
               ) : null}
               <small>The agent is paused. Only this action is approved; subsequent destructive steps require separate approval.</small>
             </div>

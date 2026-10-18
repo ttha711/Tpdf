@@ -64,6 +64,25 @@ describe("agent command registry", () => {
     expect(ctx.actions.runConfiguredDocumentTool).not.toHaveBeenCalled();
   });
 
+  it("does not claim success when a PDF handler is missing", async () => {
+    const ctx = createContext({ actions: { ...createContext().actions, compressDocument: undefined } });
+    const result = await executeAgentCommand({ tool: "compress-pdf" }, ctx);
+    expect(result.status).toBe("unavailable");
+  });
+
+  it("refuses to claim a saved document when save returns false", async () => {
+    const ctx = createContext({ actions: { ...createContext().actions, savePdf: vi.fn(async () => false) } });
+    const result = await executeAgentCommand({ tool: "save-pdf" }, ctx);
+    expect(result.status).toBe("failed");
+    expect(result.message).toContain("did not complete");
+  });
+
+  it("requires a headless document engine instead of opening an input dialog as success", async () => {
+    const ctx = createContext({ actions: { ...createContext().actions, runConfiguredDocumentTool: undefined } });
+    const result = await executeAgentCommand({ tool: "delete-pages", args: { pages: "2" }, confirmed: true }, ctx);
+    expect(result.status).toBe("unavailable");
+  });
+
   it("runs safe commands immediately when state and arguments are sufficient", async () => {
     const ctx = createContext();
     const result = await executeAgentCommand({ tool: "compress-pdf" }, ctx);
@@ -105,7 +124,7 @@ describe("agent command registry", () => {
     const ctx = createContext({ actions: { ...createContext().actions, runAppTool } });
     for (const tool of ["print-pdf", "compare-pdf", "redact-pdf", "sign-pdf", "advanced-pdf"] as const) {
       const result = await executeAgentCommand({ tool }, ctx);
-      expect(result.status).toBe("completed");
+      expect(result.status).toBe("input_required");
       expect(runAppTool).toHaveBeenLastCalledWith(tool);
     }
     expect(runAppTool).toHaveBeenCalledTimes(5);
@@ -166,7 +185,7 @@ describe("agent command registry", () => {
 
   it("does not pretend Document Health is available without the server action", async () => {
     const result = await executeAgentCommand({ tool: "analyze-document-health" }, createContext());
-    expect(result.status).toBe("input_required");
+    expect(result.status).toBe("unavailable");
   });
 
   it("serializes commands through a queue", async () => {

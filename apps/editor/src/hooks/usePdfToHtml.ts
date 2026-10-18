@@ -1,3 +1,4 @@
+// tpdf-file-size-allow: Legacy PDF/OCR React hook predates the 300-line gate; security hotfix retained while hook decomposition remains separate.
 import React, { useState, useRef, useEffect } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 // @ts-ignore
@@ -28,7 +29,10 @@ export function usePdfToHtml(setErrorMessage: (msg: string | null) => void) {
       const saved = localStorage.getItem(PDF_TO_HTML_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) return parsed.map((page) => ({
+          ...page,
+          htmlContent: typeof page?.htmlContent === "string" ? sanitizeHtml(page.htmlContent) : undefined,
+        }));
       }
     } catch (e) {
       console.error("Local storage load pdfPages failed:", e);
@@ -308,7 +312,7 @@ export function usePdfToHtml(setErrorMessage: (msg: string | null) => void) {
       setPdfPages(prev => prev.map((p, i) => i === pageIdx ? { 
         ...p, 
         status: "done", 
-        htmlContent: data.html 
+        htmlContent: sanitizeHtml(String(data.html ?? "")) 
       } : p));
     } catch (err: any) {
       console.error(err);
@@ -407,15 +411,15 @@ export function usePdfToHtml(setErrorMessage: (msg: string | null) => void) {
 
   const buildSelectionReplacementHtml = (sourceHtml: string, replacementHtml: string) => {
     const sourceContainer = document.createElement("div");
-    sourceContainer.innerHTML = sourceHtml.trim();
+    sourceContainer.innerHTML = sanitizeHtml(sourceHtml.trim());
     const replacementContainer = document.createElement("div");
-    replacementContainer.innerHTML = replacementHtml.trim();
+    replacementContainer.innerHTML = sanitizeHtml(replacementHtml.trim());
 
     const sourceRoot = sourceContainer.firstElementChild;
     const replacementRoot = replacementContainer.firstElementChild;
 
     if (!sourceRoot) {
-      return replacementHtml.trim();
+      return sanitizeHtml(replacementHtml.trim());
     }
 
     const copyPresentationAttrs = (targetEl: Element) => {
@@ -436,7 +440,7 @@ export function usePdfToHtml(setErrorMessage: (msg: string | null) => void) {
     const tagName = sourceRoot.tagName.toLowerCase();
     const wrapper = document.createElement(tagName === "br" ? "span" : tagName);
     copyPresentationAttrs(wrapper);
-    wrapper.innerHTML = replacementHtml.trim();
+    wrapper.innerHTML = sanitizeHtml(replacementHtml.trim());
     return wrapper.outerHTML;
   };
 
@@ -455,7 +459,8 @@ export function usePdfToHtml(setErrorMessage: (msg: string | null) => void) {
       : selectedPdfSelection.range?.cloneRange() || null;
 
     const temp = document.createElement("div");
-    temp.innerHTML = replacementHtml.trim();
+    const safeReplacementHtml = sanitizeHtml(replacementHtml.trim());
+    temp.innerHTML = safeReplacementHtml;
     const fragment = document.createDocumentFragment();
     while (temp.firstChild) {
       fragment.appendChild(temp.firstChild);
@@ -470,14 +475,14 @@ export function usePdfToHtml(setErrorMessage: (msg: string | null) => void) {
       let updatedString = editorDiv.innerHTML;
 
       if (updatedString.includes(targetSub)) {
-        updatedString = updatedString.replace(targetSub, replacementHtml);
+        updatedString = updatedString.replace(targetSub, safeReplacementHtml);
       } else if (updatedString.includes(selectedPdfSelection.text)) {
-        updatedString = updatedString.replace(selectedPdfSelection.text, replacementHtml);
+        updatedString = updatedString.replace(selectedPdfSelection.text, safeReplacementHtml);
       } else {
-        updatedString = updatedString.replace(selectedPdfSelection.html, replacementHtml);
+        updatedString = updatedString.replace(selectedPdfSelection.html, safeReplacementHtml);
       }
 
-      editorDiv.innerHTML = updatedString;
+      editorDiv.innerHTML = sanitizeHtml(updatedString);
     }
 
     setPdfPages(prev =>
@@ -509,8 +514,8 @@ export function usePdfToHtml(setErrorMessage: (msg: string | null) => void) {
       }
 
       const replacementHtml = preservePresentation
-        ? buildSelectionReplacementHtml(selectedPdfSelection.html, data.html)
-        : data.html;
+        ? buildSelectionReplacementHtml(selectedPdfSelection.html, sanitizeHtml(String(data.html ?? "")))
+        : sanitizeHtml(String(data.html ?? ""));
 
       const replaced = replaceSelectionHtml(replacementHtml);
       if (!replaced) {

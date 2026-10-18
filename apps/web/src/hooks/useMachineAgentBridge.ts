@@ -128,6 +128,7 @@ export function useMachineAgentBridge() {
       const poll = await fetch(`/api/tpdf/agent/tasks/${task.id}`, {
         credentials: "same-origin",
         cache: "no-store",
+        signal,
       });
       if (!poll.ok) throw new Error(`Machine Agent task failed: HTTP ${poll.status}`);
       const state = await poll.json() as TaskState;

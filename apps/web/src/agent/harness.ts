@@ -177,9 +177,17 @@ export async function runAgentHarness(
     }
 
     if (decision.action === "finish") {
-      const hasToolResult = checkpoint.observations.some((item) => item.action === "execute" &&
+      const attempts = checkpoint.observations.filter((item) => item.action === "execute");
+      const lastAttempt = attempts.at(-1);
+      const lastStatus = (lastAttempt?.result as { status?: string } | undefined)?.status;
+      const hasCompletedTool = attempts.some((item) =>
         (item.result as { status?: string } | null)?.status === "completed");
-      if (!hasToolResult && /(?:completed|done|saved|deleted|processed|finished)/i.test(decision.message)) {
+      // A prior successful tool must not hide a more recent failure.
+      if (lastAttempt && lastStatus !== "completed") {
+        observe("unverified_finish", "The last requested tool did not complete", decision.message);
+        return { status: "failed", message: "Agent cannot finish: the last PDF action did not complete.", checkpoint };
+      }
+      if (!hasCompletedTool && /(?:completed|done|saved|deleted|processed|finished|đã (?:xong|lưu|xóa|sửa|hoàn thành))/i.test(decision.message)) {
         observe("unverified_finish", "Model claimed a result without a completed tool", decision.message);
         return { status: "failed", message: "Agent reported completion without a verified tool result.", checkpoint };
       }

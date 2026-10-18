@@ -1,3 +1,5 @@
+// tpdf-file-size-allow: Legacy visual editor has >1000 lines; patch guards its HTML render sink without restructuring interactive editing.
+import { sanitizeHtml } from "../lib/sanitizer";
 import React from "react";
 import { Sparkles, Compass, Loader2 } from "lucide-react";
 import { PageResult } from "../types";
@@ -1034,7 +1036,7 @@ function PdfToHtmlVisualTab({
                     ? ""
                     : "prose prose-slate text-slate-800 text-xs"
                 )}
-                dangerouslySetInnerHTML={{ __html: page.htmlContent || "" }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(page.htmlContent || "") }}
               />
             )}
 
