@@ -56,7 +56,7 @@ export function useEmbedPdfOverlaySync(viewerRootRef: RefObject<HTMLElement | nu
         subtree: true,
         attributes: true,
         // Do not watch class/style: ink and shape tools modify them frequently.
-        attributeFilter: ["aria-modal", "data-state"],
+        attributeFilter: ["aria-modal", "data-state", "aria-hidden", "hidden"],
       });
     };
 
