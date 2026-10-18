@@ -40,10 +40,11 @@ async function startServer() {
     }
     return true;
   };
+  const publicOrigin = process.env.TPDF_EDITOR_PUBLIC_ORIGIN?.replace(/\/$/, "");
   const checkOrigin: express.RequestHandler = (req, res, next) => {
     const origin = req.get("Origin");
     if (req.get("Sec-Fetch-Site") === "cross-site" ||
-        (origin && origin !== `${req.protocol}://${req.get("host")}`)) {
+        (origin && origin !== (publicOrigin || `${req.protocol}://${req.get("host")}`))) {
       res.status(403).json({ code: "INVALID_ORIGIN" }); return;
     }
     next();

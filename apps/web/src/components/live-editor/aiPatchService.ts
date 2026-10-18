@@ -47,12 +47,14 @@ const tryBuildPatchFromLoosePayload = (payload: unknown, request: AiPatchRequest
   }
   if (!payload || typeof payload !== "object") return null;
   const root = payload as Record<string, unknown>;
+  if (root.error !== undefined || root.success === false || root.ok === false) return null;
 
   const direct = pickText(root);
   if (direct) return { updates: [{ id: first.id, html: direct.includes("<") ? direct : `<p>${direct}</p>`, content: direct }] };
 
   const data = root.data;
   if (data && typeof data === "object") {
+    if ((data as Record<string, unknown>).error !== undefined) return null;
     const fromData = pickText(data as Record<string, unknown>);
     if (fromData) return { updates: [{ id: first.id, html: fromData.includes("<") ? fromData : `<p>${fromData}</p>`, content: fromData }] };
   }

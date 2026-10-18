@@ -98,14 +98,16 @@ export function useAiAssistant() {
     const goal = text.trim();
     if (!goal) return;
     const waiting = jobsRef.current.filter((item) => item.status === "input");
-    if (waiting.length === 1 && mode === "now" && waiting[0].checkpoint) {
-      const old = waiting[0];
+    const old = waiting.length === 1 ? waiting[0] : undefined;
+    const savedCheckpoint = old?.checkpoint;
+    if (old && savedCheckpoint && mode === "now") {
       const updated: Job = {
         ...old, status: "queued",
         checkpoint: {
-          ...old.checkpoint,
+          ...savedCheckpoint,
           awaitingInput: undefined,
-          observations: [...old.checkpoint.observations, { action: "user_input", detail: "User clarified the pending request", result: goal }],
+          observations: [...savedCheckpoint.observations,
+            { action: "user_input", detail: savedCheckpoint.awaitingInput || "User clarified the pending request", result: goal }],
         },
       };
       update(updated);
@@ -149,7 +151,7 @@ export function useAiAssistant() {
     if (!job || job.status === "completed" || job.status === "failed") return;
     stopped.current.add(jobId);
     jobControllers.current.get(jobId)?.abort();
-    if (job.status === "queued" || job.status === "approval") {
+    if (job.status === "queued" || job.status === "approval" || job.status === "input") {
       update({ ...job, status: "failed", checkpoint: undefined });
       setMessages((items) => items.map((item) =>
         item.jobId === jobId && item.confirmation ? { ...item, confirmation: undefined } : item,

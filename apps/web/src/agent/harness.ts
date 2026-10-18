@@ -7,6 +7,8 @@ export type HarnessCheckpoint = {
   pending?: AgentCommand;
   discoveredTools?: Array<{ id: string; description: string; requiredArgs: string[]; optionalArgs: string[]; risk: string }>;
   awaitingInput?: string;
+  documentRevision?: string;
+  unresolvedFailure?: boolean;
 };
 export type HarnessOutcome = {
   status: "completed" | "confirmation_required" | "input_required" | "failed";
@@ -129,6 +131,7 @@ function prompt(checkpoint: HarnessCheckpoint, tools: AgentToolDefinition[], sta
     commonTools: compactTools,
     discoveredTools: checkpoint.discoveredTools ?? [],
     observations: checkpoint.observations.slice(-MAX_OBSERVATIONS),
+    awaitingInput: checkpoint.awaitingInput,
   });
 }
 
@@ -138,6 +141,11 @@ export async function runAgentHarness(
   approval?: "approve" | "reject",
 ): Promise<HarnessOutcome> {
   const tools = adapter.listTools();
+  const initialRevision = (adapter.getState() as { documentRevision?: string }).documentRevision;
+  if (checkpoint.documentRevision && initialRevision !== checkpoint.documentRevision) {
+    return { status: "failed", message: "Document changed since the agent planned its actions.", checkpoint };
+  }
+  checkpoint.documentRevision ??= initialRevision;
   const byId = new Map(tools.map((tool) => [tool.id, tool]));
   const observe = (action: string, detail: string, result: unknown) => {
     checkpoint.observations.push({ action, detail, result });
@@ -167,7 +175,12 @@ export async function runAgentHarness(
     if (adapter.isCancelled?.()) return { status: "failed", message: "Stopped before the next step. Completed edits are not automatically undone.", checkpoint };
     let decision: Decision;
     try {
-      const response = await adapter.model(prompt(checkpoint, tools, adapter.getState()));
+      const planningState = adapter.getState() as { documentRevision?: string };
+      const plannedRevision = planningState.documentRevision;
+      const response = await adapter.model(prompt(checkpoint, tools, planningState));
+      if ((adapter.getState() as { documentRevision?: string }).documentRevision !== plannedRevision) {
+        return { status: "failed", message: "Document changed while the AI was planning; no action executed.", checkpoint };
+      }
       decision = parseDecision(response);
       invalid = 0;
     } catch (error) {
@@ -184,7 +197,7 @@ export async function runAgentHarness(
       const hasCompletedTool = attempts.some((item) =>
         (item.result as { status?: string } | null)?.status === "completed");
       // A prior successful tool must not hide a more recent failure.
-      if (lastAttempt && lastStatus !== "completed") {
+      if (checkpoint.unresolvedFailure || (lastAttempt && lastStatus !== "completed")) {
         observe("unverified_finish", "The last requested tool did not complete", decision.message);
         return { status: "failed", message: "Agent cannot finish: the last PDF action did not complete.", checkpoint };
       }
@@ -240,6 +253,7 @@ export async function runAgentHarness(
       return { status: "input_required", message: result.message, checkpoint };
     }
     if (result.status === "failed" || result.status === "unavailable") {
+      checkpoint.unresolvedFailure = true;
       if (++failed >= 3) {
         return { status: "failed", message: result.message, checkpoint };
       }

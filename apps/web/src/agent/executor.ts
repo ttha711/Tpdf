@@ -176,7 +176,8 @@ async function runAgentAction(
     case "go-prev-page": return actions.goPrevPage?.();
     case "go-next-page": return actions.goNextPage?.();
     case "go-to-page": {
-      const page = Number(args.page);
+      const page = typeof args.page === "number" ? args.page :
+        (typeof args.page === "string" && /^[0-9]+$/.test(args.page.trim()) ? Number(args.page) : NaN);
       if (!Number.isSafeInteger(page) || page < 1 || page > state.totalPages) {
         return { status: "input_required", message: `Page must be a whole number between 1 and ${state.totalPages}.`, missingArgs: ["page"] };
       }
