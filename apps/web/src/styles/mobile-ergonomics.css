@@ -182,11 +182,6 @@
     min-height: 44px;
     flex: 0 0 44px;
   }
-  /* The native EmbedPDF tool strip remains accessible by turning on PDF options.
-     Mobile's primary controls should not compete with a second edit toolbar. */
-  .tpdf-mobile-viewer-flex:not(.tpdf-mobile-native-toolbar-visible) embedpdf-container {
-    --tpdf-mobile-native-toolbar: hidden;
-  }
 }
 @media (max-width: 380px) {
   .tpdf-mobile-dock-action { font-size: 9px; }
