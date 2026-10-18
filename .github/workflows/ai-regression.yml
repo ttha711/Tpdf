@@ -1,0 +1,34 @@
+name: AI regression
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/src/agent/**'
+      - 'apps/web/src/components/AiAssistant*'
+      - 'apps/web/src/components/live-editor/**'
+      - 'apps/web/src/hooks/document-actions/useOcrAction.ts'
+      - 'apps/editor/server.ts'
+      - 'tests/ai/**'
+      - 'package*.json'
+      - '.github/workflows/ai-regression.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ai-regression-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: AI source-module regression tests (no provider credentials)
+        run: node --test tests/ai/*.test.cjs

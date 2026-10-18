@@ -6,73 +6,67 @@ type AiPatchRequest = {
   allBlocks: EditorBlock[];
   referenceImage: string | null;
 };
+const record = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+/** An error always wins over updates, for desktop and network responses alike. */
+function assertSuccessfulEnvelope(value: unknown, depth = 0): void {
+  if (!record(value)) return;
+  if (depth > 4) throw new Error("AI response envelope is too deeply nested.");
+  if ((Object.hasOwn(value, "error") && value.error !== null) || value.ok === false || value.success === false ||
+      ["error", "failed", "cancelled"].includes(String(value.status).toLowerCase())) {
+    throw new Error("AI provider reported a failure. No document changes were applied.");
+  }
+  for (const key of ["data", "result", "response"]) {
+    if (record(value[key])) assertSuccessfulEnvelope(value[key], depth + 1);
+  }
+}
+
+const validStyle = (value: unknown): boolean => {
+  if (!record(value)) return false;
+  return typeof value.font === "string" && value.font.length <= 200 &&
+    typeof value.size === "number" && Number.isFinite(value.size) && value.size > 0 && value.size <= 512 &&
+    typeof value.color === "string" && value.color.length <= 100 &&
+    (value.lineHeight === undefined || (typeof value.lineHeight === "number" &&
+      Number.isFinite(value.lineHeight) && value.lineHeight > 0 && value.lineHeight <= 10));
+};
 
 const isPatch = (value: unknown): value is LivePatch => {
-  if (!value || typeof value !== "object") return false;
-  const updates = (value as { updates?: unknown }).updates;
-  if (!Array.isArray(updates)) return false;
-  return updates.length <= 300 && updates.every((item) => {
-    if (!item || typeof item !== "object") return false;
-    const patch = item as Record<string, unknown>;
-    return typeof patch.id === "string" && patch.id.length > 0 && patch.id.length <= 200 &&
-      (patch.html === undefined || (typeof patch.html === "string" && patch.html.length <= 1_000_000)) &&
-      (patch.content === undefined || (typeof patch.content === "string" && patch.content.length <= 1_000_000));
+  if (!record(value) || !Array.isArray(value.updates) || value.updates.length === 0 || value.updates.length > 300) return false;
+  const ids = new Set<string>();
+  let totalLength = 0;
+  return value.updates.every((patch: unknown) => {
+    if (!record(patch) || typeof patch.id !== "string" || !patch.id || patch.id.length > 200 || ids.has(patch.id)) return false;
+    ids.add(patch.id);
+    if (Object.keys(patch).some((key) => !["id", "html", "content", "style", "type"].includes(key))) return false;
+    if (!["html", "content", "style", "type"].some((key) => Object.hasOwn(patch, key))) return false;
+    if (patch.type !== undefined && !["paragraph", "heading", "list", "image", "table"].includes(String(patch.type))) return false;
+    if (patch.style !== undefined && !validStyle(patch.style)) return false;
+    for (const key of ["html", "content"]) {
+      if (patch[key] !== undefined) {
+        if (typeof patch[key] !== "string" || patch[key].length > 1_000_000) return false;
+        totalLength += patch[key].length;
+      }
+    }
+    return totalLength <= 2_000_000;
   });
 };
 
-const ensurePatchTargets = (patch: LivePatch, request: AiPatchRequest): LivePatch => {
-  const allowed = new Set((request.selectedBlocks.length > 0 ? request.selectedBlocks : request.allBlocks).map((block) => block.id));
-  if (patch.updates.some((update) => !allowed.has(update.id))) {
+export function validateAiPatch(payload: unknown, request: AiPatchRequest): LivePatch {
+  assertSuccessfulEnvelope(payload);
+  if (!isPatch(payload)) throw new Error("AI must return a non-empty structured updates array. No changes were applied.");
+  const allowed = new Set((request.selectedBlocks.length ? request.selectedBlocks : request.allBlocks).map((block) => block.id));
+  if (payload.updates.some((update) => !allowed.has(update.id))) {
     throw new Error("AI patch attempted to modify a block outside the allowed selection.");
   }
-  return patch;
-};
-
-const tryBuildPatchFromLoosePayload = (payload: unknown, request: AiPatchRequest): LivePatch | null => {
-  const selected = request.selectedBlocks.length > 0 ? request.selectedBlocks : request.allBlocks.slice(0, 1);
-  const first = selected[0];
-  if (!first) return null;
-
-  const pickText = (obj: Record<string, unknown>): string | null => {
-    const candidates = ["html", "content", "answer", "output", "message", "text"];
-    for (const key of candidates) {
-      const value = obj[key];
-      if (typeof value === "string" && value.trim()) return value.trim();
-    }
-    return null;
-  };
-
-  if (typeof payload === "string" && payload.trim()) {
-    return { updates: [{ id: first.id, html: `<p>${payload.trim()}</p>`, content: payload.trim() }] };
-  }
-  if (!payload || typeof payload !== "object") return null;
-  const root = payload as Record<string, unknown>;
-  if (root.error !== undefined || root.success === false || root.ok === false) return null;
-
-  const direct = pickText(root);
-  if (direct) return { updates: [{ id: first.id, html: direct.includes("<") ? direct : `<p>${direct}</p>`, content: direct }] };
-
-  const data = root.data;
-  if (data && typeof data === "object") {
-    if ((data as Record<string, unknown>).error !== undefined) return null;
-    const fromData = pickText(data as Record<string, unknown>);
-    if (fromData) return { updates: [{ id: first.id, html: fromData.includes("<") ? fromData : `<p>${fromData}</p>`, content: fromData }] };
-  }
-
-  return null;
-};
+  // Do not pass through unrelated envelope properties to the editor.
+  return { updates: payload.updates };
+}
 
 export async function generateAiPatch(request: AiPatchRequest): Promise<LivePatch> {
   if (window.tpdf?.applyAiPatch) {
-    const payload = await window.tpdf.applyAiPatch(request);
-    if (!isPatch(payload)) {
-      const loose = tryBuildPatchFromLoosePayload(payload, request);
-      if (loose && isPatch(loose)) return ensurePatchTargets(loose, request);
-      throw new Error("Desktop AI patch response is invalid.");
-    }
-    return ensurePatchTargets(payload, request);
+    return validateAiPatch(await window.tpdf.applyAiPatch(request), request);
   }
-
   const endpoint = localStorage.getItem("tpdf-live-editor-ai-endpoint");
   if (!endpoint) throw new Error("AI endpoint is not configured. Connect an AI provider before applying AI changes.");
   const apiKey = localStorage.getItem("tpdf-live-editor-ai-key");
@@ -85,11 +79,5 @@ export async function generateAiPatch(request: AiPatchRequest): Promise<LivePatc
     body: JSON.stringify({ ...request, output: "json_patch" }),
   });
   if (!res.ok) throw new Error(`AI endpoint failed: ${res.status}`);
-  const payload: unknown = await res.json();
-  if (!isPatch(payload)) {
-    const loose = tryBuildPatchFromLoosePayload(payload, request);
-    if (loose && isPatch(loose)) return ensurePatchTargets(loose, request);
-    throw new Error("AI patch response is invalid.");
-  }
-  return ensurePatchTargets(payload, request);
+  return validateAiPatch(await res.json(), request);
 }
