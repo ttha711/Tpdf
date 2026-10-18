@@ -102,9 +102,10 @@ test.describe("mobile layout and scrolling", () => {
     await expect(page.locator('[data-tpdf-region="mobile-file-name"]')).toContainText("mobile-viewer-test.pdf");
     await page.getByRole("button", { name: "Tools", exact: true }).last().click();
     await expect(page.locator('[data-tpdf-mobile-tools="open"]')).toBeVisible();
-    await expect(page.locator('[data-tpdf-mobile-tool="measure"]')).toBeVisible();
-    await page.locator('[data-tpdf-mobile-tool="draw"]').click();
-    await expect(page.locator('[data-tpdf-region="mobile-dock"]').getByRole("button", { name: "Draw" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator('[data-tpdf-mobile-tool="distance"]')).toBeVisible();
+    await page.locator('[data-tpdf-mobile-tool="ink"]').click();
+    await expect(page.locator('[data-tpdf-region="mobile-mode-strip"]')
+      .getByRole("tab", { name: "Annotate" })).toHaveAttribute("aria-selected", "true");
 
     // Verify opening and closing right panel drawer on mobile
     const aiToggleBtn = page.locator("[data-tpdf-action='open-ai']");

@@ -78,17 +78,14 @@ test.describe("Mobile Tools & Buttons Audit", () => {
     const mobileDock = page.locator("[data-tpdf-region='mobile-dock']");
     await expect(mobileDock).toBeVisible();
 
-    // Tap Annotate to expose mobile tools
-    const annotateBtn = mobileDock.getByRole("button", { name: "Annotate" });
-    await expect(annotateBtn).toBeVisible();
-    await annotateBtn.tap();
-
-    const quickTools = mobileDock.locator(".tpdf-mobile-dock-row--tools .tpdf-mobile-dock-action");
-    const count = await quickTools.count();
-    expect(count).toBeGreaterThan(0);
-
-    // Tap first markup tool (e.g. highlight)
-    await quickTools.first().tap();
+    // Mode tabs are directly swipeable; the complete tool grid shares these groups.
+    const modes = page.locator('[data-tpdf-region="mobile-mode-strip"]');
+    await modes.getByRole("tab", { name: "Annotate" }).tap();
+    await expect(modes.getByRole("tab", { name: "Annotate" }))
+      .toHaveAttribute("aria-selected", "true");
+    await mobileDock.getByRole("button", { name: "Tools", exact: true }).tap();
+    await expect(page.locator('[data-tpdf-tool-group="annotate"]')).toBeVisible();
+    await page.locator('[data-tpdf-mobile-tool="highlight"]').tap();
 
     // Tap Read to return to pan mode
     const readBtn = mobileDock.getByRole("button", { name: "Read" });

@@ -59,14 +59,18 @@ test("mobile Home, menu and Pages drawer remain usable by touch", async ({ page 
   await expect(mobileSave).toBeVisible();
   const saveBox = await mobileSave.boundingBox();
   expect(saveBox?.height ?? 0).toBeGreaterThanOrEqual(44);
-  const mobileTools = page.locator('[data-tpdf-mobile-edit-toolbar="true"]');
-  await expect(mobileTools).toBeVisible();
-  const highlight = mobileTools.getByRole("button", { name: "Highlight" });
-  const highlightBox = await highlight.boundingBox();
-  expect(highlightBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+  const modeStrip = page.locator('[data-tpdf-region="mobile-mode-strip"]');
+  await expect(modeStrip).toBeVisible();
+  const annotate = modeStrip.getByRole("tab", { name: "Annotate" });
+  await annotate.click();
+  await expect(annotate).toHaveAttribute("aria-selected", "true");
+  await modeStrip.getByRole("button", { name: "All PDF tools" }).click();
+  const highlight = page.locator('[data-tpdf-mobile-tool="highlight"]');
+  await expect(highlight).toBeVisible();
   await highlight.click();
-  await expect(highlight).toHaveAttribute("aria-pressed", "true");
-  const move = mobileTools.getByRole("button", { name: "Move and select PDF" });
+  await expect(page.locator('[data-tpdf-mobile-tools="open"]')).toBeHidden();
+  const move = page.locator('[data-tpdf-region="mobile-dock"]')
+    .getByRole("button", { name: "Read" });
   await move.click();
   await expect(move).toHaveAttribute("aria-pressed", "true");
 
