@@ -95,6 +95,7 @@ export function createPageIndexApi({
   const pending = new Map();
   const queue = [];
   let active = 0;
+  let activeQueries = 0;
 
   const payloadConfig = () => ({
     indexModel: process.env.TPDF_PAGEINDEX_INDEX_MODEL || "gpt-4.1-mini",
@@ -208,11 +209,15 @@ export function createPageIndexApi({
       if (req.method !== "GET") { sendError(res, 405, "Method not allowed."); return true; }
       const result = await completeIndex({ documentId: outlineMatch[1] });
       if (result.error) { sendJson(res, result.statusCode, result); return true; }
-      const data = await worker(pythonPath, {
-        action: "outline", storagePath: join(result.info.root, "library"),
-        docId: result.docId, ...payloadConfig(),
-      }, 120_000);
-      sendJson(res, 200, { documentId: result.info.id, nodes: data.nodes });
+      if (activeQueries >= maxQuestions) { sendError(res, 429, "Too many concurrent PageIndex questions."); return true; }
+      activeQueries += 1;
+      try {
+        const data = await worker(pythonPath, {
+          action: "outline", storagePath: join(result.info.root, "library"),
+          docId: result.docId, ...payloadConfig(),
+        }, 120_000);
+        sendJson(res, 200, { documentId: result.info.id, nodes: data.nodes });
+      } finally { activeQueries -= 1; }
       return true;
     }
     const action = {
@@ -231,12 +236,16 @@ export function createPageIndexApi({
     }
     const result = await completeIndex(body);
     if (result.error) { sendJson(res, result.statusCode, result); return true; }
-    const data = await worker(pythonPath, {
-      action, query, docId: result.docId,
-      storagePath: join(result.info.root, "library"),
-      ...payloadConfig(),
-    }, configNumber("TPDF_PAGEINDEX_QUERY_TIMEOUT_MS", 180_000, 1000, 600_000));
-    sendJson(res, 200, { documentId: result.info.id, answer: data.answer, citations: data.citations || [] });
+    if (activeQueries >= maxQuestions) { sendError(res, 429, "Too many concurrent PageIndex questions."); return true; }
+    activeQueries += 1;
+    try {
+      const data = await worker(pythonPath, {
+        action, query, docId: result.docId,
+        storagePath: join(result.info.root, "library"),
+        ...payloadConfig(),
+      }, configNumber("TPDF_PAGEINDEX_QUERY_TIMEOUT_MS", 180_000, 1000, 600_000));
+      sendJson(res, 200, { documentId: result.info.id, answer: data.answer, citations: data.citations || [] });
+    } finally { activeQueries -= 1; }
     return true;
   }
 
