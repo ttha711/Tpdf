@@ -72,6 +72,11 @@ export function CommandPalette({ hasDocument, isPublic, onOpenFile, onNavigate }
     close();
     try {
       if (command.id === "open") return onOpenFile();
+      if (command.mobileTool) {
+        onNavigate();
+        window.dispatchEvent(new CustomEvent("tpdf:select-mobile-tool", { detail: command.mobileTool }));
+        return;
+      }
       const agent = window.tpdfAgent;
       if (!agent) throw new Error("PDF tools are not ready yet.");
       // Switching panels must commit any pending inline edit first.
