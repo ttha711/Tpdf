@@ -194,6 +194,12 @@ export function AppHeader(props: AppHeaderProps) {
           <span className="tpdf-mobile-tab-count">{tabs.length}</span>
         </button>
 
+        <div className="tpdf-mobile-document-name" data-tpdf-region="mobile-file-name">
+          <strong title={tabs.find((tab) => tab.id === activeTabId)?.fileName ?? "TPDF"}>
+            {hasDocument ? (tabs.find((tab) => tab.id === activeTabId)?.fileName?.split(/[\\/]/).pop() || "Document.pdf") : "TPDF"}
+          </strong>
+          {hasDocument && <small>{saveState === "saving" ? "Saving…" : autosaveStatus === "offline" ? "Offline" : autosaveStatus === "retrying" ? "Retrying save" : saveState === "saved" ? "Saved" : "Unsaved"}</small>}
+        </div>
         <div className="tpdf-header-tabs">
           {tabs.length > 0 ? (
             <TabBar
