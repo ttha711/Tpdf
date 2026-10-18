@@ -1,18 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ActiveTool } from "../lib/app-types";
+import { MOBILE_PDF_GROUPS, runMobilePdfCommand, switchMobilePdfMode, type MobilePdfMode, type MobilePdfTool } from "../lib/mobilePdfTools";
 import { TpdfIcon, type TpdfIconName } from "./TpdfIcon";
-
-type MobileTool = { id: ActiveTool; label: string; icon: TpdfIconName };
-const MOBILE_TOOLS: MobileTool[] = [
-  { id: "highlight", label: "Highlight", icon: "highlight" },
-  { id: "text", label: "Add text", icon: "text" },
-  { id: "draw", label: "Draw", icon: "draw" },
-  { id: "shape", label: "Rectangle", icon: "rectangle" },
-  { id: "note", label: "Comment", icon: "note" },
-  { id: "signature", label: "Signature", icon: "signature" },
-  { id: "measure", label: "Measure", icon: "measure" },
-  { id: "redact", label: "Redact", icon: "redact" },
-];
 
 type Props = {
   activeTool: ActiveTool;
@@ -33,17 +22,38 @@ type Props = {
 };
 
 export function MobilePdfDock({
-  activeTool, page, totalPages, zoom, onShowPages, onToolChange, onDoneEditing, onUndo, onRedo, onSave,
-  onFindCommands, onShowTools, onShowInfo, onShowAi, isPublic,
+  activeTool, page, totalPages, zoom, onShowPages, onToolChange, onDoneEditing, onUndo,
+  onRedo, onSave, onFindCommands, onShowTools, onShowInfo, onShowAi, isPublic,
 }: Props) {
-  const [editing, setEditing] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const contentEdit = activeTool === "edit-content";
+  const [mode, setMode] = useState<MobilePdfMode>("view");
+  const [nativeCommand, setNativeCommand] = useState("");
+  const [availability, setAvailability] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (activeTool !== "select") setEditing(true);
+    const open = () => setSheetOpen(true);
+    const onMode = (event: Event) => {
+      const next = (event as CustomEvent<{ mode: MobilePdfMode }>).detail?.mode;
+      if (next) setMode(next);
+    };
+    const onTool = (event: Event) =>
+      setNativeCommand((event as CustomEvent<{ command: string }>).detail?.command ?? "");
+    const onAvailability = (event: Event) =>
+      setAvailability((event as CustomEvent<Record<string, boolean>>).detail ?? {});
+    window.addEventListener("tpdf:mobile-tools-open", open);
+    window.addEventListener("tpdf:embedpdf-mode-changed", onMode);
+    window.addEventListener("tpdf:embedpdf-tool-changed", onTool);
+    window.addEventListener("tpdf:embedpdf-command-availability", onAvailability);
+    return () => {
+      window.removeEventListener("tpdf:mobile-tools-open", open);
+      window.removeEventListener("tpdf:embedpdf-mode-changed", onMode);
+      window.removeEventListener("tpdf:embedpdf-tool-changed", onTool);
+      window.removeEventListener("tpdf:embedpdf-command-availability", onAvailability);
+    };
+  }, []);
+  useEffect(() => {
+    if (activeTool === "measure") setMode("measure");
   }, [activeTool]);
-
   useEffect(() => {
     if (!sheetOpen) return;
     const onKey = (event: KeyboardEvent) => {
@@ -53,20 +63,29 @@ export function MobilePdfDock({
     return () => window.removeEventListener("keydown", onKey);
   }, [sheetOpen]);
 
-  const activate = (tool: ActiveTool) => {
-    onToolChange(tool);
-    setEditing(tool !== "select");
-    setSheetOpen(false);
-  };
-  const secondary = (label: string, icon: TpdfIconName, action: () => void, pressed = false) => (
-    <button type="button" key={label} className="tpdf-mobile-dock-action"
-      aria-label={label} title={label} aria-pressed={pressed}
-      onClick={action}>
-      <TpdfIcon name={icon} size={20} />
-      <span>{label}</span>
+  const action = (label: string, icon: TpdfIconName, click: () => void, pressed = false) => (
+    <button type="button" className="tpdf-mobile-dock-action" aria-label={label}
+      title={label} aria-pressed={pressed} onClick={click}>
+      <TpdfIcon name={icon} size={20} /><span>{label}</span>
     </button>
   );
-  const launch = (action: () => void) => { setSheetOpen(false); action(); };
+  const launch = (fn: () => void) => { setSheetOpen(false); fn(); };
+
+  const activate = (groupMode: MobilePdfMode, tool: MobilePdfTool) => {
+    setSheetOpen(false);
+    setMode(groupMode);
+    if (tool.measureMode) {
+      window.dispatchEvent(new CustomEvent("tpdf:mobile-measure-mode", {
+        detail: { mode: tool.measureMode },
+      }));
+      if (tool.measureMode !== "calibrate") onToolChange("measure");
+      return;
+    }
+    if (activeTool === "edit-content" || activeTool === "measure") onToolChange("select");
+    if (groupMode !== mode) switchMobilePdfMode(groupMode);
+    if (tool.command) runMobilePdfCommand(tool.command);
+    setNativeCommand(tool.command ?? "");
+  };
 
   return (
     <nav className="tpdf-mobile-dock" data-tpdf-region="mobile-dock" aria-label="Mobile PDF actions">
@@ -75,36 +94,19 @@ export function MobilePdfDock({
           aria-label="Choose page">Page {page} / {totalPages || "…"}</button>
         <span aria-label={`Zoom ${Math.round(zoom * 100)} percent`}>{Math.round(zoom * 100)}%</span>
       </div>
-      {contentEdit ? (
-        <div className="tpdf-mobile-dock-row">
-          {secondary("Done editing", "view", onDoneEditing)}
-          {secondary("Undo", "undo", onUndo)}
-          {secondary("Redo", "redo", onRedo)}
-          {secondary("Save", "save", onSave)}
-          {secondary("Tools", "tools", () => setSheetOpen(true))}
-        </div>
-      ) : (
-        <>
-          {editing && (
-            <div className="tpdf-mobile-dock-row tpdf-mobile-dock-row--tools" role="toolbar" aria-label="Annotation tools">
-              {MOBILE_TOOLS.slice(0, 4).map((tool) => secondary(
-                tool.label, tool.icon, () => activate(tool.id), activeTool === tool.id,
-              ))}
-              {secondary("More", "tools", () => setSheetOpen(true))}
-            </div>
-          )}
-          <div className="tpdf-mobile-dock-row" role="toolbar" aria-label="Document actions">
-            {secondary("Read", "view", () => activate("select"), !editing)}
-            {secondary("Annotate", "highlight", () => {
-              setEditing((value) => !value);
-              onToolChange("select");
-            }, editing)}
-            {secondary("Undo", "undo", onUndo)}
-            {secondary("Redo", "redo", onRedo)}
-            {secondary("Tools", "tools", () => setSheetOpen(true))}
-          </div>
-        </>
-      )}
+      <div className="tpdf-mobile-dock-row" role="toolbar" aria-label="Document actions">
+        {activeTool === "edit-content"
+          ? action("Done editing", "view", onDoneEditing)
+          : action("Read", "view", () => {
+            onToolChange("select");
+            switchMobilePdfMode("view");
+            setMode("view");
+          }, activeTool === "select" && mode === "view")}
+        {action("Undo", "undo", onUndo)}
+        {action("Redo", "redo", onRedo)}
+        {action("Tools", "tools", () => setSheetOpen(true))}
+        {action("Save", "save", onSave)}
+      </div>
       {sheetOpen && (
         <div className="tpdf-mobile-tool-sheet-layer" data-tpdf-mobile-tools="open">
           <button type="button" className="tpdf-mobile-tool-sheet-backdrop"
@@ -114,33 +116,47 @@ export function MobilePdfDock({
             <div className="tpdf-mobile-tool-sheet-heading">
               <div>
                 <strong>PDF tools</strong>
-                <p>Select a tool, then tap the PDF. Use Read to scroll without drawing.</p>
+                <p>Every group matches the scrollable PDF toolbar. Choose a tool and tap the page.</p>
               </div>
               <button type="button" className="tpdf-mobile-tool-sheet-close"
                 aria-label="Close tools" onClick={() => setSheetOpen(false)}>×</button>
             </div>
-            <div className="tpdf-mobile-tool-sheet-grid">
-              {MOBILE_TOOLS.map((tool) => (
-                <button type="button" key={tool.id}
-                  className="tpdf-mobile-tool-sheet-item"
-                  data-tpdf-mobile-tool={tool.id}
-                  aria-pressed={activeTool === tool.id}
-                  onClick={() => activate(tool.id)}>
-                  <TpdfIcon name={tool.icon} size={22} />
-                  <span>{tool.label}</span>
-                </button>
-              ))}
-            </div>
-            <div className="tpdf-mobile-tool-sheet-extras">
-              {secondary("Edit PDF text", "edit", () => activate("edit-content"))}
-              {secondary("Find a tool", "search", () => launch(onFindCommands))}
-              
-              {secondary("Document info", "page", () => launch(onShowInfo))}
-              {secondary("AI assistant", "tools", () => launch(onShowAi))}
-              {secondary(isPublic ? "Find document tools" : "All document tools", "tools",
-                () => launch(onShowTools))}
-              {secondary("Save PDF", "save", () => launch(onSave))}
-            </div>
+            {MOBILE_PDF_GROUPS.map(group => (
+              <section key={group.id} className="tpdf-mobile-tool-group"
+                data-tpdf-tool-group={group.id} aria-label={group.label}>
+                <h3>{group.label}</h3>
+                <div className="tpdf-mobile-tool-sheet-grid">
+                  {group.tools.map(tool => {
+                    const disabled = Boolean(tool.command && availability[tool.command] === false);
+                    const pressed = tool.measureMode
+                      ? mode === "measure" && activeTool === "measure"
+                      : Boolean(tool.command && nativeCommand === tool.command);
+                    return (
+                      <button type="button" key={tool.id}
+                        className="tpdf-mobile-tool-sheet-item"
+                        data-tpdf-mobile-tool={tool.id}
+                        disabled={disabled}
+                        title={disabled ? "Not available in this PDF viewer" : tool.label}
+                        aria-pressed={pressed} onClick={() => activate(group.id, tool)}>
+                        <TpdfIcon name={tool.icon} size={22} />
+                        <span>{tool.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+            <section className="tpdf-mobile-tool-group" aria-label="Document tools">
+              <h3>Document tools</h3>
+              <div className="tpdf-mobile-tool-sheet-extras">
+                {action("Edit PDF text", "edit", () => launch(() => onToolChange("edit-content")))}
+                {action("Find a tool", "search", () => launch(onFindCommands))}
+                {action("Document info", "page", () => launch(onShowInfo))}
+                {action("AI assistant", "tools", () => launch(onShowAi))}
+                {action(isPublic ? "Find document tools" : "All document tools", "tools", () => launch(onShowTools))}
+                {action("Save PDF", "save", () => launch(onSave))}
+              </div>
+            </section>
           </section>
         </div>
       )}
