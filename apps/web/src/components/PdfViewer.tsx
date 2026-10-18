@@ -35,7 +35,7 @@ import {
 } from "../lib/measurement";
 import { useEmbedPdfOverlaySync } from "../hooks/useEmbedPdfOverlaySync";
 import { MobilePdfModeStrip } from "./MobilePdfModeStrip";
-import { MOBILE_PDF_GROUPS, type MobilePdfMode } from "../lib/mobilePdfTools";
+import { useEmbedPdfMobileCommands } from "../hooks/useEmbedPdfMobileCommands";
 
 const DOCUMENT_ID = "tpdf-active-document";
 const SIDEBAR_PREF_KEY = "tpdf-embedpdf-sidebar";
@@ -256,13 +256,7 @@ export function PdfViewer({
       },
       tabBar: "never",
       chrome: (base: any, helpers: any) =>
-        helpers?.removeItems ? helpers.removeItems(base, [
-          "document:menu",
-          ...(window.innerWidth <= 900 ? [
-            "mode:view", "mode:annotate", "mode:shapes",
-            "mode:insert", "mode:form", "mode:redact",
-          ] : []),
-        ]) : base,
+        helpers?.removeItems ? helpers.removeItems(base, ["document:menu"]) : base,
       theme: { preference: "light" },
       annotations: { annotationAuthor: "TPDF" },
       pan: { defaultMode: "mobile" },
@@ -683,27 +677,9 @@ export function PdfViewer({
     annotationScope?.setActiveTool?.(mapActiveToolToEmbedPdfAnnotation(activeTool));
   }, [activeRegistry, activeTool, measurementMode, sourceUrl]);
 
+  useEmbedPdfMobileCommands(activeRegistry, DOCUMENT_ID, documentReadySource === sourceUrl, onError);
+
   useEffect(() => {
-    if (!activeRegistry || documentReadySource !== sourceUrl) return;
-    const registry = activeRegistry as {
-      execute?: (id: string, documentId?: string) => void | Promise<void>;
-      resolve?: (id: string, documentId?: string) => { active?: boolean; visible?: boolean; enabled?: boolean } | null;
-      watch?: (read: () => string, changed: (value: string) => void) => () => void;
-    };
-    // Use the same commands as EmbedPDF's own buttons; do not simulate DOM clicks.
-    const run = (event: Event) => {
-      const command = (event as CustomEvent<{ command?: string }>).detail?.command;
-      if (!command || !registry.execute) return;
-      const descriptor = registry.resolve?.(command, DOCUMENT_ID);
-      if (registry.resolve && (!descriptor || descriptor.visible === false || descriptor.enabled === false)) return;
-      try {
-        void Promise.resolve(registry.execute(command, DOCUMENT_ID)).catch(error => {
-          onError?.(error instanceof Error ? error.message : String(error));
-        });
-      } catch (error) {
-        onError?.(error instanceof Error ? error.message : String(error));
-      }
-    };
     const measure = (event: Event) => {
       const target = (event as CustomEvent<{ mode?: string }>).detail?.mode;
       if (target === "calibrate") {
@@ -715,40 +691,9 @@ export function PdfViewer({
         onActiveToolChange?.("measure");
       }
     };
-    const snapshot = () => {
-      const group = MOBILE_PDF_GROUPS.find(item =>
-        item.id !== "measure" && registry.resolve?.(`mode:${item.id}`, DOCUMENT_ID)?.active
-      );
-      const current = (group?.id ?? "view") as MobilePdfMode;
-      const activeCommand = group?.tools.find(item =>
-        item.command && registry.resolve?.(item.command, DOCUMENT_ID)?.active
-      )?.command ?? "";
-      return current + "|" + activeCommand;
-    };
-    const broadcast = (value: string) => {
-      const [mode, command] = value.split("|");
-      if (activeToolRef.current !== "measure") {
-        window.dispatchEvent(new CustomEvent("tpdf:embedpdf-mode-changed", { detail: { mode } }));
-      }
-      window.dispatchEvent(new CustomEvent("tpdf:embedpdf-tool-changed", { detail: { command } }));
-    };
-    const availability = Object.fromEntries(MOBILE_PDF_GROUPS.flatMap(group =>
-      group.tools.filter(tool => tool.command).map(tool => [
-        tool.command!, Boolean(registry.resolve?.(tool.command!, DOCUMENT_ID)?.visible !== false &&
-          registry.resolve?.(tool.command!, DOCUMENT_ID)),
-      ])
-    ));
-    window.dispatchEvent(new CustomEvent("tpdf:embedpdf-command-availability", { detail: availability }));
-    broadcast(snapshot());
-    window.addEventListener("tpdf:embedpdf-command", run);
     window.addEventListener("tpdf:mobile-measure-mode", measure);
-    const stopWatch = registry.watch?.(snapshot, broadcast);
-    return () => {
-      stopWatch?.();
-      window.removeEventListener("tpdf:embedpdf-command", run);
-      window.removeEventListener("tpdf:mobile-measure-mode", measure);
-    };
-  }, [activeRegistry, documentReadySource, sourceUrl, onActiveToolChange, onError]);
+    return () => window.removeEventListener("tpdf:mobile-measure-mode", measure);
+  }, [onActiveToolChange]);
 
   useEffect(() => {
     window.localStorage.setItem("tpdf-measure-mode", measurementMode);
