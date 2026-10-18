@@ -14,6 +14,7 @@ export function useEmbedPdfOverlaySync(viewerRootRef: RefObject<HTMLElement | nu
     let rootObserver: MutationObserver | null = null;
     let frame: number | null = null;
     let attachedHost: HTMLElement | null = null;
+    let pendingReadyHost: HTMLElement | null = null;
     let lastOverlay: boolean | null = null;
 
     const syncState = (host: HTMLElement) => {
@@ -42,13 +43,27 @@ export function useEmbedPdfOverlaySync(viewerRootRef: RefObject<HTMLElement | nu
       });
     };
 
+    const onHostReady = () => {
+      const host = pendingReadyHost;
+      pendingReadyHost = null;
+      if (host) attachToHost(host);
+    };
     const attachToHost = (host: HTMLElement) => {
-      if (host === attachedHost) return;
+      if (host === attachedHost && shadowObserver) return;
+      const shadow = (host as HTMLElement & { shadowRoot?: ShadowRoot | null }).shadowRoot;
+      if (!shadow) {
+        if (pendingReadyHost !== host) {
+          pendingReadyHost?.removeEventListener("epdf:ready", onHostReady);
+          pendingReadyHost = host;
+          host.addEventListener("epdf:ready", onHostReady, { once: true });
+        }
+        return;
+      }
+      if (pendingReadyHost) pendingReadyHost.removeEventListener("epdf:ready", onHostReady);
+      pendingReadyHost = null;
       shadowObserver?.disconnect();
       attachedHost = host;
       lastOverlay = null;
-      const shadow = (host as HTMLElement & { shadowRoot?: ShadowRoot | null }).shadowRoot;
-      if (!shadow) return;
       syncState(host);
       shadowObserver = new MutationObserver(() => scheduleSync(host));
       shadowObserver.observe(shadow, {
@@ -72,6 +87,7 @@ export function useEmbedPdfOverlaySync(viewerRootRef: RefObject<HTMLElement | nu
     return () => {
       if (frame !== null) window.cancelAnimationFrame(frame);
       shadowObserver?.disconnect();
+      pendingReadyHost?.removeEventListener("epdf:ready", onHostReady);
       rootObserver?.disconnect();
       document.body.removeAttribute("data-embedpdf-overlay");
       root.removeAttribute("data-embedpdf-overlay");
