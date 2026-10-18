@@ -25,13 +25,12 @@ type Props = {
   onShowTools: () => void;
   onShowInfo: () => void;
   onShowAi: () => void;
-  onTogglePdfToolbar: () => void;
   isPublic: boolean;
 };
 
 export function MobilePdfDock({
   activeTool, onToolChange, onDoneEditing, onUndo, onRedo, onSave,
-  onFindCommands, onShowTools, onShowInfo, onShowAi, onTogglePdfToolbar, isPublic,
+  onFindCommands, onShowTools, onShowInfo, onShowAi, isPublic,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -126,7 +125,7 @@ export function MobilePdfDock({
             <div className="tpdf-mobile-tool-sheet-extras">
               {secondary("Edit PDF text", "edit", () => activate("edit-content"))}
               {secondary("Find a tool", "search", () => launch(onFindCommands))}
-              {secondary("PDF search & options", "search", () => launch(onTogglePdfToolbar))}
+              
               {secondary("Document info", "page", () => launch(onShowInfo))}
               {secondary("AI assistant", "tools", () => launch(onShowAi))}
               {secondary(isPublic ? "Find document tools" : "All document tools", "tools",
