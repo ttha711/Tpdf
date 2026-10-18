@@ -69,13 +69,16 @@ test.describe("mobile layout and scrolling", () => {
       const workspace = document.querySelector<HTMLElement>(".workspace");
       const viewerArea = document.querySelector<HTMLElement>(".viewer-area");
       const statusBar = document.querySelector<HTMLElement>('[data-tpdf-region="status-bar"]');
-      const mobileToolbar = document.querySelector<HTMLElement>(".tpdf-mobile-edit-toolbar");
+      const mobileToolbar = document.querySelector<HTMLElement>(".tpdf-mobile-dock");
+      const pdfContent = document.querySelector<HTMLElement>(".tpdf-mobile-viewer-flex");
       return {
         workspaceGridCols: workspace ? getComputedStyle(workspace).gridTemplateColumns : "",
         viewerWidth: viewerArea?.offsetWidth ?? 0,
         viewerHeight: viewerArea?.offsetHeight ?? 0,
         statusBarHeight: statusBar?.offsetHeight ?? 0,
         mobileToolbarVisible: mobileToolbar ? getComputedStyle(mobileToolbar).display !== "none" : false,
+        pdfBottom: pdfContent?.getBoundingClientRect().bottom ?? 0,
+        dockTop: mobileToolbar?.getBoundingClientRect().top ?? 0,
       };
     });
 
@@ -83,6 +86,13 @@ test.describe("mobile layout and scrolling", () => {
     expect(layout.viewerHeight).toBeGreaterThan(600);
     expect(layout.workspaceGridCols).toBe("390px");
     expect(layout.mobileToolbarVisible).toBe(true);
+    expect(layout.pdfBottom).toBeLessThanOrEqual(layout.dockTop + 1);
+    await expect(page.locator('[data-tpdf-region="mobile-file-name"]')).toContainText("mobile-viewer-test.pdf");
+    await page.getByRole("button", { name: "Tools", exact: true }).last().click();
+    await expect(page.locator('[data-tpdf-mobile-tools="open"]')).toBeVisible();
+    await expect(page.locator('[data-tpdf-mobile-tool="measure"]')).toBeVisible();
+    await page.locator('[data-tpdf-mobile-tool="draw"]').click();
+    await expect(page.locator('[data-tpdf-region="mobile-dock"]').getByRole("button", { name: "Draw" })).toHaveAttribute("aria-pressed", "true");
 
     // Verify opening and closing right panel drawer on mobile
     const aiToggleBtn = page.locator("[data-tpdf-action='open-ai']");
