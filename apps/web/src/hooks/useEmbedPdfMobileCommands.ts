@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { MOBILE_PDF_GROUPS } from "../lib/mobilePdfTools";
 
 type NativeCommand = { id: string; active: boolean; disabled: boolean; visible: boolean };
@@ -27,6 +27,8 @@ export function useEmbedPdfMobileCommands(
   ready: boolean,
   onError?: (message: string) => void,
 ) {
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
   useEffect(() => {
     if (!registry || !ready) return;
     const commands = registry.getPlugin?.("commands")?.provides?.() as CommandApi | undefined;
@@ -47,6 +49,8 @@ export function useEmbedPdfMobileCommands(
     window.addEventListener("resize", resize);
 
     let frame = 0;
+    let published = "";
+    let lastAvailability = "";
     const publish = () => {
       frame = 0;
       let list: NativeCommand[];
@@ -61,7 +65,14 @@ export function useEmbedPdfMobileCommands(
       const command = MOBILE_PDF_GROUPS.find(group => group.id === activeMode)?.tools.find(
         tool => Boolean(tool.command && state.get(tool.command)?.active)
       )?.command ?? "";
-      window.dispatchEvent(new CustomEvent("tpdf:embedpdf-command-availability", { detail: availability }));
+      const availabilityKey = JSON.stringify(availability);
+      if (availabilityKey !== lastAvailability) {
+        lastAvailability = availabilityKey;
+        window.dispatchEvent(new CustomEvent("tpdf:embedpdf-command-availability", { detail: availability }));
+      }
+      const snapshot = activeMode + "|" + command;
+      if (snapshot === published) return;
+      published = snapshot;
       window.dispatchEvent(new CustomEvent("tpdf:embedpdf-mode-changed", { detail: { mode: activeMode } }));
       window.dispatchEvent(new CustomEvent("tpdf:embedpdf-tool-changed", { detail: { command } }));
     };
@@ -80,7 +91,7 @@ export function useEmbedPdfMobileCommands(
         commands.execute(id, documentId, "ui");
         schedule();
       } catch (error) {
-        onError?.(error instanceof Error ? error.message : String(error));
+        onErrorRef.current?.(error instanceof Error ? error.message : String(error));
       }
     };
 
@@ -94,5 +105,5 @@ export function useEmbedPdfMobileCommands(
       off?.();
       if (mobile) ui?.enableCategory?.("mode");
     };
-  }, [registry, documentId, ready, onError]);
+  }, [registry, documentId, ready]);
 }
