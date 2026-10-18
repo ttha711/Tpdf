@@ -1,9 +1,9 @@
 import { useEffect, type RefObject } from "react";
 
 /**
- * Synchronizes EmbedPDF Shadow-DOM overlay and sheet states to the host document
- * so mobile floating UI (AI FAB, bottom edit toolbar, upload banner) automatically
- * hides to prevent touch collisions and obscured tool options.
+ * Observe only actual EmbedPDF overlays. Annotation strokes can update class
+ * and style dozens of times per second; observing those across the entire
+ * shadow tree and measuring every toolbar button caused forced reflows.
  */
 export function useEmbedPdfOverlaySync(viewerRootRef: RefObject<HTMLElement | null>) {
   useEffect(() => {
@@ -12,16 +12,18 @@ export function useEmbedPdfOverlaySync(viewerRootRef: RefObject<HTMLElement | nu
 
     let shadowObserver: MutationObserver | null = null;
     let rootObserver: MutationObserver | null = null;
+    let frame: number | null = null;
+    let attachedHost: HTMLElement | null = null;
+    let lastOverlay: boolean | null = null;
 
     const syncState = (host: HTMLElement) => {
       const shadow = (host as HTMLElement & { shadowRoot?: ShadowRoot | null }).shadowRoot;
       if (!shadow) return;
-
-      const hasOverlay = Boolean(
-        shadow.querySelector(
-          ".bg-bg-overlay, [role='dialog'], [data-state='open'], .bg-bg-surface.rounded-t-2xl"
-        )
-      );
+      const hasOverlay = Boolean(shadow.querySelector(
+        '[data-epdf-sheet], [role="dialog"][aria-modal="true"], .bg-bg-overlay, [data-state="open"][role="dialog"]'
+      ));
+      if (lastOverlay === hasOverlay) return;
+      lastOverlay = hasOverlay;
 
       if (hasOverlay) {
         document.body.setAttribute("data-embedpdf-overlay", "open");
@@ -30,55 +32,45 @@ export function useEmbedPdfOverlaySync(viewerRootRef: RefObject<HTMLElement | nu
         document.body.removeAttribute("data-embedpdf-overlay");
         root.removeAttribute("data-embedpdf-overlay");
       }
+    };
 
-      // Sync active mode attribute if available
-      const buttons = shadow.querySelectorAll("button");
-      for (const btn of buttons) {
-        const text = btn.textContent?.trim() || "";
-        if (["View", "Annotate", "Shapes", "Insert", "Form"].includes(text)) {
-          const rect = btn.getBoundingClientRect();
-          if (rect.y < 140 && rect.height > 0) {
-            root.setAttribute("data-embedpdf-mode", text.toLowerCase());
-            break;
-          }
-        }
-      }
+    const scheduleSync = (host: HTMLElement) => {
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        syncState(host);
+      });
     };
 
     const attachToHost = (host: HTMLElement) => {
+      if (host === attachedHost) return;
       shadowObserver?.disconnect();
+      attachedHost = host;
+      lastOverlay = null;
       const shadow = (host as HTMLElement & { shadowRoot?: ShadowRoot | null }).shadowRoot;
       if (!shadow) return;
-
       syncState(host);
-
-      shadowObserver = new MutationObserver(() => {
-        syncState(host);
-      });
-
+      shadowObserver = new MutationObserver(() => scheduleSync(host));
       shadowObserver.observe(shadow, {
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ["data-state", "class", "style", "aria-hidden"],
+        // Do not watch class/style: ink and shape tools modify them frequently.
+        attributeFilter: ["aria-modal", "data-state"],
       });
     };
 
     const initialHost = root.querySelector("embedpdf-container") as HTMLElement | null;
-    if (initialHost) {
-      attachToHost(initialHost);
-    }
+    if (initialHost) attachToHost(initialHost);
 
     rootObserver = new MutationObserver(() => {
-      const currentHost = root.querySelector("embedpdf-container") as HTMLElement | null;
-      if (currentHost) {
-        attachToHost(currentHost);
-      }
+      const current = root.querySelector("embedpdf-container") as HTMLElement | null;
+      if (current) attachToHost(current);
     });
-
     rootObserver.observe(root, { childList: true, subtree: true });
 
     return () => {
+      if (frame !== null) window.cancelAnimationFrame(frame);
       shadowObserver?.disconnect();
       rootObserver?.disconnect();
       document.body.removeAttribute("data-embedpdf-overlay");
