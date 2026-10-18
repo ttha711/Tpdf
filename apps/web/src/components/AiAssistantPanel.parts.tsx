@@ -28,7 +28,7 @@ export function ChatMessageBubble({ message, onConfirmInline }: ChatMessageBubbl
       </div>
       <div className="ai-message-bubble">
         {isPending ? (
-          <div className="ai-typing-indicator"><span /><span /><span /></div>
+          <div className="ai-progress-indicator" role="status"><div className="ai-typing-indicator"><span /><span /><span /></div><small>{text}</small></div>
         ) : (
           <div className="ai-message-text"><MarkdownMessage text={text} /></div>
         )}

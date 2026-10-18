@@ -18,7 +18,7 @@ function bridge() {
 
 export function createUiAgentHarness({ machineBridge, execute, onProgress, isCancelled }: AdapterArgs) {
   return {
-    async run(goal: string, previous?: HarnessCheckpoint, approval?: "approve" | "reject", cancelled?: () => boolean, signal?: AbortSignal) {
+    async run(goal: string, previous?: HarnessCheckpoint, approval?: "approve" | "reject", cancelled?: () => boolean, signal?: AbortSignal, progress?: (message: string) => void) {
       const agent = bridge();
       return runAgentHarness(previous ?? { goal, observations: [] }, {
         model: (prompt) => {
@@ -35,7 +35,7 @@ export function createUiAgentHarness({ machineBridge, execute, onProgress, isCan
         },
         listTools: () => agent.listTools(),
         getState: () => agent.getState(),
-        onEvent: ({ action, message }) => onProgress(action + ": " + message),
+        onEvent: ({ action, message }) => { onProgress(action + ": " + message); progress?.(action + ": " + message); },
         isCancelled: () => Boolean(signal?.aborted || cancelled?.() || isCancelled?.()),
       }, approval);
     },

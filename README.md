@@ -198,3 +198,7 @@ TPDF React shell
 The former custom PDF.js page-raster/WebP path is no longer the primary viewer. PDF.js remains available to document-processing features that still need its parsing/text utilities.
 
 For engineering/CAD workloads, validate performance with representative A0/A1 vector-heavy PDFs rather than file size alone. TPDF's E2E suite includes a generated many-sheet technical drawing set, but real 100-500+ MB project files remain the release benchmark.
+
+## AI CLI model worker
+
+TPDF pairs a machine worker to Dify, Claude Code CLI, Codex CLI, or Gemini CLI for structured decisions. Native PDF tools remain guarded in the UI. See [AI CLI Worker](docs/TPDF_AI_CLI_WORKER.md).

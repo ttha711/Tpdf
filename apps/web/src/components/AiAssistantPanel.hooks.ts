@@ -7,7 +7,7 @@ import { useMachineAgentBridge } from "../hooks/useMachineAgentBridge";
 import { useAiCommandRuntime } from "./useAiCommandRuntime";
 import { enqueueAbortable } from "../agent/enqueueAbortable";
 
-type Job = { id: string; goal: string; status: "queued" | "running" | "approval" | "completed" | "failed"; checkpoint?: HarnessCheckpoint };
+type Job = { id: string; goal: string; status: "queued" | "running" | "approval" | "completed" | "failed"; checkpoint?: HarnessCheckpoint; steps?: string[] };
 const id = () => globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
 
 export function useAiAssistant() {
@@ -57,7 +57,10 @@ export function useAiAssistant() {
     update({ ...job, status: "running" });
     const pendingId = addMessage("assistant", "Processing: " + job.goal, { isPending: true });
     try {
-      const result = await harness.run(job.goal, job.checkpoint, approval, () => stopped.current.has(job.id), controller.signal);
+      const result = await harness.run(job.goal, job.checkpoint, approval, () => stopped.current.has(job.id), controller.signal, (step) => {
+        const current = jobsRef.current.find((candidate) => candidate.id === job.id);
+        if (current && !stopped.current.has(job.id)) update({ ...current, steps: [...(current.steps || []), step].slice(-40) });
+      });
       setMessages((items) => items.filter((item) => item.id !== pendingId));
       if (stopped.current.has(job.id)) {
         update({ ...job, status: "failed" });
@@ -151,6 +154,11 @@ export function useAiAssistant() {
     stopJob, undoLast,
     messages, inputValue, setInputValue, chatEndRef,
     jobs, showSettings, setShowSettings,
+    aiProvider: machineBridge.provider,
+    setAiProvider: machineBridge.chooseProvider,
+    availableProviders: machineBridge.availableProviders,
+    agentHistory: machineBridge.history,
+    refreshAgentHistory: machineBridge.refreshHistory,
     handleSubmit, handleConfirmInline, handleSuggestionClick: submitText,
     machineAgentConnected: machineBridge.connected,
     machineAgentCount: machineBridge.agents.filter((agent) => agent.online).length,

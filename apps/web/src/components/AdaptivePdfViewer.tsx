@@ -132,8 +132,11 @@ export function AdaptivePdfViewer(props: PdfViewerProps) {
   );
 
   useEffect(() => {
-    if (!needsEditor || preference !== "remote") return;
-    setPreference("full");
+    if (!needsEditor) return;
+    setForceFullViewer(true);
+    if (preference === "remote") {
+      setPreference("full");
+    }
   }, [needsEditor, preference]);
 
   const switchMode = () => {
@@ -151,8 +154,16 @@ export function AdaptivePdfViewer(props: PdfViewerProps) {
     <div className="relative h-full w-full" style={{ minHeight: 0 }}>
       {awaitingDecision || requiresExplicitFull ? (
         <div role="status" style={{ display: "grid", placeContent: "center", gap: 12, height: "100%", color: "#475569", textAlign: "center", padding: 16 }}>
-          <span>{awaitingDecision ? "Checking PDF viewing capabilities…" : "Lightweight rendering is unavailable. Opening this large PDF will download the full file."}</span>
-          {requiresExplicitFull ? <button type="button" onClick={() => setForceFullViewer(true)}>Download and open full PDF</button> : null}
+          <span>{awaitingDecision ? "Checking PDF viewing capabilities…" : "Lightweight remote rendering is unavailable. Opening this large PDF requires downloading the full file."}</span>
+          {requiresExplicitFull ? (
+            <button
+              type="button"
+              onClick={() => setForceFullViewer(true)}
+              style={{ justifySelf: "center", padding: "8px 16px", borderRadius: 8, border: "1px solid #94a3b8", background: "#f8fafc", color: "#0f172a", fontWeight: 500, cursor: "pointer" }}
+            >
+              Download and open full PDF
+            </button>
+          ) : null}
         </div>
       ) : waitingForLargeUpload ? (
         <div role="status" style={{ display: "grid", placeContent: "center", gap: 12, height: "100%", color: "#475569", textAlign: "center" }}>

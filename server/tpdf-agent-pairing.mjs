@@ -1,4 +1,21 @@
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+
+const PROVIDERS = new Set(["dify", "claude", "codex", "gemini"]);
+const HISTORY_LIMIT = 250;
+
+function loadState(path) {
+  if (!path || !existsSync(path)) return {};
+  try {
+    const data = JSON.parse(readFileSync(path, "utf8"));
+    if (data.version !== 1) throw new Error("Unknown agent state version.");
+    return data;
+  } catch (error) {
+    throw new Error("Cannot load persisted agent state: " + String(error));
+  }
+}
+
 
 function encode(value) {
   return Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
@@ -17,14 +34,34 @@ export function createAgentPairingBroker(secret, options = {}) {
 
   const pairingTtlMs = Number(options.pairingTtlMs || 5 * 60 * 1000);
   const tokenTtlMs = Number(options.tokenTtlMs || 30 * 24 * 60 * 60 * 1000);
-  const taskTtlMs = Number(options.taskTtlMs || 5 * 60 * 1000);
+  const taskTtlMs = Number(options.taskTtlMs || 30 * 24 * 60 * 60 * 1000);
   const presenceTtlMs = Number(options.presenceTtlMs || 20 * 1000);
   const leaseTtlMs = Number(options.leaseTtlMs || 30 * 1000);
   const maxAttempts = Number(options.maxAttempts || 2);
   const now = typeof options.now === "function" ? options.now : Date.now;
-  const pairings = new Map();
-  const agents = new Map();
-  const tasks = new Map();
+  const state = loadState(options.persistPath);
+  const pairings = new Map(state.pairings || []);
+  const agents = new Map(state.agents || []);
+  const tasks = new Map(state.tasks || []);
+  // Running leases cannot survive a process restart. Requeue them safely.
+  for (const row of tasks.values()) {
+    if (row.status === "running") {
+      row.status = "queued";
+      row.claimedBy = null;
+      row.leaseToken = null;
+      row.leaseUntil = null;
+    }
+  }
+  const persist = () => {
+    if (!options.persistPath) return;
+    const destination = options.persistPath;
+    mkdirSync(dirname(destination), { recursive: true, mode: 0o700 });
+    const temporary = destination + ".tmp";
+    writeFileSync(temporary, JSON.stringify({
+      version: 1, pairings: [...pairings], agents: [...agents], tasks: [...tasks],
+    }), { mode: 0o600 });
+    renameSync(temporary, destination);
+  };
 
   const sign = (payload) => createHmac("sha256", secret).update(payload).digest("base64url");
 
@@ -55,13 +92,17 @@ export function createAgentPairingBroker(secret, options = {}) {
 
   function cleanup() {
     const timestamp = now();
-    for (const [id, row] of pairings) if (row.expiresAt <= timestamp || row.claimedAt) pairings.delete(id);
+    let dirty = false;
+    for (const [id, row] of pairings) if (row.expiresAt <= timestamp || row.claimedAt) {
+      pairings.delete(id); dirty = true;
+    }
     for (const [id, row] of tasks) {
-      if (row.expiresAt <= timestamp) { tasks.delete(id); continue; }
+      if (row.expiresAt <= timestamp) { tasks.delete(id); dirty = true; continue; }
       if (row.status !== "running" || row.leaseUntil > timestamp) continue;
       row.claimedBy = null;
       row.leaseToken = null;
       row.leaseUntil = null;
+      dirty = true;
       if (row.attempts >= maxAttempts) {
         row.status = "failed";
         row.error = "Worker lost its task lease; automatic retry limit reached.";
@@ -70,6 +111,12 @@ export function createAgentPairingBroker(secret, options = {}) {
         row.status = "queued";
       }
     }
+    const complete = [...tasks.entries()].filter(([, row]) => !["running", "queued"].includes(row.status))
+      .sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0));
+    while (complete.length > HISTORY_LIMIT) {
+      tasks.delete(complete.shift()[0]); dirty = true;
+    }
+    if (dirty) persist();
   }
 
   function startPairing(user, projectId) {
@@ -86,6 +133,7 @@ export function createAgentPairingBroker(secret, options = {}) {
       claimedAt: null,
     };
     pairings.set(id, row);
+    persist();
     return { pairingId: id, code, expiresAt: row.expiresAt };
   }
 
@@ -106,17 +154,22 @@ export function createAgentPairingBroker(secret, options = {}) {
       lastSeenAt: now(),
       lastHeartbeatAt: null,
     };
+    agent.providers = ["dify"];
     agents.set(agent.id, agent);
+    persist();
     return { agent, token: issueAgentToken(agent) };
   }
 
-  function heartbeatAgent(agent) {
-    // Presence means a worker process actually polled or sent a heartbeat;
-    // claiming a pairing code does not mark the process online.
+  function heartbeatAgent(agent, payload = {}) {
+    // Providers are worker-advertised capabilities, never executable paths or flags from the browser.
     const current = agents.get(agent.id);
     if (!current) return false;
+    if (Array.isArray(payload.providers)) {
+      current.providers = [...new Set(payload.providers.filter((name) => PROVIDERS.has(name)))];
+    }
     current.lastHeartbeatAt = now();
     current.lastSeenAt = current.lastHeartbeatAt;
+    persist();
     return true;
   }
 
@@ -133,13 +186,17 @@ export function createAgentPairingBroker(secret, options = {}) {
         id: agent.id, name: agent.name, machineId: agent.machineId,
         version: agent.version, pairedAt: agent.pairedAt,
         lastSeenAt: agent.lastSeenAt, online: isOnline(agent),
+        providers: Array.isArray(agent.providers) ? agent.providers : ["dify"],
       }));
   }
 
   function createTask(user, projectId, payload) {
     cleanup();
+    const requested = String(payload.provider || "").toLowerCase();
+    if (requested && !PROVIDERS.has(requested)) return null;
     const available = [...agents.values()].some(
-      (agent) => agent.userId === user.id && agent.projectId === projectId && isOnline(agent),
+      (agent) => agent.userId === user.id && agent.projectId === projectId && isOnline(agent) &&
+        (!requested || (agent.providers || ["dify"]).includes(requested)),
     );
     if (!available) return null;
     const id = randomUUID();
@@ -150,6 +207,7 @@ export function createAgentPairingBroker(secret, options = {}) {
       status: "queued",
       query: String(payload.query || "").slice(0, 20000),
       context: payload.context && typeof payload.context === "object" ? payload.context : {},
+      provider: requested || null,
       createdAt: now(),
       expiresAt: now() + taskTtlMs,
       claimedBy: null,
@@ -160,7 +218,8 @@ export function createAgentPairingBroker(secret, options = {}) {
       error: null,
     };
     tasks.set(id, task);
-    return { id, status: task.status, createdAt: task.createdAt };
+    persist();
+    return { id, status: task.status, provider: task.provider, createdAt: task.createdAt };
   }
 
   function nextTask(agent) {
@@ -169,7 +228,8 @@ export function createAgentPairingBroker(secret, options = {}) {
     const task = [...tasks.values()].find(
       (row) => row.userId === agent.userId &&
         row.projectId === agent.projectId &&
-        row.status === "queued",
+        row.status === "queued" && (!row.provider ||
+          (agent.providers || ["dify"]).includes(row.provider)),
     );
     if (!task) return null;
     task.status = "running";
@@ -177,9 +237,11 @@ export function createAgentPairingBroker(secret, options = {}) {
     task.attempts += 1;
     task.leaseToken = randomBytes(16).toString("base64url");
     task.leaseUntil = now() + leaseTtlMs;
+    persist();
     return {
       id: task.id, query: task.query, context: task.context,
       createdAt: task.createdAt, attempt: task.attempts, leaseToken: task.leaseToken,
+      provider: task.provider,
     };
   }
 
@@ -207,6 +269,7 @@ export function createAgentPairingBroker(secret, options = {}) {
     task.error = payload?.error ? String(payload.error).slice(0, 4000) : null;
     task.completedAt = now();
     agent.lastSeenAt = now();
+    persist();
     return { id: task.id, status: task.status };
   }
 
@@ -221,6 +284,7 @@ export function createAgentPairingBroker(secret, options = {}) {
       task.error = null;
       task.context = {};
       task.query = "";
+      persist();
     }
     return { id: task.id, status: task.status };
   }
@@ -232,6 +296,7 @@ export function createAgentPairingBroker(secret, options = {}) {
     return {
       id: task.id,
       status: task.status,
+      provider: task.provider || null,
       result: task.result,
       error: task.error,
       createdAt: task.createdAt,
@@ -239,7 +304,17 @@ export function createAgentPairingBroker(secret, options = {}) {
     };
   }
 
+  function listTasks(user, projectId) {
+    cleanup();
+    return [...tasks.values()].filter((task) => task.userId === user.id && task.projectId === projectId)
+      .sort((a, b) => b.createdAt - a.createdAt).slice(0, 100)
+      .map((task) => ({ id: task.id, status: task.status, provider: task.provider || null,
+        query: task.query, createdAt: task.createdAt, completedAt: task.completedAt || null,
+        error: task.error, result: task.result }));
+  }
+
   return {
+    listTasks,
     startPairing,
     claimPairing,
     verifyAgentToken,

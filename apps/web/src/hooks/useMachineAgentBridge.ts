@@ -8,6 +8,7 @@ type AgentSummary = {
   pairedAt: number;
   lastSeenAt: number;
   online: boolean;
+  providers?: string[];
 };
 
 type Pairing = {
@@ -21,6 +22,10 @@ type TaskState = {
   status: "queued" | "running" | "completed" | "failed" | "cancelled";
   result?: unknown;
   error?: string | null;
+  query?: string;
+  provider?: string | null;
+  createdAt?: number;
+  completedAt?: number | null;
 };
 
 const isServerRuntime = () =>
@@ -31,6 +36,10 @@ export function useMachineAgentBridge() {
   const [pairing, setPairing] = useState<Pairing | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [history, setHistory] = useState<TaskState[]>([]);
+  const [provider, setProvider] = useState(() => typeof window === "undefined" ? "auto" : (localStorage.getItem("tpdf_agent_provider") || "auto"));
+  const availableProviders = [...new Set(agents.filter((agent) => agent.online).flatMap((agent) => agent.providers || ["dify"]))];
+  const chooseProvider = useCallback((next: string) => { setProvider(next); if (typeof window !== "undefined") localStorage.setItem("tpdf_agent_provider", next); }, []);
 
   const refresh = useCallback(async () => {
     if (!isServerRuntime()) return;
@@ -54,6 +63,19 @@ export function useMachineAgentBridge() {
     const timer = window.setInterval(() => void refresh(), 10_000);
     return () => window.clearInterval(timer);
   }, [refresh]);
+
+  const refreshHistory = useCallback(async () => {
+    if (!isServerRuntime()) return;
+    try {
+      const result = await fetch("/api/tpdf/agent/history", { credentials: "same-origin", cache: "no-store" });
+      if (result.ok) {
+        const value = await result.json() as { tasks?: TaskState[] };
+        setHistory(Array.isArray(value.tasks) ? value.tasks : []);
+      }
+    } catch { /* Keep previous history on temporary network failure. */ }
+  }, []);
+
+  useEffect(() => { if (isServerRuntime()) void refreshHistory(); }, [refreshHistory]);
 
   const startPairing = useCallback(async () => {
     if (!isServerRuntime()) return null;
@@ -84,7 +106,7 @@ export function useMachineAgentBridge() {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, context }),
+      body: JSON.stringify({ query, context, ...(provider !== "auto" ? { provider } : {}) }),
     });
     if (response.status === 409) {
       throw new Error("No paired machine agent is online. Open AI settings and pair your machine first.");
@@ -98,7 +120,7 @@ export function useMachineAgentBridge() {
     if (signal?.aborted) { await cancelRemote(); throw new DOMException("Cancelled", "AbortError"); }
     const onAbort = () => { void cancelRemote(); };
     signal?.addEventListener("abort", onAbort, { once: true });
-    const deadline = Date.now() + 90_000;
+    const deadline = Date.now() + 6 * 60_000;
     try {
     while (Date.now() < deadline) {
       if (signal?.aborted) throw new DOMException("Cancelled", "AbortError");
@@ -111,21 +133,28 @@ export function useMachineAgentBridge() {
       const state = await poll.json() as TaskState;
       if (state.status === "completed") {
         void refresh();
+        void refreshHistory();
         return state.result;
       }
       if (state.status === "cancelled") throw new DOMException("Cancelled", "AbortError");
       if (state.status === "failed") {
+        void refreshHistory();
         throw new Error(state.error || "Machine Agent task failed.");
       }
     }
     void cancelRemote();
-    throw new Error("Machine Agent did not respond within 90 seconds.");
+    throw new Error("Machine Agent did not respond within six minutes.");
     } finally { signal?.removeEventListener("abort", onAbort); }
-  }, [refresh]);
+  }, [refresh, refreshHistory, provider]);
 
   return {
     isServerRuntime: isServerRuntime(),
     agents,
+    provider,
+    chooseProvider,
+    availableProviders,
+    history,
+    refreshHistory,
     connected: agents.some((agent) => agent.online),
     pairing,
     loading,

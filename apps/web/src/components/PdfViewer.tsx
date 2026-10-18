@@ -33,6 +33,7 @@ import {
   type MeasurementMode,
   type MeasurementUnit,
 } from "../lib/measurement";
+import { useEmbedPdfOverlaySync } from "../hooks/useEmbedPdfOverlaySync";
 
 const DOCUMENT_ID = "tpdf-active-document";
 const SIDEBAR_PREF_KEY = "tpdf-embedpdf-sidebar";
@@ -65,6 +66,7 @@ export function PdfViewer({
   const [readyViewer, setReadyViewer] = useState<{ sourceUrl: string; registry: any } | null>(null);
   const [localUrl, setLocalUrl] = useState<string | null>(null);
   const viewerRootRef = useRef<HTMLDivElement>(null);
+  useEmbedPdfOverlaySync(viewerRootRef);
   const viewerReadySourceRef = useRef<string | null>(null);
   const [documentReadySource, setDocumentReadySource] = useState<string | null>(null);
   const localSourceKeyRef = useRef<Uint8Array | Blob | null>(null);
@@ -96,6 +98,18 @@ export function PdfViewer({
   const [pendingAiPatch, setPendingAiPatch] = useState<{ pageIndex: number; rect: any } | null>(null);
   const [showCalibrationDialog, setShowCalibrationDialog] = useState(false);
   const lastMeasuredPdfValueRef = useRef<number | null>(null);
+  const measurementConfigRef = useRef({
+    mode: measurementMode,
+    scale: drawingScale,
+    unit: measurementUnit,
+    calibratedMmPerPdfPoint,
+  });
+  measurementConfigRef.current = {
+    mode: measurementMode,
+    scale: drawingScale,
+    unit: measurementUnit,
+    calibratedMmPerPdfPoint,
+  };
 
   const serverUrl = useMemo(
     () => (sourceIdentity.startsWith("server://") ? getServerDocumentUrl(sourceIdentity) : null),
@@ -278,19 +292,20 @@ export function PdfViewer({
       const historyScope = historyApi?.forDocument?.(DOCUMENT_ID) ?? historyApi;
       const commandScope = commandsApi?.forDocument?.(DOCUMENT_ID) ?? commandsApi;
       // Only the visible viewer may handle toolbar navigation while editing.
-      const unregisterControls = activeTool !== "edit-content" ? registerViewerControls({
-        zoomIn: () => zoomScope?.zoomIn?.(),
-        zoomOut: () => zoomScope?.zoomOut?.(),
-        resetZoom: () => zoomScope?.requestZoom?.(1),
-        fitWidth: () => zoomScope?.requestZoom?.(ZoomMode.FitWidth),
-        fitPage: () => zoomScope?.requestZoom?.(ZoomMode.FitPage),
-        rotateForward: () => rotateScope?.rotateForward?.(),
-        rotateBackward: () => rotateScope?.rotateBackward?.(),
-        undo: () => historyScope?.undo?.(),
-        redo: () => historyScope?.redo?.(),
-        canUndo: () => Boolean(historyScope?.canUndo?.()),
-        canRedo: () => Boolean(historyScope?.canRedo?.()),
+      const unregisterControls = registerViewerControls({
+        zoomIn: () => { if (activeToolRef.current !== "edit-content") zoomScope?.zoomIn?.(); },
+        zoomOut: () => { if (activeToolRef.current !== "edit-content") zoomScope?.zoomOut?.(); },
+        resetZoom: () => { if (activeToolRef.current !== "edit-content") zoomScope?.requestZoom?.(1); },
+        fitWidth: () => { if (activeToolRef.current !== "edit-content") zoomScope?.requestZoom?.(ZoomMode.FitWidth); },
+        fitPage: () => { if (activeToolRef.current !== "edit-content") zoomScope?.requestZoom?.(ZoomMode.FitPage); },
+        rotateForward: () => { if (activeToolRef.current !== "edit-content") rotateScope?.rotateForward?.(); },
+        rotateBackward: () => { if (activeToolRef.current !== "edit-content") rotateScope?.rotateBackward?.(); },
+        undo: () => { if (activeToolRef.current !== "edit-content") historyScope?.undo?.(); },
+        redo: () => { if (activeToolRef.current !== "edit-content") historyScope?.redo?.(); },
+        canUndo: () => activeToolRef.current !== "edit-content" && Boolean(historyScope?.canUndo?.()),
+        canRedo: () => activeToolRef.current !== "edit-content" && Boolean(historyScope?.canRedo?.()),
         goToPage: (pageNumber) => {
+          if (activeToolRef.current === "edit-content") return;
           const scrollScope = scroll?.forDocument?.(DOCUMENT_ID) ?? scroll;
           scrollScope?.scrollToPage?.({
             pageNumber: Math.max(1, pageNumber),
@@ -298,10 +313,11 @@ export function PdfViewer({
           });
         },
         executeCommand: async (commandId) => {
+          if (activeToolRef.current === "edit-content") return;
           await commandScope?.execute?.(commandId, "api");
         },
-      }) : null;
-      if (unregisterControls) unsubscribers.push(unregisterControls);
+      });
+      unsubscribers.push(unregisterControls);
 
       const pageScrollScope = scroll?.forDocument?.(DOCUMENT_ID) ?? scroll;
       const unregisterPageResolver = registerViewerPageResolver((root, clientX, clientY) => {
@@ -381,11 +397,11 @@ export function PdfViewer({
       if (captureScope?.onCaptureArea) {
         const off = captureScope.onCaptureArea((event: any) => {
           if (event?.documentId && event.documentId !== DOCUMENT_ID) return;
-          if (activeTool === "edit-content") {
+          if (activeToolRef.current === "edit-content") {
             emitViewerContentArea({ pageIndex: event.pageIndex, rect: event.rect });
             return;
           }
-          if (activeTool !== "ai-patch") return;
+          if (activeToolRef.current !== "ai-patch") return;
 
           setPendingAiPatch({ pageIndex: event.pageIndex, rect: event.rect });
         });
@@ -398,33 +414,34 @@ export function PdfViewer({
           if (event?.type === "create" || event?.type === "update" || event?.type === "delete") {
             onViewerDirty?.();
           }
-          if (event?.type !== "create" || activeTool !== "measure") return;
+          if (event?.type !== "create" || activeToolRef.current !== "measure") return;
 
           const annotation = event.annotation;
-          const effectiveMmPerPdfPoint = calibratedMmPerPdfPoint ?? presetMmPerPdfPoint(drawingScale);
+          const { mode, scale, unit, calibratedMmPerPdfPoint: calibrated } = measurementConfigRef.current;
+          const effectiveMmPerPdfPoint = calibrated ?? presetMmPerPdfPoint(scale);
 
-          if (measurementMode === "distance" && annotation?.type === PdfAnnotationSubtype.LINE) {
+          if (mode === "distance" && annotation?.type === PdfAnnotationSubtype.LINE) {
             const start = annotation.linePoints?.start;
             const end = annotation.linePoints?.end;
             if (!start || !end) return;
             const pdfDistance = Math.hypot(end.x - start.x, end.y - start.y);
             lastMeasuredPdfValueRef.current = pdfDistance;
-            setMeasurementResult(formatMillimeters(pdfDistance * effectiveMmPerPdfPoint, measurementUnit));
+            setMeasurementResult(formatMillimeters(pdfDistance * effectiveMmPerPdfPoint, unit));
             return;
           }
 
           const vertices = Array.isArray(annotation?.vertices) ? annotation.vertices : [];
-          if (measurementMode === "perimeter" && annotation?.type === PdfAnnotationSubtype.POLYLINE && vertices.length >= 2) {
+          if (mode === "perimeter" && annotation?.type === PdfAnnotationSubtype.POLYLINE && vertices.length >= 2) {
             let distance = 0;
             for (let index = 1; index < vertices.length; index += 1) {
               distance += Math.hypot(vertices[index].x - vertices[index - 1].x, vertices[index].y - vertices[index - 1].y);
             }
             lastMeasuredPdfValueRef.current = distance;
-            setMeasurementResult(formatMillimeters(distance * effectiveMmPerPdfPoint, measurementUnit));
+            setMeasurementResult(formatMillimeters(distance * effectiveMmPerPdfPoint, unit));
             return;
           }
 
-          if (measurementMode === "area" && annotation?.type === PdfAnnotationSubtype.POLYGON && vertices.length >= 3) {
+          if (mode === "area" && annotation?.type === PdfAnnotationSubtype.POLYGON && vertices.length >= 3) {
             let twiceArea = 0;
             for (let index = 0; index < vertices.length; index += 1) {
               const next = vertices[(index + 1) % vertices.length];
@@ -432,7 +449,7 @@ export function PdfViewer({
             }
             const pdfArea = Math.abs(twiceArea) / 2;
             lastMeasuredPdfValueRef.current = null;
-            setMeasurementResult(formatSquareMillimeters(pdfArea * effectiveMmPerPdfPoint * effectiveMmPerPdfPoint, measurementUnit));
+            setMeasurementResult(formatSquareMillimeters(pdfArea * effectiveMmPerPdfPoint * effectiveMmPerPdfPoint, unit));
           }
         });
         if (typeof off === "function") unsubscribers.push(off);
@@ -450,14 +467,15 @@ export function PdfViewer({
           // Native editing owns the tool state. Late reader annotation events
           // (including a nonempty "select" tool) must not close its sidebar.
           if (activeToolRef.current === "edit-content") return;
+          const currentMeasureMode = measurementConfigRef.current.mode;
           const expectedMeasureTool =
-            measurementMode === "area" ? "polygon" :
-            measurementMode === "perimeter" ? "polyline" : "line";
+            currentMeasureMode === "area" ? "polygon" :
+            currentMeasureMode === "perimeter" ? "polyline" : "line";
           if (activeToolRef.current === "measure" &&
               (rawTool === expectedMeasureTool || rawTool.endsWith(":" + expectedMeasureTool))) return;
-          // Changing a non-annotation tool may temporarily clear the native
-          // annotation tool. That must not cancel Redact or Native Edit.
-          if (!rawTool && ["redact", "ai-patch", "edit-content"].includes(activeToolRef.current)) return;
+          // Temporary clears, unselected, or idle states from EmbedPDF must never
+          // demote an intentional active tool to "select".
+          if (!rawTool || rawTool === "none") return;
           const nextTool = mapEmbedPdfToolToActiveTool(rawTool);
           if (!nextTool || nextTool === activeToolRef.current) return;
           preserveNativeToolRef.current = true;
@@ -575,11 +593,6 @@ export function PdfViewer({
     sourceUrl,
     activeRegistry,
     documentReadySource,
-    activeTool,
-    calibratedMmPerPdfPoint,
-    drawingScale,
-    measurementMode,
-    measurementUnit,
     onActivePageChange,
     onDocumentLoaded,
     onError,
