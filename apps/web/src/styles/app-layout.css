@@ -1091,13 +1091,7 @@
     display: none;
   }
 
-  .tpdf-header-actions .tpdf-palette-trigger {
-    display: inline-flex;
-    min-width: 44px;
-    min-height: 44px;
-    align-items: center;
-    justify-content: center;
-  }
+  .tpdf-header-actions .tpdf-palette-trigger { display: none; }
 
   .tpdf-brand-home span {
     display: none;

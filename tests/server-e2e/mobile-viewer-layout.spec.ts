@@ -69,7 +69,7 @@ test.describe("mobile layout and scrolling", () => {
     await page.goto("/?open=" + encodeURIComponent(document.filePath));
     const viewer = page.locator("[data-tpdf-engine='pdfium-wasm']");
     await expect(viewer).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator(".tpdf-mobile-page-action")).toContainText("Page 1 / 2");
+    await expect(page.locator(".tpdf-mobile-dock-status")).toHaveCount(0);
 
     const layout = await page.evaluate(() => {
       const workspace = document.querySelector<HTMLElement>(".workspace");
@@ -95,6 +95,14 @@ test.describe("mobile layout and scrolling", () => {
     expect(layout.pdfBottom).toBeLessThanOrEqual(layout.dockTop + 1);
     await expect(page.locator('[data-tpdf-region="status-bar"]')).toBeHidden();
     await expect(page.locator('[data-tpdf-action="open-ai"]')).toBeHidden();
+    await expect(page.locator(".tpdf-mobile-dock-status")).toBeHidden();
+    await page.locator("embedpdf-container").evaluate((host) => {
+      const shadow = (host as HTMLElement & { shadowRoot?: ShadowRoot }).shadowRoot;
+      const scroller = [...(shadow?.querySelectorAll<HTMLElement>("*") ?? [])]
+        .find((node) => node.scrollHeight > node.clientHeight + 4 && getComputedStyle(node).overflowY === "auto");
+      if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    });
+    await expect(page.locator(".tpdf-mobile-dock-status")).toBeVisible();
     await page.locator(".tpdf-mobile-page-action").click();
     await expect(page.locator(".tpdf-mobile-filmstrip")).toBeVisible();
     await page.getByRole("button", { name: "Close page previews" }).click();

@@ -11,6 +11,11 @@
     height: auto !important;
   }
   .tpdf-mobile-mode-strip {
+    position: absolute;
+    top: 49px;
+    left: 0;
+    right: 0;
+    z-index: 30;
     display: flex;
     flex: 0 0 auto;
     min-width: 0;

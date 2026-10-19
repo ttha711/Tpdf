@@ -47,23 +47,33 @@
     box-shadow: 0 -2px 8px rgb(0 0 0 / 6%);
   }
   .tpdf-mobile-dock-status {
-    min-height: 32px;
+    position: absolute;
+    z-index: 40;
+    left: 50%;
+    bottom: calc(100% + 8px);
+    transform: translateX(-50%);
     display: flex;
-    gap: 12px;
-    justify-content: space-between;
+    gap: 4px;
     align-items: center;
-    padding: 0 12px 2px;
-    color: var(--text-secondary);
+    width: max-content;
+    min-height: 34px;
+    padding: 2px 7px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-toolbar);
+    color: var(--text-primary);
     font-size: 11px;
+    box-shadow: 0 2px 10px rgb(0 0 0 / 16%);
+    animation: tpdf-mobile-status-in 120ms ease-out;
   }
   .tpdf-mobile-page-action {
     background: transparent;
     border: 0;
     color: var(--text-primary);
     font-weight: 600;
-    padding: 4px 8px;
-    min-height: 32px;
-    border-radius: 8px;
+    padding: 4px 6px;
+    min-height: 28px;
+    border-radius: 7px;
   }
   .tpdf-mobile-dock-row {
     display: grid;
@@ -213,13 +223,17 @@
   }
   .tpdf-header-tabs { display: none !important; }
   .tpdf-topbar .tpdf-open-btn { display: none; }
-  .tpdf-topbar .tpdf-mobile-tab-btn,
-  .tpdf-topbar .tpdf-header-icon-btn,
-  .tpdf-topbar .tpdf-mobile-header-save {
+  .tpdf-topbar .tpdf-mobile-tab-btn {
     min-width: 44px;
     min-height: 44px;
     flex: 0 0 44px;
   }
+  .tpdf-topbar .tpdf-mobile-header-save,
+  .tpdf-topbar .tpdf-palette-trigger { display: none !important; }
+}
+@keyframes tpdf-mobile-status-in {
+  from { opacity: 0; transform: translate(-50%, 4px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 @media (max-width: 380px) {
   .tpdf-mobile-dock-action { font-size: 9px; }

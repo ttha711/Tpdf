@@ -75,6 +75,7 @@ export function NativeEditPaintShield({
     let stableFrames = 0;
     const started = performance.now();
     let cancelled = false;
+    let previousRasters: Array<HTMLImageElement | HTMLCanvasElement> = [];
 
     const hide = () => {
       cover.style.display = "none";
@@ -84,17 +85,41 @@ export function NativeEditPaintShield({
 
     const check = () => {
       if (cancelled) return;
-      const raster = cover.parentElement?.querySelector<HTMLImageElement | HTMLCanvasElement>(
-        ".native-edit-viewport .native-edit-page img, .native-edit-viewport .native-edit-page canvas",
-      );
-      const ready = raster instanceof HTMLCanvasElement
-        ? raster.width > 0 && raster.height > 0
-        : raster instanceof HTMLImageElement && raster.complete && raster.naturalWidth > 0;
-      if (ready) stableFrames++;
+      const viewport = cover.parentElement?.querySelector<HTMLElement>(".native-edit-viewport");
+      const viewportBounds = viewport?.getBoundingClientRect();
+      const visiblePages = viewport && viewportBounds
+        ? [...viewport.querySelectorAll<HTMLElement>(".native-edit-page")].filter((page) => {
+          const bounds = page.getBoundingClientRect();
+          return bounds.width > 0 && bounds.height > 0 && bounds.right > viewportBounds.left &&
+            bounds.left < viewportBounds.right && bounds.bottom > viewportBounds.top &&
+            bounds.top < viewportBounds.bottom;
+        })
+        : [];
+      const visibleRasters = visiblePages.map((page) => {
+        const pageRasters = [...page.querySelectorAll<HTMLImageElement | HTMLCanvasElement>("img, canvas")]
+          .filter((raster) => {
+            const style = getComputedStyle(raster);
+            const bounds = raster.getBoundingClientRect();
+            return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) > 0 &&
+              bounds.width > 0 && bounds.height > 0 && bounds.right > viewportBounds!.left &&
+              bounds.left < viewportBounds!.right && bounds.bottom > viewportBounds!.top &&
+              bounds.top < viewportBounds!.bottom;
+          });
+        return pageRasters;
+      });
+      const rasters = visibleRasters.flat();
+      const ready = visiblePages.length > 0 && visibleRasters.every((pageRasters) => pageRasters.length > 0) &&
+        rasters.every((raster) => raster instanceof HTMLCanvasElement
+          ? raster.width > 0 && raster.height > 0
+          : raster.complete && raster.naturalWidth > 0);
+      const sameRasters = rasters.length === previousRasters.length &&
+        rasters.every((raster, index) => raster === previousRasters[index]);
+      if (ready && sameRasters) stableFrames++;
       else stableFrames = 0;
+      previousRasters = rasters;
 
-      // Wait for the new canvas to settle for two paints before uncovering it,
-      // or uncover after safety timeout (2500ms max) so editing is never blocked.
+      // Every visible page and raster layer must paint and remain stable for
+      // three frames, or the safety timeout releases the shield after 2500ms.
       if (stableFrames >= 3 || performance.now() - started > 2500) {
         hide();
         return;

@@ -157,6 +157,38 @@ test.describe('public real-world CAD reference PDFs', () => {
         }));
         const replacement = 'TPDF CAD TEST ' + fixture.id;
         await input.fill(replacement);
+        await page.evaluate(() => {
+          const shield = document.querySelector<HTMLElement>('.native-edit-paint-shield');
+          if (!shield) throw new Error('Native edit paint shield is missing');
+          const recordReadyState = () => {
+            const viewport = shield.parentElement?.querySelector<HTMLElement>('.native-edit-viewport');
+            const bounds = viewport?.getBoundingClientRect();
+            const pages = viewport && bounds
+              ? [...viewport.querySelectorAll<HTMLElement>('.native-edit-page')].filter((page) => {
+                const rect = page.getBoundingClientRect();
+                return rect.width > 0 && rect.height > 0 && rect.right > bounds.left && rect.left < bounds.right &&
+                  rect.bottom > bounds.top && rect.top < bounds.bottom;
+              })
+              : [];
+            const rasters = pages.flatMap((page) => [...page.querySelectorAll<HTMLImageElement | HTMLCanvasElement>('img, canvas')]
+              .filter((raster) => {
+                const style = getComputedStyle(raster);
+                const rect = raster.getBoundingClientRect();
+                return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) > 0 &&
+                  rect.width > 0 && rect.height > 0 && rect.right > bounds!.left && rect.left < bounds!.right &&
+                  rect.bottom > bounds!.top && rect.top < bounds!.bottom;
+              }));
+            const ready = rasters.filter((raster) => raster instanceof HTMLCanvasElement
+              ? raster.width > 0 && raster.height > 0
+              : raster.complete && raster.naturalWidth > 0).length;
+            document.documentElement.dataset.tpdfShieldHideState = JSON.stringify({
+              visiblePages: pages.length, rasters: rasters.length, ready,
+            });
+          };
+          new MutationObserver(() => {
+            if (shield.style.display === 'none' && shield.childElementCount === 0) recordReadyState();
+          }).observe(shield, { attributes: true, attributeFilter: ['style', 'class'], childList: true });
+        });
         // Dense CAD documents can commit on blur while the textarea is
         // resizing/re-rendering. Do not re-resolve an already removed input:
         // Enter is dispatched to the current focus, and persistence below is
@@ -169,6 +201,14 @@ test.describe('public real-world CAD reference PDFs', () => {
           await expect(editor.locator('.native-content-editor__message'))
             .toContainText('Text applied. Check the Save status in the toolbar.', { timeout: 90_000 });
           await expect(input).toHaveCount(0, { timeout: 10_000 });
+          await expect.poll(() => page.evaluate(() => document.documentElement.dataset.tpdfShieldHideState ?? null))
+            .not.toBeNull();
+          const shieldState = await page.evaluate(() => JSON.parse(
+            document.documentElement.dataset.tpdfShieldHideState ?? '{}',
+          ) as { visiblePages: number; rasters: number; ready: number });
+          expect(shieldState.visiblePages).toBeGreaterThan(0);
+          expect(shieldState.rasters).toBeGreaterThan(0);
+          expect(shieldState.ready).toBe(shieldState.rasters);
         } catch (error) {
           await logFailureState(page, fixture.id, 'inline-apply');
           console.log(JSON.stringify({ fixture: fixture.id, browserErrors: pageErrors }));

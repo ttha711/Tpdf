@@ -70,7 +70,7 @@ export function buildCompactToolsMenuItems(args: CompactToolsArgs): MenuItemDef[
         { kind: "action", label: "Run OCR", icon: "ocr", disabled: !hasDocument, onClick: runOcr },
         { kind: "action", label: "Page Numbers...", icon: "hash", disabled: !hasDocument, onClick: () => openDocumentMarkupTool("page-numbers") },
         { kind: "action", label: "Header...", icon: "header", disabled: !hasDocument, onClick: () => openDocumentMarkupTool("header") },
-        { kind: "action", label: "Footer...", icon: "file-text", disabled: !hasDocument, onClick: () => openDocumentMarkupTool("footer") },
+        { kind: "action", label: "Footer...", icon: "page-bottom", disabled: !hasDocument, onClick: () => openDocumentMarkupTool("footer") },
         { kind: "action", label: "Bates Numbering...", icon: "bates", disabled: !hasDocument, onClick: () => openDocumentMarkupTool("bates") },
         { kind: "action", label: "Watermark...", icon: "watermark", disabled: !hasDocument, onClick: addWatermark },
       ],
