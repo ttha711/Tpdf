@@ -30,6 +30,7 @@ export function MobilePdfDock({
   const [nativeCommand, setNativeCommand] = useState("");
   const [availability, setAvailability] = useState<Record<string, boolean>>({});
   const [measureSelection, setMeasureSelection] = useState("distance");
+  const [scrollStatusVisible, setScrollStatusVisible] = useState(false);
 
   useEffect(() => {
     const open = () => setSheetOpen(true);
@@ -50,6 +51,77 @@ export function MobilePdfDock({
       window.removeEventListener("tpdf:embedpdf-mode-changed", onMode);
       window.removeEventListener("tpdf:embedpdf-tool-changed", onTool);
       window.removeEventListener("tpdf:embedpdf-command-availability", onAvailability);
+    };
+  }, []);
+  useEffect(() => {
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    let shadowObserver: MutationObserver | null = null;
+    let viewerObserver: MutationObserver | null = null;
+    const scrollTargets = new Set<HTMLElement>();
+    let embedHost: (HTMLElement & { shadowRoot?: ShadowRoot | null }) | null = null;
+    const viewerRoot = document.querySelector<HTMLElement>(".viewer-shell")
+      ?? document.querySelector<HTMLElement>(".viewer-area");
+    const showStatus = () => {
+      setScrollStatusVisible(true);
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        setScrollStatusVisible(false);
+        idleTimer = null;
+      }, 3000);
+    };
+    const bindScrollTarget = (target: HTMLElement) => {
+      if (scrollTargets.has(target)) return;
+      scrollTargets.add(target);
+      target.addEventListener("scroll", showStatus, { passive: true });
+    };
+    const onDocumentScroll = (event: Event) => {
+      const fromViewer = event.composedPath().some((target) =>
+        target instanceof Element && (target.matches(".viewer-shell") || Boolean(target.closest(".viewer-shell"))),
+      );
+      if (fromViewer) showStatus();
+    };
+    const scanViewerScrollTargets = () => {
+      if (viewerRoot) bindScrollTarget(viewerRoot);
+      const host = viewerRoot?.querySelector("embedpdf-container") as (HTMLElement & { shadowRoot?: ShadowRoot | null }) | null;
+      if (host && embedHost !== host) {
+        shadowObserver?.disconnect();
+        shadowObserver = null;
+        embedHost?.removeEventListener("epdf:ready", scanViewerScrollTargets);
+        embedHost = host;
+        embedHost.addEventListener("epdf:ready", scanViewerScrollTargets);
+      }
+      const shadow = embedHost?.shadowRoot;
+      if (!shadow || shadowObserver) return;
+      const bindShadowScrollTargets = () => {
+        for (const target of scrollTargets) {
+          if (target.isConnected) continue;
+          target.removeEventListener("scroll", showStatus);
+          scrollTargets.delete(target);
+        }
+        shadow.querySelectorAll<HTMLElement>("*").forEach((element) => {
+          const overflow = getComputedStyle(element).overflowY;
+          if ((overflow === "auto" || overflow === "scroll") && element.scrollHeight > element.clientHeight) {
+            bindScrollTarget(element);
+          }
+        });
+      };
+      bindShadowScrollTargets();
+      shadowObserver = new MutationObserver(bindShadowScrollTargets);
+      shadowObserver.observe(shadow, { childList: true, subtree: true });
+    };
+    if (viewerRoot) {
+      viewerObserver = new MutationObserver(scanViewerScrollTargets);
+      viewerObserver.observe(viewerRoot, { childList: true, subtree: true });
+    }
+    scanViewerScrollTargets();
+    document.addEventListener("scroll", onDocumentScroll, true);
+    return () => {
+      document.removeEventListener("scroll", onDocumentScroll, true);
+      viewerObserver?.disconnect();
+      shadowObserver?.disconnect();
+      embedHost?.removeEventListener("epdf:ready", scanViewerScrollTargets);
+      scrollTargets.forEach((target) => target.removeEventListener("scroll", showStatus));
+      if (idleTimer) clearTimeout(idleTimer);
     };
   }, []);
   useEffect(() => {
@@ -99,15 +171,15 @@ export function MobilePdfDock({
 
   return (
     <nav className="tpdf-mobile-dock" data-tpdf-region="mobile-dock" aria-label="Mobile PDF actions">
-      <div className="tpdf-mobile-dock-status">
+      {scrollStatusVisible && <div className="tpdf-mobile-dock-status" role="status" aria-live="polite">
         <button type="button" className="tpdf-mobile-page-action" onClick={onShowPages}
           aria-label="Choose page">Page {page} / {totalPages || "…"}</button>
         <span aria-label={`Zoom ${Math.round(zoom * 100)} percent`}>{Math.round(zoom * 100)}%</span>
-      </div>
+      </div>}
       <div className="tpdf-mobile-dock-row" role="toolbar" aria-label="Document actions">
         {activeTool === "edit-content"
           ? action("Done editing", "view", onDoneEditing)
-          : action("Read", "view", () => {
+          : action("Select", "pointer", () => {
             onToolChange("select");
             switchMobilePdfMode("view");
             setMode("view");

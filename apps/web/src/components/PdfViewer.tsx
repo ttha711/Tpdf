@@ -34,6 +34,7 @@ import {
   type MeasurementUnit,
 } from "../lib/measurement";
 import { useEmbedPdfOverlaySync } from "../hooks/useEmbedPdfOverlaySync";
+import { useMobileEmbedPdfToolbarLayout } from "../hooks/useMobileEmbedPdfToolbarLayout";
 import { MobilePdfModeStrip } from "./MobilePdfModeStrip";
 import { useEmbedPdfMobileCommands } from "../hooks/useEmbedPdfMobileCommands";
 
@@ -69,6 +70,7 @@ export function PdfViewer({
   const [localUrl, setLocalUrl] = useState<string | null>(null);
   const viewerRootRef = useRef<HTMLDivElement>(null);
   useEmbedPdfOverlaySync(viewerRootRef);
+  useMobileEmbedPdfToolbarLayout(viewerRootRef, Boolean(onActiveToolChange));
   const viewerReadySourceRef = useRef<string | null>(null);
   const [documentReadySource, setDocumentReadySource] = useState<string | null>(null);
   const localSourceKeyRef = useRef<Uint8Array | Blob | null>(null);
@@ -827,15 +829,15 @@ export function PdfViewer({
           onClose={() => onActiveToolChange?.("select")}
         />
       ) : null}
-      {onActiveToolChange ? (
-        <MobilePdfModeStrip activeTool={activeTool} onActiveToolChange={onActiveToolChange} />
-      ) : null}
       <EmbedPdfViewer
         key={sourceUrl}
         config={config as any}
         onReady={(registry: any) => setReadyViewer({ sourceUrl, registry })}
         style={{ width: "100%", height: "100%", minHeight: 0, flex: "1 1 0%", display: "block" }}
       />
+      {onActiveToolChange ? (
+        <MobilePdfModeStrip activeTool={activeTool} onActiveToolChange={onActiveToolChange} />
+      ) : null}
     </div>
   );
 }
