@@ -6,11 +6,6 @@ import { createAgentWebText } from "./tpdf-agent-web-text.mjs";
 export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, sendJson, sendError, readJsonBody, maxBytes, serveDocument }) {
   const text = createAgentWebText({ storage });
   const prefix = "/api/tpdf/agent/v1";
-  const scoped = (req, url) => tenantRuntime.run(
-    auth.authorize(req, url).user,
-    auth.authorizeIdentity.projectId,
-    () => {},
-  );
   async function loadDocument(id) {
     const record = await storage.getDocument(assertDocumentId(id));
     if (!record || record.size <= 0) throw Object.assign(new Error("Document not found."), { statusCode: 404 });
