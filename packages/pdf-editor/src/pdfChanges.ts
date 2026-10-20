@@ -28,26 +28,35 @@ export async function applyChanges(bytes: Uint8Array, changes: PdfChange[]): Pro
       doc.getForm().getTextField(edit.field).setText(edit.value.slice(0, 2000));
     }
   }
+  const order = [...origin];
+  let structural = false;
   for (const edit of changes) {
     if (edit.kind === "rotate") {
-      const page = doc.getPage(edit.page - 1);
+      const page = order[edit.page - 1];
+      if (!page) throw new Error("Invalid page number.");
       page.setRotation(pdf.degrees((page.getRotation().angle + 90) % 360));
     } else if (edit.kind === "delete") {
-      if (doc.getPageCount() < 2) throw new Error("Cannot delete the last page.");
-      doc.removePage(edit.page - 1);
+      if (order.length <= 1 || !order[edit.page - 1]) throw new Error("Cannot delete this page.");
+      order.splice(edit.page - 1, 1);
+      structural = true;
     } else if (edit.kind === "insert") {
-      const index = Math.max(0, Math.min(doc.getPageCount(), edit.page));
-      doc.insertPage(index, [612, 792]);
+      order.splice(Math.max(0, Math.min(order.length, edit.page)), 0, doc.addPage([612, 792]));
+      structural = true;
     } else if (edit.kind === "move") {
-      const current = doc.getPage(edit.page - 1);
-      const order = doc.getPages().filter((page) => page !== current);
-      order.splice(Math.max(0, Math.min(order.length, edit.to - 1)), 0, current);
-      // Rebuild via copyPages to preserve the visual PDF; forms may flatten.
-      const reordered = await pdf.PDFDocument.create();
-      const copied = await reordered.copyPages(doc, order.map((page) => doc.getPages().indexOf(page)));
-      copied.forEach((page) => reordered.addPage(page));
-      return new Uint8Array(await reordered.save());
+      const moving = order.splice(edit.page - 1, 1)[0];
+      if (!moving) throw new Error("Invalid page number.");
+      order.splice(Math.max(0, Math.min(order.length, edit.to - 1)), 0, moving);
+      structural = true;
     }
+  }
+  if (structural) {
+    // Copying page streams preserves visual content but may discard AcroForm
+    // interactivity; do not claim form preservation across structural changes.
+    const reordered = await pdf.PDFDocument.create();
+    const sourcePages = doc.getPages();
+    const copied = await reordered.copyPages(doc, order.map((page) => sourcePages.indexOf(page)));
+    copied.forEach((page) => reordered.addPage(page));
+    return new Uint8Array(await reordered.save());
   }
   return new Uint8Array(await doc.save());
 }
