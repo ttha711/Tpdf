@@ -68,3 +68,10 @@
 .tpdf-app-tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
 .tpdf-editor .tpdf-app-tool-grid button{min-height:62px;display:flex;gap:8px;flex-direction:column;justify-content:center;align-items:center;font-size:12px;white-space:normal;overflow-wrap:anywhere;text-align:center;padding:7px}
 @media(max-width:430px){.tpdf-app-topbar{height:56px}.tpdf-app-logo{min-width:34px}.tpdf-app-file strong{font-size:15px}.tpdf-editor .tpdf-app-tabs button{padding:0 13px}.tpdf-app-modebar{gap:3px}.tpdf-app-modebar .tpdf-app-icon{min-width:44px}.tpdf-app-viewer-badge{font-size:11px}}
+
+/* Pinned All tools entry mirrors the mobile Tpdf strip while the other tabs scroll. */
+.tpdf-app-tabs{overflow:hidden;align-items:stretch}
+.tpdf-app-tab-scroll{display:flex;flex:1 1 auto;min-width:0;align-items:stretch;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.tpdf-app-tab-scroll::-webkit-scrollbar{display:none}
+.tpdf-editor .tpdf-app-tabs .tpdf-app-tab-all{flex:0 0 auto;margin:4px 5px 4px 2px;padding:0 12px;min-height:44px;background:var(--tpdf-input,#f3f4f6);border:1px solid var(--tpdf-border,#cdd6e2);border-radius:12px}
+.tpdf-editor .tpdf-app-tabs .tpdf-app-tab-all[aria-selected="true"]{background:#e8effd}
