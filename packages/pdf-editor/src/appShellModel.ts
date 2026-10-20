@@ -1,5 +1,5 @@
 import type { PdfTool } from "./types.js";
-import { ASSET_TOOL, TEXT_MARKUP } from "./p1Types.js";
+import { ASSET_TOOL, TEXT_MARKUP, P1_TOOLS } from "./p1Types.js";
 export type ShellTab = "view" | "annotate" | "shapes" | "insert" |
   "forms" | "redact" | "measure" | "all";
 export const SHELL_TABS: ShellTab[] = ["view", "annotate", "shapes", "insert", "forms", "all"];
@@ -38,21 +38,24 @@ export const SHELL_BUILTINS: ShellBuiltin[] = [
   { id: "form", group: "forms", label: "form" },
 ];
 export function enabledBuiltin(item: ShellBuiltin, canEdit: boolean, canForms: boolean,
-  canText = false, canAsset = false): boolean {
+  canText = false, canAsset = false, canP1 = false): boolean {
   if (item.stage) return false;
   if (item.id === "pages" || item.id === "fit" || item.id === "region" ||
       item.id.startsWith("zoom")) return true;
   if (item.id === "form") return canForms;
+  if (item.id === "style" || item.id === "shapeStyle") return canEdit && canP1;
   if (item.id === "highlight") return canEdit;
+  if (P1_TOOLS.includes(item.id as typeof P1_TOOLS[number]) && item.id !== "signature" &&
+      !canP1) return false;
   if (TEXT_MARKUP.some((tool) => tool === item.id)) return canEdit && canText;
   if (item.id === "signature") return canEdit;
   if (ASSET_TOOL.some((tool) => tool === item.id)) return canEdit && canAsset;
   return canEdit;
 }
 export function visibleBuiltins(tab: ShellTab, canEdit: boolean, canForms: boolean,
-  canText = false, canAsset = false) {
+  canText = false, canAsset = false, canP1 = false) {
   return SHELL_BUILTINS.filter((item) => (tab === "all" || item.group === tab) &&
-    enabledBuiltin(item, canEdit, canForms, canText, canAsset));
+    enabledBuiltin(item, canEdit, canForms, canText, canAsset, canP1));
 }
 export const APP_WORDS = {
   vi: { view: "Xem", annotate: "Chú thích", shapes: "Hình dạng", insertTab: "Chèn",
