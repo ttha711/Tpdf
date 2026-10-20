@@ -85,7 +85,11 @@ export async function createPdfiumOcrRenderer(pdfBytes) {
     async renderPage(pageIndex) {
       const page = document.pages[pageIndex];
       if (!page) throw new Error(`OCR page ${pageIndex + 1} does not exist.`);
-      const raw = await engine.renderPageRaw(document, page).toPromise();
+      // 72 DPI default makes 14pt engineering text too small for reliable OCR.
+      // A 150-DPI image matches the raster-export path used by Agent Web.
+      const raw = await engine.renderPageRaw(document, page, {
+        scaleFactor: 150 / 72,
+      }).toPromise();
       return {
         bytes: encodeRgbaPng(raw),
         width: raw.width,
