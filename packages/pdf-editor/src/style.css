@@ -28,3 +28,8 @@
 .tpdf-error{padding:6px 10px;background:#fce8e8;color:#9a1515}
 .tpdf-editor[data-density="office"] .tpdf-toolbar{padding:4px;gap:4px}
 @media(max-width:430px){.tpdf-toolbar{max-height:180px}.tpdf-editor input{max-width:120px}.tpdf-scroll{padding:8px 4px}}
+
+.tpdf-editor .tpdf-thumb{min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px;overflow:hidden;padding:6px}
+.tpdf-editor .tpdf-thumb .tpdf-page{margin:0;max-width:100%;overflow:hidden;pointer-events:none}
+.tpdf-editor .tpdf-thumb .tpdf-page-overlay{pointer-events:none}
+.tpdf-editor .tpdf-thumb span{font-size:11px}

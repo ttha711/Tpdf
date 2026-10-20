@@ -5,28 +5,39 @@ import { normalizeRegion } from "./history.js";
 import type { Mark } from "./history.js";
 import type { PdfRegion, PdfTool } from "./types.js";
 
-export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight, onRegion, readOnly }: {
+type PageSize = { width: number; height: number };
+export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight, onRegion, readOnly,
+  firstPageSize = { width: 612, height: 792 }, rasterEnabled, onVisibility }: {
   pdf: PDFDocumentProxy; number: number; scale: number; parent: HTMLElement | null; tool: PdfTool;
-  marks: Mark[]; highlight: PdfRegion | null;
+  marks: Mark[]; highlight: PdfRegion | null; firstPageSize?: PageSize;
   onRegion: (value: PdfRegion, points?: Array<[number, number]>) => void; readOnly: boolean;
+  rasterEnabled?: boolean; onVisibility?: (page: number, near: boolean) => void;
 }) {
   const element = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const gesture = useRef<{ start: [number, number]; points: Array<[number, number]> } | null>(null);
   const [near, setNear] = useState(false);
-  const [size, setSize] = useState({ width: 612, height: 792 });
+  const [painted, setPainted] = useState(false);
+  const [size, setSize] = useState(firstPageSize);
+  useEffect(() => setSize(firstPageSize), [pdf, firstPageSize.width, firstPageSize.height]);
   useEffect(() => {
     if (!element.current || !parent) return;
-    const observer = new IntersectionObserver(([entry]) => setNear(entry.isIntersecting),
-      { root: parent, rootMargin: "550px 0px" });
+    const observer = new IntersectionObserver(([entry]) => {
+      setNear(entry.isIntersecting);
+      onVisibility?.(number, entry.isIntersecting);
+    }, { root: parent, rootMargin: "550px 0px" });
     observer.observe(element.current);
-    return () => observer.disconnect();
-  }, [parent]);
+    return () => { observer.disconnect(); onVisibility?.(number, false); };
+  }, [parent, number, onVisibility]);
+  const renderNow = near && (rasterEnabled ?? true);
   useEffect(() => {
-    if (!near || !canvas.current) return;
+    if (!renderNow || !canvas.current) { setPainted(false); return; }
     let cancelled = false;
     let task: ReturnType<Awaited<ReturnType<PDFDocumentProxy["getPage"]>>["render"]> | undefined;
+    let pageRef: Awaited<ReturnType<PDFDocumentProxy["getPage"]>> | undefined;
+    setPainted(false);
     void pdf.getPage(number).then(async (page) => {
+      pageRef = page;
       if (cancelled || !canvas.current) return;
       const viewport = page.getViewport({ scale });
       setSize({ width: viewport.width / scale, height: viewport.height / scale });
@@ -36,12 +47,13 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
       const ctx = target.getContext("2d");
       if (!ctx) return;
       task = page.render({ canvasContext: ctx, viewport });
-      try { await task.promise; } finally { page.cleanup(); }
+      await task.promise;
+      if (!cancelled) setPainted(true);
     }).catch((error) => {
       if (!cancelled && error?.name !== "RenderingCancelledException") console.error("PDF page", error);
-    });
+    }).finally(() => { pageRef?.cleanup(); });
     return () => { cancelled = true; task?.cancel(); };
-  }, [pdf, number, scale, near]);
+  }, [pdf, number, scale, renderNow]);
   function coords(e: PointerEvent<HTMLDivElement>): [number, number] {
     const rect = e.currentTarget.getBoundingClientRect();
     return [
@@ -55,12 +67,12 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
     if (!state) return;
     const end = coords(e);
     const region = normalizeRegion(number, ...state.start, ...end);
-    if (!region) return;
-    onRegion(region, tool === "draw" ? [...state.points, end] : undefined);
+    if (region) onRegion(region, tool === "draw" ? [...state.points, end] : undefined);
   }
   return <div ref={element} data-tpdf-page={number} role="group" aria-label={"PDF page " + number}
     className="tpdf-page" style={{ width: size.width * scale, height: size.height * scale }}>
-    {near && <canvas ref={canvas} className="tpdf-page-canvas" aria-hidden="true" />}
+    {renderNow && <canvas ref={canvas} data-tpdf-painted={painted ? "true" : undefined}
+      className="tpdf-page-canvas" aria-hidden="true" />}
     <div className="tpdf-page-overlay" aria-label={"Select area on page " + number}
       onPointerDown={(e) => { if (readOnly) return; e.currentTarget.setPointerCapture(e.pointerId);
         const start = coords(e); gesture.current = { start, points: [start] }; }}

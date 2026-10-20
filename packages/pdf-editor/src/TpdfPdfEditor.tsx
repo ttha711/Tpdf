@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { usePdfEngine } from "./usePdfEngine.js";
 import { PageSurface } from "./PageSurface.js";
+import { useRasterBudget } from "./useRasterBudget.js";
 import { validRegion, type Mark } from "./history.js";
 import type { PdfRegion, PdfSearchHit, PdfTool, PdfVersion, TpdfPdfEditorHandle, TpdfPdfEditorProps } from "./types.js";
 
@@ -21,6 +22,7 @@ const words = {
 
 export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>(function TpdfPdfEditor(props, ref) {
   const engine = usePdfEngine(props);
+  const budget = useRasterBudget(props.rasterCachePages);
   const root = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const [scrollNode, setScrollNode] = useState<HTMLElement | null>(null);
@@ -34,7 +36,8 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   const [fields, setFields] = useState<string[] | null>(null);
   const [versions, setVersions] = useState<PdfVersion[] | null>(null);
   const text = { ...words[props.locale || "vi"], ...props.messages };
-  const scale = engine.zoom === "fit" ? Math.max(0.25, Math.min(2, (viewWidth - 42) / 612)) : engine.zoom;
+  const scale = engine.zoom === "fit"
+    ? Math.max(0.05, Math.min(2, (viewWidth - 42) / engine.firstPageSize.width)) : engine.zoom;
   const marks: Mark[] = engine.history.current.filter((op) => op.kind === "mark").map((op) => op.mark);
   useEffect(() => {
     setScrollNode(scroller.current);
@@ -60,16 +63,17 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     }, undo: engine.undo, redo: engine.redo,
   }));
   useEffect(() => { props.onPageChange?.(engine.page); }, [engine.page, props.onPageChange]);
+  useEffect(() => { budget.clear(); }, [grid, engine.pdf]);
   function selected(value: PdfRegion, points?: Array<[number, number]>) {
     setRegion(value); props.onRegionSelected?.(value);
-    if (props.readOnly || tool === "region") return;
+    if (engine.viewOnly || tool === "region") return;
     engine.record({ kind: "mark", mark: { type: tool, region: value,
       value: tool === "note" || tool === "signature" ? note : undefined, points } });
   }
   function keyboard(event: React.KeyboardEvent<HTMLDivElement>) {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
       event.preventDefault(); void engine.save();
-    } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z" && !props.readOnly) {
+    } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z" && !engine.viewOnly) {
       event.preventDefault(); if (event.shiftKey) engine.redo(); else engine.undo();
     }
   }
@@ -96,10 +100,10 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
         <option value="fit">{text.fit}</option>
         {[0.25, 0.5, 1, 2].map((n) => <option key={n} value={n}>{n * 100}%</option>)}
       </select>
-      <input aria-label={text.search} value={query} placeholder={text.search}
+      {!engine.large && <><input aria-label={text.search} value={query} placeholder={text.search}
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={(event) => { if (event.key === "Enter") void engine.search(query).then(setResults); }} />
-      <button type="button" onClick={() => void engine.search(query).then(setResults)}>{text.search}</button>
+      <button type="button" onClick={() => void engine.search(query).then(setResults)}>{text.search}</button></>}
       <select aria-label="Annotation tool" value={tool}
         onChange={(event) => setTool(event.target.value as PdfTool)}>
         {(["region", "highlight", "note", "draw", "cover", "signature"] as PdfTool[])
@@ -107,7 +111,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       </select>
       {(tool === "note" || tool === "signature") && <input aria-label={text[tool]}
         value={note} onChange={(event) => setNote(event.target.value)} maxLength={160} />}
-      {!props.readOnly && <>
+      {!engine.viewOnly && <>
         <button type="button" onClick={engine.undo} disabled={!engine.history.past.length}>{text.undo}</button>
         <button type="button" onClick={engine.redo} disabled={!engine.history.future.length}>{text.redo}</button>
         <button type="button" onClick={() => engine.record({ kind: "rotate", page: engine.page })}>{text.rotate}</button>
@@ -115,14 +119,15 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
         <button type="button" onClick={() => engine.record({ kind: "insert", page: engine.page })}>{text.insert}</button>
         <button type="button" onClick={() => engine.record({ kind: "move", page: engine.page, to: Math.max(1, engine.page - 1) })}>{text.moveUp}</button>
         <button type="button" onClick={() => engine.record({ kind: "move", page: engine.page, to: engine.page + 1 })}>{text.moveDown}</button>
-        <button type="button" onClick={() => void engine.formFields().then(setFields)}>{text.form}</button>
-        {props.adapter.runOcr && <button type="button" onClick={() => void engine.ocr()}>{text.ocr}</button>}
+        {!engine.large && <button type="button" onClick={() => void engine.formFields().then(setFields)}>{text.form}</button>}
+        {!engine.large && props.adapter.runOcr && <button type="button" onClick={() => void engine.ocr()}>{text.ocr}</button>}
         <button type="button" disabled={!engine.dirty || engine.busy} onClick={() => void engine.save()}>{text.save}{engine.dirty ? " ●" : ""}</button>
       </>}
       {props.adapter.listVersions && <button type="button" onClick={() => void props.adapter.listVersions!().then(setVersions).catch(
         (err) => engine.report("versions", err))}>{text.versions}</button>}
     </div>
     {engine.busy && <div className="tpdf-status" role="status">{text.loading}</div>}
+    {engine.large && !props.adapter.applyChanges && <div className="tpdf-status" role="status">Large PDF: viewing only until host provides applyChanges.</div>}
     {engine.error && <div className="tpdf-error" role="alert">{engine.error}</div>}
     {fields && <div className="tpdf-inline-panel">{fields.map((field) =>
       <label key={field}>{field}<input disabled={props.readOnly} aria-label={field}
@@ -133,11 +138,19 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       <button key={r.page} onClick={() => goto(r.page)}>{r.page}: {r.snippet.slice(0, 75)}</button>)}</div>}
     <div ref={scroller} className="tpdf-scroll" onScroll={scroll}>
       {grid ? <div className="tpdf-page-grid">{Array.from({ length: engine.pdf?.numPages || 0 }, (_, i) =>
-        <button type="button" key={i} onClick={() => goto(i + 1)}>{text.pages} {i + 1}</button>)}</div>
+        <button className="tpdf-thumb" type="button" key={i} onClick={() => goto(i + 1)}>
+          {engine.pdf && <PageSurface pdf={engine.pdf} number={i + 1}
+            scale={Math.min(0.2, 120 / engine.firstPageSize.width)}
+            firstPageSize={engine.firstPageSize} parent={scrollNode} tool="region"
+            marks={[]} highlight={null} onRegion={() => {}} readOnly
+            rasterEnabled={budget.active.has(i + 1)} onVisibility={budget.mark} />}
+          <span>{text.pages} {i + 1}</span>
+        </button>)}</div>
         : engine.pdf && Array.from({ length: engine.pdf.numPages }, (_, i) =>
           <PageSurface key={i} pdf={engine.pdf!} number={i + 1} scale={scale} parent={scrollNode}
-            tool={tool} marks={marks} highlight={region} onRegion={selected}
-            readOnly={Boolean(props.readOnly) && tool !== "region"} />)}
+            firstPageSize={engine.firstPageSize} rasterEnabled={budget.active.has(i + 1)}
+            onVisibility={budget.mark} tool={tool} marks={marks} highlight={region}
+            onRegion={selected} readOnly={engine.viewOnly && tool !== "region"} />)}
     </div>
     {props.children}
   </div>;
