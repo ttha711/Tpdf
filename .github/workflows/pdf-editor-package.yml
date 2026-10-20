@@ -1,0 +1,51 @@
+name: PDF Editor Package
+on:
+  push:
+    branches:
+      - feat/pdf-editor-react-library
+    tags:
+      - 'pdf-editor-v*'
+  pull_request:
+    paths:
+      - 'packages/pdf-editor/**'
+      - 'examples/next-host/**'
+      - 'docs/PDF_EDITOR_PACKAGE.md'
+      - 'package-lock.json'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install monorepo dependencies (no Electron postinstall)
+        run: npm ci --ignore-scripts
+      - name: Build library, type declarations, size budget
+        run: npm run build --workspace=@tpdf/pdf-editor
+      - name: Run deterministic offline package tests
+        run: npm test --workspace=@tpdf/pdf-editor
+      - name: Install jsdom for optional DOM event test
+        run: npm install --no-save --package-lock=false jsdom@25
+      - name: Run jsdom event regression
+        run: node --test packages/pdf-editor/tests/events-jsdom.test.mjs
+      - name: Create npm tarball
+        run: |
+          mkdir -p release
+          npm pack --workspace=@tpdf/pdf-editor --pack-destination release
+          tar -tzf release/*.tgz | grep 'package/dist/index.d.ts'
+          tar -tzf release/*.tgz | grep 'package/dist/style.css'
+          cat packages/pdf-editor/dist/size-report.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tpdf-pdf-editor-tarball
+          path: release/*.tgz
+      - name: Publish GitHub tag release (package tarball, not npm publish)
+        if: startsWith(github.ref, 'refs/tags/pdf-editor-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.tgz
