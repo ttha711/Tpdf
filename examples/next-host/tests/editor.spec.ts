@@ -30,9 +30,12 @@ test("two-page PDF can be marked and saved through host adapter with Ctrl+S", as
     const errors = await page.locator('[role="alert"]').allTextContents();
     throw new Error("saveVersion was not committed: " + errors.join(" | "));
   }
-  await expect(page.getByTestId("saved")).toContainText("changed=true", { timeout: 30000 });
-  await expect(page.getByTestId("saved")).toContainText("annotation=true");
-  await expect(page.getByTestId("saved")).toContainText("bytes");
+  const savedText = await page.getByTestId("saved").innerText();
+  if (!savedText.includes("changed=true") || !savedText.includes("annotation=true") ||
+      !savedText.includes("bytes")) {
+    const alerts = await page.locator('[role="alert"]').allTextContents();
+    throw new Error("Unexpected adapter save result: " + savedText + " | " + alerts.join("; "));
+  }
 });
 test("toolbar fits a 390px host and emits area percentages", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 840 });
