@@ -55,8 +55,8 @@ test("catalog shows P1 and future phases locked until supported", () => {
   for(const tool of P1_TOOLS) assert.ok(SHELL_BUILTINS.some((item) => item.id === tool));
   for(const id of ["redact","replaceText","distance","calibrate","textField","attachment","link"]) {
     const item = SHELL_BUILTINS.find((value) => value.id === id);
-    assert.ok(item, id); assert.equal(enabledBuiltin(item,true,true,true,true),false);
+    assert.ok(item, id); assert.equal(enabledBuiltin(item,true,true,true,true,true),false);
   }
-  assert.equal(enabledBuiltin(SHELL_BUILTINS.find((x)=>x.id==="underline"),true,false,false,false),false);
-  assert.equal(enabledBuiltin(SHELL_BUILTINS.find((x)=>x.id==="underline"),true,false,true,false),true);
+  assert.equal(enabledBuiltin(SHELL_BUILTINS.find((x)=>x.id==="underline"),true,false,false,false,true),false);
+  assert.equal(enabledBuiltin(SHELL_BUILTINS.find((x)=>x.id==="underline"),true,false,true,false,true),true);
 });
