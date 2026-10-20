@@ -111,6 +111,11 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   function builtIn(id: string) {
     if (id === "pages") { setGrid((value) => !value); return; }
     if (id === "fit") { setZoom("fit"); return; }
+    if (id.startsWith("zoom")) {
+      const percent = Number(id.slice(4));
+      if (Number.isFinite(percent) && percent >= 25 && percent <= 800) setZoom(percent / 100);
+      return;
+    }
     if (id === "form") { void engine.formFields().then(setFields); return; }
     if (!canEdit) return;
     if (id === "rotate" || id === "delete" || id === "insert") {
