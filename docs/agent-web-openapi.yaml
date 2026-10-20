@@ -1,0 +1,186 @@
+openapi: 3.1.0
+info:
+  title: Tpdf Agent Web Bridge
+  version: 1.0.0-preview
+  description: Project-scoped PDF processing. Operations always create new document IDs.
+servers:
+  - url: /
+security:
+  - AgentWebIdentity: []
+components:
+  securitySchemes:
+    AgentWebIdentity:
+      type: apiKey
+      in: header
+      name: x-tpdf-agent-web-identity
+      description: Payload base64url dot HMAC-SHA256 base64url, signed for the exact request method and path.
+  schemas:
+    Document:
+      type: object
+      required: [id, fileName, size, url]
+      properties:
+        id: { type: string, format: uuid }
+        fileName: { type: string }
+        size: { type: integer }
+        url: { type: string }
+    Region:
+      type: object
+      required: [page, x, y, width, height]
+      properties:
+        page: { type: integer, minimum: 1 }
+        x: { type: number, minimum: 0, maximum: 100 }
+        y: { type: number, minimum: 0, maximum: 100 }
+        width: { type: number, exclusiveMinimum: 0, maximum: 100 }
+        height: { type: number, exclusiveMinimum: 0, maximum: 100 }
+        note: { type: string }
+    Operation:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [rotate, delete, reorder, split, crop, merge, fill-form, mark-region]
+        pages: { type: array, items: { type: integer } }
+        documentIds: { type: array, items: { type: string, format: uuid } }
+        degrees: { type: integer }
+        fields: { type: object, additionalProperties: { type: string } }
+        region: { $ref: '#/components/schemas/Region' }
+paths:
+  /api/tpdf/agent/v1/documents:
+    post:
+      operationId: uploadPdf
+      description: Raw application/pdf body, up to TPDF_MAX_OPERATION_BYTES.
+      parameters:
+        - in: query
+          name: name
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/pdf:
+            schema: { type: string, format: binary }
+      responses:
+        '201':
+          description: Stored new document
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  document: { $ref: '#/components/schemas/Document' }
+  /api/tpdf/agent/v1/documents/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getPdfInfo
+      responses:
+        '200': { description: Document info }
+  /api/tpdf/agent/v1/documents/{id}/text:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+      - in: query
+        name: page
+        schema: { type: integer, minimum: 1 }
+      - in: query
+        name: count
+        schema: { type: integer, minimum: 1, maximum: 25 }
+    get:
+      operationId: extractPdfText
+      responses:
+        '200': { description: Page-indexed text and total page count }
+  /api/tpdf/agent/v1/documents/{id}/search:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: searchPdf
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        '200': { description: Page citations, excerpt, truncated flag }
+  /api/tpdf/agent/v1/documents/{id}/file:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: downloadPdf
+      responses:
+        '200': { description: PDF bytes }
+  /api/tpdf/agent/v1/documents/{id}/operations:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: editPdf
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Operation' }
+      responses:
+        '201': { description: New immutable PDF document ID }
+  /api/tpdf/agent/v1/documents/{id}/ocr:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: startPdfOcr
+      responses:
+        '202': { description: Queued OCR job }
+  /api/tpdf/agent/v1/ocr/jobs/{jobId}:
+    parameters:
+      - in: path
+        name: jobId
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getPdfOcrJob
+      responses:
+        '200': { description: OCR progress and status }
+  /api/tpdf/agent/v1/ocr/jobs/{jobId}/cancel:
+    parameters:
+      - in: path
+        name: jobId
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: cancelPdfOcrJob
+      responses:
+        '200': { description: Cancelled OCR job }
+  /api/tpdf/agent/v1/ocr/jobs/{jobId}/output:
+    parameters:
+      - in: path
+        name: jobId
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: savePdfOcrOutput
+      responses:
+        '201': { description: OCR output saved under a new document ID }
+  /api/tpdf/agent/v1/embed/session:
+    get:
+      operationId: createPdfEmbedSession
+      description: Signed identity is exchanged for short-lived, origin-scoped browser credential.
+      responses:
+        '200': { description: Session key, configured origin, and project }
