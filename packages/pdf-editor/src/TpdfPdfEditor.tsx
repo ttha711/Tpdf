@@ -102,6 +102,8 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   }));
   useEffect(() => { props.onPageChange?.(engine.page); }, [engine.page, props.onPageChange]);
   const canEdit = !props.readOnly && (!useTiles || Boolean(props.adapter.applyChanges));
+  const canSave = canEdit && engine.dirty && !engine.busy &&
+    Boolean(props.adapter.saveVersion || props.adapter.applyChanges);
   function selected(value: PdfRegion, points?: Array<[number, number]>) {
     setRegion(value); props.onRegionSelected?.(value);
     if (!canEdit || tool === "region") return;
@@ -200,7 +202,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       name={engine.source?.name || "Document.pdf"} dirty={engine.dirty} busy={engine.busy}
       page={engine.page} total={tileMeta?.pages.length || engine.pdf?.numPages || 0}
       zoom={scale} tile={useTiles} canEdit={canEdit} canForms={!useTiles && Boolean(engine.pdf)}
-      canSave={canEdit && engine.dirty} undoEnabled={canEdit && engine.history.past.length > 0}
+      canSave={canSave} undoEnabled={canEdit && engine.history.past.length > 0}
       redoEnabled={canEdit && engine.history.future.length > 0} tool={tool}
       query={query} results={results} note={note} selection={region}
       tools={props.tools || []} onTool={setTool} onNote={setNote}
@@ -239,7 +241,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
         <button type="button" onClick={() => engine.record({ kind: "move", page: engine.page, to: engine.page + 1 })}>{text.moveDown}</button>
         <button type="button" onClick={() => void engine.formFields().then(setFields)}>{text.form}</button>
         {props.adapter.runOcr && <button type="button" onClick={() => void engine.ocr()}>{text.ocr}</button>}
-        <button type="button" disabled={!engine.dirty || engine.busy} onClick={() => void engine.save()}>{text.save}{engine.dirty ? " ●" : ""}</button>
+        <button type="button" disabled={!canSave} onClick={() => void engine.save()}>{text.save}{engine.dirty ? " ●" : ""}</button>
       </>}
       {props.adapter.listVersions && <button type="button" onClick={() => void props.adapter.listVersions!().then(setVersions).catch(
         (err) => engine.report("versions", err))}>{text.versions}</button>}
