@@ -92,7 +92,7 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
   const nearPages = boxes.map((box, i) => ({ box, i })).filter(({ box }) =>
     box.top <= view.top + view.height + 512 && box.top + box.height >= view.top - 512);
   return <div className="tpdf-tile-document" data-tpdf-level={level} data-tpdf-active={scheduler.active}
-    data-tpdf-cache={scheduler.cacheSize} style={{ position: "relative", minWidth: contentWidth, height, touchAction: "none" }}>
+    data-tpdf-cache={scheduler.cacheSize} data-tpdf-wanted={needed.length} style={{ position: "relative", minWidth: contentWidth, height, touchAction: "none" }}>
     {nearPages.map(({ box, i }) => <div key={i} className="tpdf-page"
       data-tpdf-page={i + 1} style={{ position: "absolute", top: box.top,
         left: (contentWidth - box.width) / 2, width: box.width, height: box.height, margin: 0,
