@@ -1,0 +1,54 @@
+"use client";
+import dynamic from "next/dynamic";
+import { useMemo, useState } from "react";
+import type { TpdfPdfAdapter, PdfRegion } from "@tpdf/pdf-editor";
+import { PDFDocument } from "pdf-lib";
+
+const Editor = dynamic(() => import("@tpdf/pdf-editor").then((module) => module.TpdfPdfEditor),
+  { ssr: false, loading: () => <p>Loading PDF editor…</p> });
+
+export default function PdfOfficePage() {
+  const [saved, setSaved] = useState("");
+  const [selected, setSelected] = useState<PdfRegion | null>(null);
+  const [error, setError] = useState("");
+  const adapter = useMemo<TpdfPdfAdapter>(() => {
+    const versions: Array<{ versionId: string; name: string; createdAt: string; bytes: Uint8Array }> = [];
+    return {
+      async loadDocument() {
+        // Next serves public/fixture.pdf from the host application's own disk.
+        return { url: "/fixture.pdf", name: "building-plan.pdf" };
+      },
+      async saveVersion(bytes, { name, baseVersionId }) {
+        const pdf = await PDFDocument.load(bytes);
+        if (pdf.getPageCount() !== 2) throw Error("Expected two PDF pages.");
+        const original = new Uint8Array(await (await fetch("/fixture.pdf")).arrayBuffer());
+        const changed = bytes.length !== original.length || bytes.some((b, i) => b !== original[i]);
+        if (!changed) throw Error("Editor submitted unchanged PDF.");
+        const versionId = "local-v" + (versions.length + 1);
+        versions.push({ versionId, name, createdAt: new Date().toISOString(), bytes: new Uint8Array(bytes) });
+        setSaved(versionId + " · " + bytes.length + " bytes · changed=" + changed +
+          " · from=" + (baseVersionId || "original"));
+        return { versionId, name };
+      },
+      async listVersions() {
+        return versions.map(({ versionId, name, createdAt }) => ({ versionId, name, createdAt }));
+      },
+    };
+  }, []);
+  return <main style={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
+    <header style={{ padding: "8px 12px", background: "#edf4ff", color: "#132844" }}>
+      <strong>360i-style PDF office example</strong>
+      <span data-testid="saved" style={{ marginLeft: 14 }}>{saved || "Not saved"}</span>
+      <span data-testid="region" style={{ marginLeft: 14 }}>
+        {selected ? "page " + selected.page + ": " + selected.x.toFixed(1) + "%," + selected.y.toFixed(1) + "%" : ""}
+      </span>
+      {error && <span role="alert">{error}</span>}
+    </header>
+    <div style={{ flex: 1, minHeight: 0 }}>
+      <Editor adapter={adapter} locale="en" density="office" assets={{
+        workerUrl: "/tpdf-assets/pdf.worker.min.mjs",
+      }} onRegionSelected={setSelected}
+        onError={(issue) => setError(issue.code + ": " + issue.message)} />
+    </div>
+  </main>;
+}
