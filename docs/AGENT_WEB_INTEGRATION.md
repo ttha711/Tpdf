@@ -4,8 +4,7 @@ Branch: `feat/agent-web-bridge-v1`. This is a **partial implementation**, not a 
 
 ## Requirements and environment
 
-Node >=22, `npm ci`, `npm run server-build`; Python with PyMuPDF for server text
-(`python3 -m pip install "PyMuPDF>=1.24,<2"`). OCR additionally requires the
+Node >=22, `npm ci`, `npm run server-build`; server text uses bundled `pdfjs-dist` in an isolated Node worker; raster export/comparison require Python with PyMuPDF and Pillow (`python3 -m pip install "PyMuPDF>=1.24,<2" "Pillow>=10,<13"`). OCR additionally requires the
 existing PDFium/OCR runtime. Run behind an HTTPS reverse proxy, bind
 `TPDF_HOST=127.0.0.1`, configure `TPDF_PUBLIC_ORIGIN`, and prevent direct
 external access to the backend port.
@@ -54,11 +53,23 @@ Paths begin `/api/tpdf/agent/v1`:
 - `POST /documents?name=filename.pdf`: raw PDF upload; returns `document.id`.
 - `GET /documents/{id}`, `GET /documents/{id}/file`: metadata / bytes.
 - `GET /documents/{id}/text?page=1&count=5`: text and page numbers, max 25 pages/request.
-- `POST /documents/{id}/search` with `{"query":"..." }`: page citations,
-  250 pages maximum and explicit `truncated` when incomplete.
+- `GET /documents/{id}/index` gets index state, `POST /documents/{id}/index` builds a cache of text per page with **pdfjs-dist on the server**; max 1500 pages / 250 MiB / 90s and 12M text characters. No LLM or remote model calls.
+- `POST /documents/{id}/search` with `{"query":"..."}` ranks page matches using accent-insensitive BM25: `{results:[{page,snippet,score}], pageCount, indexedPages}`; invalidates cache on PDF size/mtime changes.
 - `POST /documents/{id}/operations`: JSON `type` `rotate`, `delete`,
   `reorder`, `split`, `crop`, `merge`, `fill-form`, `mark-region`.
   Successful writes produce **new document IDs**, not in-place updates.
+- `POST /jobs` accepts JSON `{"type":"merge"|"split"|"export-images"|"compare", "documentId":"<uuid>", ...}`.
+  `GET /jobs/{jobId}` polls, `POST /jobs/{jobId}/cancel` cancels, `GET /jobs/{jobId}/result` returns `{result:{documentId, document, ...}}`.
+  Work is scoped to authenticated user/project and has at most 2 concurrent workers, 32 waiting slots and 120s deadline.
+- For `export-images`: `{"type":"export-images","documentId":"...","pages":[1,3],"dpi":144,"format":"png"}`
+  or `jpeg` (1–8 pages, 36–180 DPI, max image 15 MiB, max side 6000px). Result has
+  **new rasterized PDF documentId** plus an `images` array of private authenticated
+  `GET /jobs/{jobId}/images/{page}` binary URLs.
+- For `compare`: `{"type":"compare","documentId":"<uuid>","otherDocumentId":"<uuid>"}`.
+  Result has new highlighted PDF documentId and
+  `differences:[{page,changedPercent,region:{page,x,y,width,height},status}]`.
+  Pixel comparison is approximate (512px grayscale per page, threshold 24), up to
+  100 pages, not vector/CAD semantic diff. Added/removed pages get full-page regions.
 - `POST /documents/{id}/ocr`, `GET /ocr/jobs/{jobId}`,
   `POST /ocr/jobs/{jobId}/cancel`, `GET /ocr/jobs/{jobId}/output`
   (stores OCR output under a new document ID).
@@ -101,25 +112,77 @@ Viewer -> parent, as `{type, ...properties}`:
 
 Parent -> viewer: `goto-page {page}`, `set-zoom {zoom}`,
 `highlight-region {region}`. One-step undo is for the unsaved selection,
-not a persisted PDF version. Viewer currently renders one page at a time,
-with page grid; continuous-page mode is **not implemented**.
+not a persisted PDF version. Viewer now presents **continuous scrolling pages**, lazily paints only visible/near-visible pages, a page grid, and zoom presets **25/50/100/200/Fit**. Typecheck and real-browser behavior still require validation.
 
-## Explicit limitations / acceptance still required
+## Node signing example (server-side only)
 
-- No async job/cancel contract for non-OCR operations, no bounded operation
-  wall-clock timeout, no page-to-image endpoint, no two-PDF drawing diff,
-  and no full annotation object model.
-- Text search scans at most 250 pages and has **no persisted no-LLM page index**.
-  Existing PageIndex optional integration relies on a model provider key;
-  it must **not** be used for Agent Web's Dify-only model policy.
-- `/file` currently sends the full PDF; Range-backed embedded PDF.js
-  loading is not verified. Existing standalone Tpdf PDFium and remote tile
-  renderer are preserved.
-- Must run real `npm ci`, `npm run build`, `npm run typecheck`,
-  `npm run test --workspace=@tpdf/web`,
-  `node --test tests/cli/agent-web-auth.test.mjs`,
-  `npm run server-smoke` and a signed browser E2E on a configured host
-  before merge. No test passes are claimed here.
+```js
+import { createHmac, randomUUID } from "node:crypto";
+
+function signTpdf(method, path, email, projectId) {
+  const iat = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: "agent-web", aud: "tpdf", email, projectId,
+    method, path, iat, exp: iat + 60,
+    jti: randomUUID(),
+  };
+  const encoded = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const signature = createHmac("sha256", process.env.TPDF_AGENT_WEB_BRIDGE_SECRET)
+    .update(encoded).digest("base64url");
+  return encoded + "." + signature;
+}
+// Each HTTP request gets a fresh nonce and token with its EXACT method/path.
+const path = "/api/tpdf/agent/v1/documents";
+const headers = { "x-tpdf-agent-web-identity":
+  signTpdf("POST", path, "alice@example.test", "project-1") };
+```
+
+Do **not** sign the query string as part of `path`. No secret belongs in frontend
+JS or a `VITE_*` variable.
+
+## Tests and remaining limits (2026-10-20)
+
+In this development session, the isolated **local copies** of new Node logic
+passed:
+
+```bash
+node --test tests/cli/agent-web-ranking.test.mjs
+node --test tests/cli/agent-web-index.test.mjs
+node --test tests/cli/agent-web-jobs.test.mjs
+node --test tests/cli/agent-web-raster.test.mjs
+node --test tests/cli/agent-web-worker.test.mjs
+```
+
+The worker test used **generated PDF fixtures** and locally installed
+PyMuPDF/Pillow. It conditionally skips when those Python packages are absent.
+These are NOT claims that the full checked-out GitHub branch was built or
+tested. User previously reported **49/49 existing CLI tests passing and web
+typecheck clean** after the two one-line fixes.
+
+Not yet run **on this PR checkout**: `npm ci`, `npm run build`,
+`npm run typecheck`, full `node --test tests/cli/*.test.mjs`,
+authenticated signed Node HTTP E2E, and browser iframe postMessage E2E.
+
+Known limits:
+- Job state and replay nonces live in **process memory**; restart loses jobs
+  and sessions. Worker cancellation is effective for Python subprocesses,
+  but cannot preempt synchronous in-process pdf-lib CPU work.
+- Image artifacts are stored locally beneath the existing scoped project
+  tree, in a **new** `agent-web-jobs` directory, and currently lack TTL pruning;
+  include them in an explicit retention/cleanup plan before production.
+  Indexes are stored in `agent-web-index` (per project), even under S3-backed
+  document storage: multi-node access requires shared indexing/cache strategy.
+- Page index build is synchronous HTTP work (worker timeout 90s), not yet a
+  queue operation. Huge documents may hit gateway HTTP timeouts.
+- PDF.js index extraction handles text-only PDFs; scanned images require OCR
+  first. PDF comparison requires PyMuPDF/Pillow and has no vector alignment
+  or rotation compensation.
+- Native standalone PDFium/WASM is kept untouched; server supports PDF Range,
+  but network behavior and large-file performance of embedded PDF.js were
+  **not measured** in browser. PDF.js might download the full document.
+- Region undo only undoes unsaved selection; persisted versions are immutable.
+  Annotation objects beyond region marks and other long operations are not
+  incorporated into the new job API.
 
 ## Security checklist
 
