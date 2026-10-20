@@ -14,6 +14,8 @@ export type OcrRenderedPage = {
 export type SearchablePdfOcrOptions = {
   getNativeText?: (pageIndex: number) => Promise<string>;
   renderPage: (pageIndex: number) => Promise<OcrRenderedPage>;
+  renderFallbackPage?: (pageIndex: number) => Promise<OcrRenderedPage>;
+  recognizePage?: (image: Uint8Array, language: string) => Promise<any>;
   onProgress?: (progress: number) => void;
   isCancelled?: () => boolean;
 };
@@ -170,15 +172,33 @@ export class OcrService {
           continue;
         }
 
-        const rendered = await options.renderPage(index);
-        const ocrWorker = await ensureWorker();
-        const result = await ocrWorker.recognize(rendered.bytes);
-        const data = result?.data ?? {};
-        const lines = collectLines(data);
+        let rendered = await options.renderPage(index);
+        const recognize = async (image: Uint8Array) => {
+          if (options.recognizePage) {
+            const value = await options.recognizePage(image, language);
+            return value?.data ?? value ?? {};
+          }
+          const ocrWorker = await ensureWorker();
+          // Tesseract.js 7 returns only text unless block geometry is requested.
+          return (await ocrWorker.recognize(image, {}, { text: true, blocks: true }))?.data ?? {};
+        };
+        let data = await recognize(rendered.bytes);
+        let lines = collectLines(data);
+        let fallbackText = typeof data.text === "string" ? data.text.trim() : "";
+        if (lines.length === 0 && !fallbackText && options.renderFallbackPage) {
+          rendered = await options.renderFallbackPage(index);
+          data = await recognize(rendered.bytes);
+          lines = collectLines(data);
+          fallbackText = typeof data.text === "string" ? data.text.trim() : "";
+        }
+        if (lines.length === 0 && !fallbackText) {
+          throw new Error(`OCR recognized no text on scanned page ${index + 1}. No searchable PDF was saved.`);
+        }
         const targetPage = pages[index];
         const { width: pdfWidth, height: pdfHeight } = targetPage.getSize();
         const sx = pdfWidth / Math.max(1, rendered.width);
         const sy = pdfHeight / Math.max(1, rendered.height);
+        let written = 0;
 
         for (const line of lines) {
           const text = supportsUnicode ? line.text : this.toWinAnsiSafeText(line.text);
@@ -200,10 +220,11 @@ export class OcrService {
             opacity: 0.01,
             maxWidth: Math.max(boxWidth, font.widthOfTextAtSize(text, fontSize)),
           });
+          written += 1;
         }
 
-        if (lines.length === 0 && typeof data.text === "string" && data.text.trim()) {
-          const lines = data.text.split(/\r?\n/).map((line: string) => line.trim()).filter(Boolean);
+        if (written === 0 && fallbackText) {
+          const lines = fallbackText.split(/\r?\n/).map((line: string) => line.trim()).filter(Boolean);
           lines.slice(0, 160).forEach((line: string, lineIndex: number) => {
             const text = supportsUnicode ? line : this.toWinAnsiSafeText(line);
             if (!text) return;
@@ -216,9 +237,11 @@ export class OcrService {
               opacity: 0.01,
               maxWidth: Math.max(1, pdfWidth - 36),
             });
+            written += 1;
           });
         }
 
+        if (written === 0) throw new Error(`OCR produced no writable text on scanned page ${index + 1}.`);
         options.onProgress?.(Math.max(2, Math.round(((index + 1) / pages.length) * 96)));
       }
     } finally {
