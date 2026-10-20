@@ -157,7 +157,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       event.preventDefault(); setZoom(scale * (event.key === "-" ? 0.8 : 1.25)); return;
     }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
-      event.preventDefault(); void saveGuard.saveSafely();
+      event.preventDefault(); void saveGuard.saveSafely().catch(()=>{});
     } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z" && !props.readOnly) {
       event.preventDefault(); if (event.shiftKey) engine.redo(); else engine.undo();
     }
@@ -238,7 +238,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       p2Panel={p2.p2Panel}
       style={p1Style} onStyle={setP1Style}
       onSearchQuery={setQuery} onSearch={() => void engine.search(query).then(setResults)}
-      onGoto={goto} onBuiltin={builtIn} onSave={() => void saveGuard.saveSafely()}
+      onGoto={goto} onBuiltin={builtIn} onSave={() => { void saveGuard.saveSafely().catch(()=>{}); }}
       onUndo={engine.undo} onRedo={engine.redo}
       onToolError={(error) => engine.report("host-tool", error)}>{viewer}</AppShell>
       : <><div className="tpdf-toolbar" role="toolbar" aria-label="PDF controls">
@@ -272,7 +272,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
         <button type="button" onClick={() => engine.record({ kind: "move", page: engine.page, to: engine.page + 1 })}>{text.moveDown}</button>
         <button type="button" onClick={() => void engine.formFields().then(setFields)}>{text.form}</button>
         {props.adapter.runOcr && <button type="button" onClick={() => void engine.ocr()}>{text.ocr}</button>}
-        <button type="button" disabled={!canSave} onClick={() => void saveGuard.saveSafely()}>{text.save}{engine.dirty ? " ●" : ""}</button>
+        <button type="button" disabled={!canSave} onClick={() => { void saveGuard.saveSafely().catch(()=>{}); }}>{text.save}{engine.dirty ? " ●" : ""}</button>
       </>}
       {props.adapter.listVersions && <button type="button" onClick={() => void props.adapter.listVersions!().then(setVersions).catch(
         (err) => engine.report("versions", err))}>{text.versions}</button>}
