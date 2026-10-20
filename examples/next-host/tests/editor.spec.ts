@@ -22,8 +22,14 @@ test("two-page PDF can be marked and saved through host adapter with Ctrl+S", as
   await page.mouse.up();
   await expect(page.getByTestId("region")).toContainText("page 1");
   await expect(page.locator('[data-tpdf-page="1"] .tpdf-mark-highlight')).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /Save version/ })).toBeEnabled();
   await page.locator(".tpdf-editor").focus();
   await page.keyboard.press("Control+s");
+  await page.waitForTimeout(1500);
+  if ((await page.getByTestId("saved").innerText()) === "Not saved") {
+    const errors = await page.locator('[role="alert"]').allTextContents();
+    throw new Error("saveVersion was not committed: " + errors.join(" | "));
+  }
   await expect(page.getByTestId("saved")).toContainText("changed=true", { timeout: 30000 });
   await expect(page.getByTestId("saved")).toContainText("annotation=true");
   await expect(page.getByTestId("saved")).toContainText("bytes");
