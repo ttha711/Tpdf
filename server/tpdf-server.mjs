@@ -654,6 +654,13 @@ async function serveWeb(req, res, pathname) {
     res.statusCode = 200;
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache");
+    if (pathname === "/embed/viewer" && agentWebAuth.origins.length) {
+      res.removeHeader("X-Frame-Options");
+      const current = String(res.getHeader("Content-Security-Policy") || "");
+      const ancestors = "frame-ancestors " + agentWebAuth.origins.join(" ");
+      res.setHeader("Content-Security-Policy", current.replace(/frame-ancestors [^;]+/, ancestors));
+      res.setHeader("Referrer-Policy", "no-referrer");
+    }
     res.end(html);
     return;
   }
