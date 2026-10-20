@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-
-export type PdfRegion = { page: number; x: number; y: number; width: number; height: number; note: string };
+import { selectedRegion, type PdfRegion } from "../embed/agentWebRegion";
 
 export function AgentWebEmbedPage({
   pdf, number, scale, scrollRoot, region, onSelect,
@@ -59,9 +58,8 @@ export function AgentWebEmbedPage({
     if (!drag.current) return;
     const start = drag.current, end = percent(event);
     drag.current = null;
-    if (Math.abs(start.x - end.x) < 0.1 || Math.abs(start.y - end.y) < 0.1) return;
-    onSelect({ page: number, x: Math.min(start.x, end.x), y: Math.min(start.y, end.y),
-      width: Math.abs(start.x - end.x), height: Math.abs(start.y - end.y), note: "" });
+    const region = selectedRegion(number, start, end);
+    if (region) onSelect(region);
   }
   return <div ref={holder} data-agent-page={number}
     style={{ width: size.width * scale, height: size.height * scale, position: "relative",
