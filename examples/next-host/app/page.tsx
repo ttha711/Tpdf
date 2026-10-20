@@ -33,7 +33,7 @@ export default function PdfOfficePage() {
         const versionId = "local-v" + (versions.length + 1);
         versions.push({ versionId, name, createdAt: new Date().toISOString(), bytes: new Uint8Array(bytes) });
         setSaved(versionId + " · " + bytes.length + " bytes · changed=" + changed +
-          " · from=" + (baseVersionId || "original"));
+          " · annotation=" + annotated + " · from=" + (baseVersionId || "original"));
         return { versionId, name };
       },
       async listVersions() {
