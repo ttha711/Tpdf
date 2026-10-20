@@ -41,18 +41,26 @@ test("scroll through 100 pages keeps tile cache bounded", async ({ page }) => {
   void aborted;
 });
 
-test("right and bottom edge tiles stay inside page bounds", async ({ page }) => {
+test("right and bottom edge tiles are clipped precisely", async ({ page }) => {
   await page.goto("/office/pdf?tiles=1");
   await expect(page.locator(".tpdf-tile-document")).toBeVisible({ timeout: 30000 });
   await page.getByLabel("Zoom").selectOption("0.5");
-  const result = await page.locator(".tpdf-page").first().evaluate((el) => {
-    const rect = el.getBoundingClientRect();
-    return [...el.querySelectorAll<HTMLImageElement>("[data-tpdf-tile]")].every((img) => {
-      const tile = img.parentElement!.getBoundingClientRect();
-      return tile.right <= rect.right + 1 && tile.bottom <= rect.bottom + 1;
-    });
+  await page.locator(".tpdf-scroll").evaluate((el) => {
+    el.scrollLeft = el.scrollWidth;
+    el.scrollTop = 600;
   });
-  expect(result).toBeTruthy();
+  const corner = page.locator('[data-tpdf-page="1"] [data-tpdf-tile$=":3:2"]');
+  await expect(corner).toHaveCount(1, { timeout: 20000 });
+  const positions = await corner.evaluate((img) => {
+    const rect = img.parentElement!.getBoundingClientRect();
+    const page = img.closest<HTMLElement>("[data-tpdf-page]")!.getBoundingClientRect();
+    return { dx: rect.right - page.right, dy: rect.bottom - page.bottom,
+      width: rect.width, height: rect.height };
+  });
+  expect(Math.abs(positions.dx)).toBeLessThan(1);
+  expect(Math.abs(positions.dy)).toBeLessThan(1);
+  expect(positions.width).toBeGreaterThan(0);
+  expect(positions.height).toBeGreaterThan(0);
 });
 test("390px tile layout remains usable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 840 });
