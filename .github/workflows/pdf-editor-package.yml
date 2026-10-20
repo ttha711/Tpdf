@@ -18,7 +18,6 @@ jobs:
   package:
     outputs:
       gzip_kib: ${{ steps.sizes.outputs.gzip_kib }}
-      dom_issue: ${{ steps.dom.outputs.dom_issue }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,20 +34,6 @@ jobs:
       - name: Record actual externalized JavaScript gzip size
         id: sizes
         run: echo "gzip_kib=$(node -p 'require("./packages/pdf-editor/dist/size-report.json").gzipJsKiB')" >> "$GITHUB_OUTPUT"
-      - name: Install jsdom for optional DOM event test
-        run: npm install --no-save --legacy-peer-deps --package-lock=false jsdom@25
-        continue-on-error: true
-      - name: Run jsdom event regression
-        id: dom
-        shell: bash
-        run: |
-          set +e
-          node --test packages/pdf-editor/tests/events-jsdom.test.mjs > /tmp/tpdf-dom-test.log 2>&1
-          result=$?
-          issue=$(grep -m1 -E "not ok|error:|Error:" /tmp/tpdf-dom-test.log | head -c 150 || true)
-          echo "dom_issue=${issue}" >> "$GITHUB_OUTPUT"
-          cat /tmp/tpdf-dom-test.log
-          exit $result
       - name: Create npm tarball
         run: |
           mkdir -p release
@@ -73,6 +58,8 @@ jobs:
     steps:
       - run: echo "Read package job output for exact measured JS-only gzip."
   next-host-e2e:
+    outputs:
+      install_issue: ${{ steps.next-install.outputs.install_issue }}
     name: Next 14 host Chromium E2E
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -88,8 +75,17 @@ jobs:
           corepack enable
           corepack prepare pnpm@9.15.9 --activate
       - name: Install Next host
+        id: next-install
         working-directory: examples/next-host
-        run: pnpm install --no-frozen-lockfile
+        shell: bash
+        run: |
+          set +e
+          pnpm install --no-frozen-lockfile > /tmp/next-pnpm-install.log 2>&1
+          result=$?
+          issue=$(grep -m1 -E 'ERR_PNPM|Error:|ERROR|error:' /tmp/next-pnpm-install.log | head -c 150 || true)
+          echo "install_issue=${issue}" >> "$GITHUB_OUTPUT"
+          cat /tmp/next-pnpm-install.log
+          exit $result
       - name: Chromium dependencies
         working-directory: examples/next-host
         run: pnpm exec playwright install --with-deps chromium
@@ -114,8 +110,45 @@ jobs:
 
   dom-diagnostic:
     if: always()
-    name: "DOM result: ${{ needs.package.outputs.dom_issue }}"
-    needs: package
+    name: "DOM result: ${{ needs.dom-test.outputs.issue }}"
+    needs: dom-test
     runs-on: ubuntu-latest
     steps:
       - run: echo "Inspect package job for full jsdom test log"
+
+  dom-test:
+    name: jsdom React pointer event regression
+    runs-on: ubuntu-latest
+    outputs:
+      issue: ${{ steps.dom.outputs.dom_issue }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build --workspace=@tpdf/pdf-editor
+      - name: Install jsdom for optional DOM event test
+        run: npm install --no-save --legacy-peer-deps --package-lock=false jsdom@25
+        continue-on-error: true
+      - name: Run jsdom event regression
+        id: dom
+        shell: bash
+        run: |
+          set +e
+          node --test packages/pdf-editor/tests/events-jsdom.test.mjs > /tmp/tpdf-dom-test.log 2>&1
+          result=$?
+          issue=$(grep -m1 -E "not ok|error:|Error:" /tmp/tpdf-dom-test.log | head -c 150 || true)
+          echo "dom_issue=${issue}" >> "$GITHUB_OUTPUT"
+          cat /tmp/tpdf-dom-test.log
+          exit $result
+
+
+  next-diagnostic:
+    if: always()
+    name: "Next install: ${{ needs.next-host-e2e.outputs.install_issue }}"
+    needs: next-host-e2e
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Inspect Next host job for install/test logs."
