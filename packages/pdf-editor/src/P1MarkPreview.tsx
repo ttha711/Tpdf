@@ -1,5 +1,7 @@
 import type { P1Mark, P1Point } from "./p1Types.js";
-export function P1MarkPreview({ mark }: { mark: P1Mark }) {
+export function P1MarkPreview({ mark, assetUrl }: {
+  mark: P1Mark; assetUrl?: (id: string) => string;
+}) {
   const { region: r, style: s } = mark;
   const points = (values: P1Point[]) => values.map((p) => p.x + "," + p.y).join(" ");
   const common = { stroke: s.strokeColor, strokeWidth: s.strokeWidthPt / 2,
@@ -46,6 +48,8 @@ export function P1MarkPreview({ mark }: { mark: P1Mark }) {
     {(mark.type === "addText" || mark.type === "insertText" || mark.type === "callout") &&
       <text x={r.x} y={r.y + 1.5} fontSize="2.5" fill={s.strokeColor}>
         {mark.text.slice(0, 60)}</text>}
+    {isAsset && assetUrl && <image x={r.x} y={r.y} width={r.width} height={r.height}
+      href={assetUrl(mark.assetId)} preserveAspectRatio="xMidYMid meet" opacity={s.opacity}/>}
     {isAsset && <><rect x={r.x} y={r.y} width={r.width} height={r.height}
       {...common} strokeDasharray="1 .5"/>
       <text x={r.x + 1} y={r.y + 3} fontSize="2.3" fill={s.strokeColor}>
