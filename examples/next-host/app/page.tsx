@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { StrictMode, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { TpdfPdfAdapter, PdfRegion } from "@tpdf/pdf-editor";
 import { PDFArray, PDFDocument } from "pdf-lib";
@@ -13,6 +13,7 @@ export default function PdfOfficePage() {
   const [saved, setSaved] = useState("");
   const [selected, setSelected] = useState<PdfRegion | null>(null);
   const [error, setError] = useState("");
+  const [mountId, setMountId] = useState(0);
   const adapter = useMemo<TpdfPdfAdapter>(() => {
     const versions: Array<{ versionId: string; name: string; createdAt: string; bytes: Uint8Array }> = [];
     return {
@@ -61,12 +62,15 @@ export default function PdfOfficePage() {
         {selected ? "page " + selected.page + ": " + selected.x.toFixed(1) + "%," + selected.y.toFixed(1) + "%" : ""}
       </span>
       {error && <span role="alert">{error}</span>}
+      {tileMode && <button type="button" data-testid="remount-tile-viewer"
+        onClick={() => setMountId((value) => value + 1)}
+        style={{ marginLeft: 12 }}>Remount tile viewer</button>}
     </header>
     <div style={{ flex: 1, minHeight: 0 }}>
-      <Editor adapter={adapter} renderMode={tileMode ? "tiles" : "auto"} locale="en" density="office" assets={{
+      <StrictMode><Editor key={mountId} adapter={adapter} renderMode={tileMode ? "tiles" : "auto"} locale="en" density="office" assets={{
         workerUrl: "/tpdf-assets/pdf.worker.min.mjs",
       }} onRegionSelected={setSelected}
-        onError={(issue) => setError(issue.code + ": " + issue.message)} />
+        onError={(issue) => setError(issue.code + ": " + issue.message)} /></StrictMode>
     </div>
   </main>;
 }
