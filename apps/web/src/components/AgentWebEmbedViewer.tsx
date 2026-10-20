@@ -28,7 +28,6 @@ export function AgentWebEmbedViewer() {
   const [drawing, setDrawing] = useState<{ x: number; y: number } | null>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const pane = useRef<HTMLDivElement>(null);
-  const [pageSize, setPageSize] = useState({ width: 600, height: 800 });
   const base = "/api/tpdf/agent/v1";
   const send = (type: string, values: Record<string, unknown> = {}) => {
     if (origin && window.parent !== window) window.parent.postMessage({ type, ...values }, origin);
@@ -70,7 +69,6 @@ export function AgentWebEmbedViewer() {
       const element = canvas.current;
       element.width = Math.ceil(viewport.width);
       element.height = Math.ceil(viewport.height);
-      setPageSize({ width: viewport.width, height: viewport.height });
       const context = element.getContext("2d");
       if (!context) return;
       render = pdfPage.render({ canvasContext: context, canvas: element, viewport });
@@ -149,6 +147,10 @@ export function AgentWebEmbedViewer() {
       <button onClick={() => setZoom(Math.min(4, zoom * 1.25))}>+</button>
       <input aria-label="Search PDF" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void search(); }} />
       <button onClick={() => void search()}>Find</button>
+      {region && <input aria-label="Region note" placeholder="Note for agent" value={region.note} onChange={(e) => {
+        const next = { ...region, note: e.target.value.slice(0, 500) };
+        setRegion(next); send("region-selected", next);
+      }} />}
       <button disabled={!region} onClick={() => { setRegion(previous); setPrevious(null); }}>Undo</button>
       <button disabled={!region} onClick={() => void save()}>Save as new PDF</button>
     </header>
