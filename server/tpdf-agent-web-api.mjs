@@ -2,6 +2,8 @@ import { readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { assertDocumentId, sanitizeFileName } from "./tpdf-storage.mjs";
 import { createAgentWebIndex } from "./tpdf-agent-web-index.mjs";
+import { createAgentWebJobs } from "./tpdf-agent-web-jobs.mjs";
+import { createAgentWebJobExecutor } from "./tpdf-agent-web-render-jobs.mjs";
 
 export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, sendJson, sendError, readJsonBody, maxBytes, serveDocument }) {
   const index = createAgentWebIndex({ tenantRuntime });
@@ -41,7 +43,7 @@ export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, send
     }
     return Buffer.concat(chunks);
   }
-  async function mutate(record, body) {
+  async function mutate(record, body, signal = null) {
     const { PDFDocument, degrees } = await import("pdf-lib");
     const source = await PDFDocument.load(await readFile(record.pdfPath), { updateMetadata: false });
     const pageCount = source.getPageCount();
@@ -105,9 +107,37 @@ export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, send
     } else {
       throw Object.assign(new Error("Unsupported operation."), { statusCode: 400 });
     }
+    if (signal?.aborted) throw Object.assign(new Error("Job cancelled."), { statusCode: 409 });
     return storeNew(Buffer.from(await output.save()), `version-${record.fileName}`);
   }
+  const jobs = createAgentWebJobs({
+    tenantRuntime,
+    execute: createAgentWebJobExecutor({ tenantRuntime, loadDocument, storeNew, mutate, maxBytes }),
+  });
   async function dispatch(req, res, url, identity) {
+    if (url.pathname === prefix + "/jobs" && req.method === "POST") {
+      const body = await readJsonBody(req, 64 * 1024);
+      return sendJson(res, 202, jobs.create(identity, body));
+    }
+    const jobRoute = url.pathname.match(/^\/api\/tpdf\/agent\/v1\/jobs\/([0-9a-f-]{36})(?:\/(result|cancel|images\/([0-9]+)))?$/i);
+    if (jobRoute) {
+      const jobId = jobRoute[1], action = jobRoute[2];
+      if (!action && req.method === "GET") return sendJson(res, 200, jobs.status(identity, jobId));
+      if (action === "result" && req.method === "GET") return sendJson(res, 200, jobs.result(identity, jobId));
+      if (action === "cancel" && req.method === "POST") return sendJson(res, 200, jobs.cancel(identity, jobId));
+      if (action?.startsWith("images/") && req.method === "GET") {
+        const entry = jobs.result(identity, jobId).result.images?.find((image) => String(image.page) === jobRoute[3]);
+        if (!entry) return sendError(res, 404, "Image not found.");
+        const path = join(tenantRuntime.active().tenantRoot, "agent-web-jobs", jobId, String(entry.page) + "." + entry.format);
+        const image = await readFile(path);
+        res.setHeader("Content-Type", entry.format === "png" ? "image/png" : "image/jpeg");
+        res.setHeader("Cache-Control", "no-store");
+        res.setHeader("Content-Length", String(image.length));
+        res.end(image);
+        return;
+      }
+      return sendError(res, 405, "Method not allowed.");
+    }
     if (url.pathname === prefix + "/embed/session" && req.method === "GET") {
       return sendJson(res, 200, auth.newEmbedSession(identity));
     }
