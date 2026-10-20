@@ -235,7 +235,10 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       canText={Boolean(props.adapter.resolveTextQuads)} canAsset={Boolean(props.adapter.selectAsset)}
       canP1={Boolean(props.adapter.applyChanges) && canEdit}
       canP2={p2.canP2} canFill={p2.canFill} canAttachment={p2.canAttachment}
-      p2Panel={p2.p2Panel}
+      p2Panel={p2.p2Panel} p3Panel={p3.panel}
+      p3={{ caps:props.adapter.p3Capabilities,enabled:canEdit,
+        count:Boolean(props.adapter.countTextMatches),calibrated:p3.calibrated }}
+      saveNotes={engine.saveNotes}
       style={p1Style} onStyle={setP1Style}
       onSearchQuery={setQuery} onSearch={() => void engine.search(query).then(setResults)}
       onGoto={goto} onBuiltin={builtIn} onSave={() => { void saveGuard.saveSafely().catch(()=>{}); }}
