@@ -67,15 +67,16 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
     try {
       const info = { name: source.name, baseVersionId: revision };
       // Host-owned changes never download/re-encode the original PDF.
+      const bytes = props.adapter.applyChanges ? null : await compose();
       const saved: PdfSaved = props.adapter.applyChanges
         ? await props.adapter.applyChanges(history.current, info)
-        : props.adapter.saveVersion
-          ? await props.adapter.saveVersion(await compose(), info)
+        : props.adapter.saveVersion && bytes
+          ? await props.adapter.saveVersion(bytes, info)
           : (() => { throw Error("saveVersion or applyChanges adapter is required"); })();
       if (!saved?.versionId || !saved.name) throw Error("Adapter must return a new versionId and name.");
       if (saved.versionId === revision) throw Error("Adapter returned the previous versionId.");
       setRevision(saved.versionId);
-      if (!props.adapter.applyChanges) setSource({ bytes: await compose(), name: saved.name });
+      if (bytes) setSource({ bytes: new Uint8Array(bytes), name: saved.name });
       setHistory(emptyHistory()); setOcrDirty(false); setError("");
       props.onSaved?.(saved);
     } catch (cause) { report("save", cause); }
