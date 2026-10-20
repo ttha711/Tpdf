@@ -80,6 +80,18 @@ export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, send
           ![body.x, body.y, body.width, body.height].every((n) => Number.isFinite(n) && n >= 0) ||
           body.width <= 0 || body.height <= 0) throw new Error("Invalid crop.");
       body.pages.forEach((n) => source.getPage(n - 1).setCropBox(body.x, body.y, body.width, body.height));
+    } else if (body.type === "mark-region") {
+      const region = body.region;
+      if (!region || !validPage(region.page) ||
+          ![region.x, region.y, region.width, region.height].every((n) => Number.isFinite(n) && n >= 0 && n <= 100) ||
+          region.width <= 0 || region.height <= 0 || region.x + region.width > 100 || region.y + region.height > 100) {
+        throw new Error("Invalid region percentages.");
+      }
+      const page = source.getPage(region.page - 1);
+      const { width, height } = page.getSize();
+      const x = region.x * width / 100, y = height * (1 - (region.y + region.height) / 100);
+      page.drawRectangle({ x, y, width: region.width * width / 100,
+        height: region.height * height / 100, color: undefined, borderColor: (await import("pdf-lib")).rgb(0.95, 0.2, 0.2), borderWidth: 1.5 });
     } else if (body.type === "fill-form") {
       const form = source.getForm();
       if (!body.fields || typeof body.fields !== "object" || Array.isArray(body.fields)) throw new Error("Invalid fields.");
