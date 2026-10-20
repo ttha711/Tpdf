@@ -135,7 +135,7 @@ export function P2FormPanel({ tool, region, fields, caps, onRecord, onError }: {
             onChange={e=>setFillSelected(e.target.value)}>
             <option value="">None</option>
             {field.options?.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-          </select></label>}
+          </select>}</label>}
         {field.type === "radio" && <span>Radio: Coming soon</span>}
       </>}
     </>}
