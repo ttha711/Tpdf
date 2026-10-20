@@ -16,7 +16,8 @@ export function P1MarkPreview({ mark, assetUrl }: {
     {mark.type === "circle" && <ellipse cx={r.x + r.width / 2} cy={r.y + r.height / 2}
       rx={r.width / 2} ry={r.height / 2} {...common} fill={s.fillColor} fillOpacity={0.16} />}
     {(mark.type === "line" || mark.type === "arrow" || mark.type === "polygon" || mark.type === "polyline") &&
-      <polyline points={points(mark.points)} {...common}
+      <polyline points={points(mark.type === "polygon" ?
+        [...mark.points, mark.points[0]] : mark.points)} {...common}
         fill={mark.type === "polygon" ? s.fillColor : "none"}
         fillOpacity={mark.type === "polygon" ? 0.14 : 0}
         strokeLinejoin="round"/>}
