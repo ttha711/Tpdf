@@ -219,3 +219,16 @@ tests as passed until run on a dependency-installed checkout. A missing
 network/npm registry/Chromium means those checks remain unverified.
 Compatibility of a 100+ page PDF opening progressively and 390px touch
 gestures also requires a real-browser gate before production.
+
+### CI verification from this branch (2026-10-20)
+
+GitHub Actions on Node 22 confirmed:
+
+- `npm ci --ignore-scripts`, package `npm run build` (TypeScript, ESM and declarations), and package offline tests **passed**.
+- React pointer-region event test with **jsdom passed**.
+- `npm pack --workspace=@tpdf/pdf-editor` succeeded and uploaded `tpdf-pdf-editor-tarball`; the archive includes `dist/index.d.ts`, `dist/style.css`, and compiled ESM.
+- Existing `@tpdf/core` build, `@tpdf/web` typecheck/build and `node --test tests/cli/*.test.mjs` **passed** (real OCR test is opt-in and skipped by default).
+- `examples/next-host` **passed real Chromium Playwright**: open 2 pages under `/office/pdf`, mark region, Ctrl+S, verify host `saveVersion` received modified PDF bytes with an additional graphic content stream, plus 390px toolbar smoke.
+- Actual package-only externalized JS gzip: **8.64 KiB**; it **excludes** PDF.js/pdf-lib/React/worker assets. No total Next production payload measurement was made.
+
+**Not verified:** extraction/migration of the full legacy PDFium/EmbedPDF editor, secure PDF redaction, cryptographic signatures, structural form preservation, 100+ page Range performance, multi-browser/touch matrix, production 360i HMAC adapter, desktop packaging, and opt-in network-enabled OCR.
