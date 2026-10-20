@@ -6,10 +6,11 @@ import type { Mark } from "./history.js";
 import { P1MarkPreview } from "./P1MarkPreview.js";
 import type { PdfRegion, PdfTool } from "./types.js";
 
-export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight, onRegion, readOnly }: {
+export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight, onRegion, readOnly, assetUrl }: {
   pdf: PDFDocumentProxy; number: number; scale: number; parent: HTMLElement | null; tool: PdfTool;
   marks: Mark[]; highlight: PdfRegion | null;
   onRegion: (value: PdfRegion, points?: Array<[number, number]>) => void; readOnly: boolean;
+  assetUrl?: (id: string) => string;
 }) {
   const element = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -75,7 +76,7 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
       onPointerUp={finish} onPointerCancel={() => { gesture.current = null; }}
       style={{ cursor: readOnly ? "default" : "crosshair", touchAction: readOnly ? "auto" : "none" }}>
       {marks.filter((m) => m.region.page === number).map((mark, i) =>
-        mark.schemaVersion === 1 ? <P1MarkPreview key={i} mark={mark}/> :
+        mark.schemaVersion === 1 ? <P1MarkPreview key={i} mark={mark} assetUrl={assetUrl}/> :
         <div key={i} className={"tpdf-mark tpdf-mark-" + mark.type}
           style={{ left: mark.region.x + "%", top: mark.region.y + "%",
             width: mark.region.width + "%", height: mark.region.height + "%" }}>
