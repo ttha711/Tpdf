@@ -34,7 +34,8 @@ export type PdfEditorMessages = Partial<Record<
   "signature" | "rotate" | "delete" | "insert" | "moveUp" | "moveDown" |
   "ocr" | "form" | "versions" | "ready" | "readOnly" | "saved" | "unsaved" |
   "view" | "annotate" | "shapes" | "allTools" | "tools" | "read" | "comments" |
-  "insertTab" | "formsTab" | "lightweight" | "close" | "page" | "mode", string>>;
+  "insertTab" | "formsTab" | "lightweight" | "close" | "page" | "mode" |
+  "redact" | "measure" | "soon" | P1Tool, string>>;
 export type TpdfPdfEditorProps = {
   adapter: TpdfPdfAdapter;
   assets: PdfAssets;
