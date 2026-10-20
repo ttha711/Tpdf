@@ -81,7 +81,11 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
       setHistory(emptyHistory()); setOcrDirty(false); setError("");
       setSaveNotes(Array.isArray(saved.notes) ? saved.notes.filter((note) => typeof note === "string") : []);
       props.onSaved?.(saved);
-    } catch (cause) { report("save", cause); }
+    } catch (cause) {
+      report("save", cause);
+      if (history.current.some((op) => ["redact","measure","measure.calibrate",
+        "text.replace"].includes(op.kind))) throw cause;
+    }
     finally { locked.current = false; setBusy(false); }
   }
   async function ocr(): Promise<void> {
