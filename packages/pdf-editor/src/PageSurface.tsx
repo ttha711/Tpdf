@@ -31,11 +31,14 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
       const viewport = page.getViewport({ scale });
       setSize({ width: viewport.width / scale, height: viewport.height / scale });
       const target = canvas.current;
-      target.width = Math.ceil(viewport.width);
-      target.height = Math.ceil(viewport.height);
+      const dpr = window.devicePixelRatio || 1;
+      const ratio = Math.min(dpr, Math.sqrt(8_000_000 / Math.max(1, viewport.width * viewport.height)));
+      target.width = Math.max(1, Math.ceil(viewport.width * ratio));
+      target.height = Math.max(1, Math.ceil(viewport.height * ratio));
       const ctx = target.getContext("2d");
       if (!ctx) return;
-      task = page.render({ canvasContext: ctx, viewport });
+      task = page.render({ canvasContext: ctx, viewport,
+        transform: [ratio, 0, 0, ratio, 0, 0] });
       try { await task.promise; } finally { page.cleanup(); }
     }).catch((error) => {
       if (!cancelled && error?.name !== "RenderingCancelledException") console.error("PDF page", error);
