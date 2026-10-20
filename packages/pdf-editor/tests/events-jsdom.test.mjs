@@ -9,7 +9,8 @@ test("React page surface dispatches selected region in page percentages (jsdom)"
       { url: "https://host.example.test" });
     const { window } = dom;
     const prev = { window: globalThis.window, document: globalThis.document,
-      navigator: globalThis.navigator, IS_REACT_ACT_ENVIRONMENT: globalThis.IS_REACT_ACT_ENVIRONMENT };
+      navigator: globalThis.navigator, IntersectionObserver: globalThis.IntersectionObserver,
+      IS_REACT_ACT_ENVIRONMENT: globalThis.IS_REACT_ACT_ENVIRONMENT };
     try {
       globalThis.window = window;
       globalThis.document = window.document;
@@ -29,6 +30,7 @@ test("React page surface dispatches selected region in page percentages (jsdom)"
       window.IntersectionObserver = class {
         observe() {} disconnect() {}
       };
+      globalThis.IntersectionObserver = window.IntersectionObserver;
       let eventRegion = null;
       const pdf = { getPage: async () => { throw Error("Hidden page should not render"); } };
       const root = createRoot(parent);
@@ -55,6 +57,7 @@ test("React page surface dispatches selected region in page percentages (jsdom)"
       globalThis.document = prev.document;
       Object.defineProperty(globalThis, "navigator", { configurable: true, value: prev.navigator });
       globalThis.IS_REACT_ACT_ENVIRONMENT = prev.IS_REACT_ACT_ENVIRONMENT;
+      globalThis.IntersectionObserver = prev.IntersectionObserver;
       dom.window.close();
     }
   });
