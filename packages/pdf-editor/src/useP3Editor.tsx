@@ -23,7 +23,7 @@ export function useP3Editor(input: {
   const canTool=(id:string)=>enabled && allowedP3(id,adapter.p3Capabilities) &&
     (id!=="replaceText"||!!adapter.countTextMatches);
   useEffect(()=>{
-    if(!adapter.listPageCalibrations)return;
+    if(!adapter.listPageCalibrations || !pages.length)return;
     let live=true;
     adapter.listPageCalibrations().then(value=>{
       if(!live)return;
