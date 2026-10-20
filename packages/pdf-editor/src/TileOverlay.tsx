@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import type { PointerEvent } from "react";
 import { normalizeRegion, type Mark } from "./history.js";
+import { P1MarkPreview } from "./P1MarkPreview.js";
 import type { PdfTool } from "./types.js";
 import type { PdfRegion } from "./types.js";
 
@@ -22,17 +23,22 @@ export function TileOverlay({ number, selected, onRegion, pan, tool = "region", 
       const origin = coords(event); start.current = { origin, points: [origin] };
       event.currentTarget.setPointerCapture(event.pointerId);
     }}
-    onPointerMove={(event) => { if (start.current && tool === "draw") start.current.points.push(coords(event)); }}
+    onPointerMove={(event) => { if (start.current &&
+      ["draw","inkHighlight","polygon","polyline"].includes(tool))
+      start.current.points.push(coords(event)); }}
     onPointerUp={(event) => {
       if (!start.current) return;
       const last = coords(event);
       const region = normalizeRegion(number, ...start.current.origin, ...last);
       const points = start.current.points;
       start.current = null;
-      if (region) onRegion(region, tool === "draw" ? [...points, last] : undefined);
+      if (region) onRegion(region,
+        ["draw","inkHighlight","polygon","polyline","line","arrow","callout"].includes(tool)
+          ? [...points, last] : undefined);
     }}
     onPointerCancel={() => { start.current = null; }}>
     {marks.filter((mark) => mark.region.page === number).map((mark, index) =>
+      mark.schemaVersion === 1 ? <P1MarkPreview key={index} mark={mark}/> :
       <div key={index} className={"tpdf-mark tpdf-mark-" + mark.type} style={{
         left: mark.region.x + "%", top: mark.region.y + "%",
         width: mark.region.width + "%", height: mark.region.height + "%" }}>
