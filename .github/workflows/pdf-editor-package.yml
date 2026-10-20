@@ -60,6 +60,7 @@ jobs:
   next-host-e2e:
     outputs:
       install_issue: ${{ steps.next-install.outputs.install_issue }}
+      browser_issue: ${{ steps.browser.outputs.browser_issue }}
     name: Next 14 host Chromium E2E
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -91,7 +92,17 @@ jobs:
       - name: Chromium dependencies
         run: cd "$HOST_DIR" && pnpm exec playwright install --with-deps chromium
       - name: Run real editor interaction tests
-        run: cd "$HOST_DIR" && pnpm exec playwright test --reporter=line
+        id: browser
+        shell: bash
+        run: |
+          set +e
+          cd "$HOST_DIR"
+          pnpm exec playwright test --reporter=line > /tmp/pdf-editor-playwright.log 2>&1
+          code=$?
+          issue=$(grep -m1 -E 'Error:|error:|FAILED|Expected|TypeError:|SyntaxError:' /tmp/pdf-editor-playwright.log | head -c 170 || true)
+          echo "browser_issue=${issue}" >> "$GITHUB_OUTPUT"
+          tail -n 120 /tmp/pdf-editor-playwright.log
+          exit $code
   legacy-regression:
     name: Existing Tpdf web/core and offline CLI
     runs-on: ubuntu-latest
@@ -152,3 +163,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "Inspect Next host job for install/test logs."
+
+  browser-diagnostic:
+    if: always()
+    name: "Browser result: ${{ needs.next-host-e2e.outputs.browser_issue }}"
+    needs: next-host-e2e
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Read Next host Playwright log in failed job for complete trace."
