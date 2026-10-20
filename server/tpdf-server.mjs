@@ -821,6 +821,16 @@ async function handleApi(req, res, url) {
       : sendError(res, 404, "Agent task not found.");
   }
 
+  // Existing Agent Web OCR transport uses the same HMAC contract without
+  // changing cookie-authenticated standalone Tpdf behavior.
+  if (url.pathname.startsWith("/api/tpdf/ocr/jobs") &&
+      req.headers["x-tpdf-agent-web-identity"]) {
+    if (!auth.enabled || !agentWebAuth.enabled) {
+      return sendError(res, 503, "Agent Web tenant bridge is disabled.");
+    }
+    const identity = agentWebAuth.verify(req, url);
+    return tenantRuntime.run(identity.user, identity.projectId, () => handleOcrApi(req, res, url));
+  }
   assertSafeMutationRequest(req, process.env);
 
   if (url.pathname === "/api/tpdf/auth/login" && req.method === "POST") {
