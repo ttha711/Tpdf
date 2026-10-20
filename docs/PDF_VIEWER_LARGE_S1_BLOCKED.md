@@ -1,3 +1,7 @@
+> **SUPERSEDED (2026-10-20):** This PDFium/EmbedPDF blocker is historical.
+> S1 now uses PDF.js HTTP Range. See [current integration and acceptance](./PDF_VIEWER_LARGE_S1_INTEGRATION.md).
+> Do not treat this historical blocker as the state of the latest S1 branch.
+
 # PDF viewer S1 — blocked feasibility gate
 
 Status: **BLOCKED, not delivered**. Checked 2026-10-20.
