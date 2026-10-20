@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { TileScheduler } from "./tileScheduler.js";
 import { pageBoxes, tileLevel, wantedTiles, fallbackTile, LEVELS } from "./tiles.js";
 import { TileOverlay } from "./TileOverlay.js";
+import { useTileGestures } from "./useTileGestures.js";
 import type { PdfTileAdapter, PdfTileMeta, PdfTileLevel, PdfRegion } from "./types.js";
 
 export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPage, register }: {
@@ -19,6 +20,7 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
   const height = boxes.length ? boxes[boxes.length - 1].top + boxes[boxes.length - 1].height : 0;
   const dpr = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
   const level = tileLevel(zoom, dpr);
+  useTileGestures(parent, zoom, dpr);
   const needed = useMemo(() => wantedTiles(tiles, meta, zoom, dpr, view), [tiles, meta, zoom, dpr, view]);
   function sync() {
     if (!parent) return;
@@ -90,7 +92,7 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
   const nearPages = boxes.map((box, i) => ({ box, i })).filter(({ box }) =>
     box.top <= view.top + view.height + 512 && box.top + box.height >= view.top - 512);
   return <div className="tpdf-tile-document" data-tpdf-level={level} data-tpdf-active={scheduler.active}
-    data-tpdf-cache={scheduler.cacheSize} style={{ position: "relative", minWidth: contentWidth, height }}>
+    data-tpdf-cache={scheduler.cacheSize} style={{ position: "relative", minWidth: contentWidth, height, touchAction: "none" }}>
     {nearPages.map(({ box, i }) => <div key={i} className="tpdf-page"
       data-tpdf-page={i + 1} style={{ position: "absolute", top: box.top,
         left: (contentWidth - box.width) / 2, width: box.width, height: box.height, margin: 0,
