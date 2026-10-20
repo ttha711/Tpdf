@@ -124,7 +124,7 @@ export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, send
     if (match) {
       const record = await loadDocument(match[1]);
       const action = match[2] || "info";
-      if (action === "file" && (req.method === "GET" || req.method === "HEAD")) {
+      if (action === "file" && req.method === "GET") {
         return serveDocument(req, res, record, false);
       }
       if (action === "info" && req.method === "GET") return sendJson(res, 200, { id: record.id, name: record.fileName, size: record.size });
