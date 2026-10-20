@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PDFDocument } from "pdf-lib";
+import { PDFArray, PDFDocument } from "pdf-lib";
 import { applyChanges } from "../dist/pdfChanges.js";
 
 test("highlight changes PDF bytes without mutating source PDF", async () => {
@@ -12,6 +12,12 @@ test("highlight changes PDF bytes without mutating source PDF", async () => {
       page: 1, x: 10, y: 10, width: 35, height: 15, note: "" } } },
   ]);
   assert.notDeepEqual(result, bytes);
+  const count = (doc) => {
+    const contents = doc.getPage(0).node.Contents();
+    return contents instanceof PDFArray ? contents.size() : (contents ? 1 : 0);
+  };
+  assert.ok(count(await PDFDocument.load(result)) > count(await PDFDocument.load(bytes)),
+    "Saved PDF must include an additional painted highlight content stream.");
   assert.equal((await PDFDocument.load(result)).getPageCount(), 1);
   assert.equal((await PDFDocument.load(bytes)).getPageCount(), 1);
 });
