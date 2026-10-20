@@ -215,12 +215,13 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
         : <div className="tpdf-page-grid">{Array.from({ length: engine.pdf?.numPages || 0 }, (_, i) =>
             <button type="button" key={i} onClick={() => goto(i + 1)}>{text.pages} {i + 1}</button>)}</div>)
         : useTiles && tileMeta && props.adapter.tiles ? <TileViewer tiles={props.adapter.tiles} meta={tileMeta}
-          zoom={scale} parent={scrollNode} selected={region} onRegion={selected} tool={tool} marks={marks}
+          zoom={scale} parent={scrollNode} selected={region} onRegion={selected} tool={tool} marks={marks} assetUrl={props.adapter.assetUrl}
           onPage={(value) => { if (value !== engine.page) engine.setPage(value); }} />
         : engine.pdf && Array.from({ length: engine.pdf.numPages }, (_, i) =>
           <PageSurface key={i} pdf={engine.pdf!} number={i + 1} scale={scale} parent={scrollNode}
             tool={tool} marks={marks} highlight={region} onRegion={selected}
-            readOnly={Boolean(props.readOnly) && tool !== "region"} />)}
+            readOnly={Boolean(props.readOnly) && tool !== "region"}
+            assetUrl={props.adapter.assetUrl} />)}
     </div>
     {props.children}
   </>;
