@@ -123,8 +123,11 @@ export function P2FormPanel({ tool, region, fields, caps, onRecord, onError }: {
       </select></label>
       {field && <>
         <span className="tpdf-p2-hint">{field.widgets.length} widget(s)</span>
-        {field.type === "text" && <label>Value <input aria-label="Fill text"
-          value={fillText} onChange={e=>setFillText(e.target.value)} /></label>}
+        {field.type === "text" && <label>Value {field.multiline ?
+          <textarea aria-label="Fill text" value={fillText}
+            maxLength={field.maxLength} onChange={e=>setFillText(e.target.value)} /> :
+          <input aria-label="Fill text" value={fillText}
+            maxLength={field.maxLength} onChange={e=>setFillText(e.target.value)} />}</label>}
         {field.type === "checkbox" && <label><input type="checkbox"
           checked={fillChecked} onChange={e=>setFillChecked(e.target.checked)} /> Checked</label>}
         {(field.type === "dropdown" || field.type === "listBox") && <label>Value
