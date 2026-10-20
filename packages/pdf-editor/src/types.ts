@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { P1Asset, P1Quad, P1Tool } from "./p1Types.js";
 export type PdfSource = { url: string; name: string; size?: number } |
   { bytes: Uint8Array; name: string };
 export type PdfSaveInfo = { name: string; baseVersionId?: string };
@@ -21,8 +22,10 @@ export interface TpdfPdfAdapter {
   listVersions?(): Promise<PdfVersion[]>;
   runOcr?(options: { bytes: Uint8Array; name: string }): Promise<{ bytes: Uint8Array }>;
   searchPages?(query: string): Promise<PdfSearchHit[]>;
+  resolveTextQuads?(page: number, region: PdfRegion): Promise<P1Quad[]>;
+  selectAsset?(kind: P1Asset): Promise<{ assetId: string } | null>;
 }
-export type PdfTool = "region" | "highlight" | "note" | "draw" | "cover" | "signature";
+export type PdfTool = "region" | "highlight" | "note" | "draw" | "cover" | "signature" | P1Tool;
 export type PdfAssets = { pdfiumWasmUrl?: string; workerUrl: string };
 export type PdfEditorMessages = Partial<Record<
   "save" | "search" | "pages" | "fit" | "undo" | "redo" | "open" | "loading" | "error" |
