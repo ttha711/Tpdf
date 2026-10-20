@@ -1,8 +1,15 @@
 import { test, expect } from "@playwright/test";
 
 test("two-page PDF can be marked and saved through host adapter with Ctrl+S", async ({ page }) => {
-  await page.goto("/office/pdf");
-  await expect(page.locator('[data-tpdf-page="1"]')).toBeVisible({ timeout: 30000 });
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  const response = await page.goto("/office/pdf");
+  try {
+    await expect(page.locator('[data-tpdf-page="1"]')).toBeVisible({ timeout: 20000 });
+  } catch {
+    throw new Error("PDF did not open (HTTP " + response?.status() + "): " +
+      (await page.locator("body").innerText()).slice(0, 350) + " JS errors: " + pageErrors.join("; "));
+  }
   await expect(page.locator('[data-tpdf-page="2"]')).toHaveCount(1);
   await page.getByLabel("Annotation tool").selectOption("highlight");
   const layer = page.locator('[data-tpdf-page="1"] .tpdf-page-overlay');
