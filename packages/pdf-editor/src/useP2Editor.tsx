@@ -24,7 +24,7 @@ export function useP2Editor(input: {
   const enabled = !input.readOnly && !!adapter.applyChanges &&
     adapter.formCapabilities !== undefined;
   useEffect(() => {
-    if (tool !== "fill" || !adapter.listFormFields) return;
+    if (!FORM_TOOLS.includes(tool) || !adapter.listFormFields) return;
     let alive = true;
     setFetching(true);
     adapter.listFormFields().then(result => {
