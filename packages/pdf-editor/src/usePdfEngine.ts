@@ -32,7 +32,11 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
     return () => { disposed = true; };
   }, [props.adapter]);
   useEffect(() => {
-    if (!source || !props.assets.workerUrl) return;
+    if (!source) return;
+    if (!props.assets.workerUrl) {
+      report("asset", new Error("assets.workerUrl is required for PDF.js rendering."), false);
+      return;
+    }
     let disposed = false;
     let task: ReturnType<typeof import("pdfjs-dist").getDocument> | null = null;
     setBusy(true);
