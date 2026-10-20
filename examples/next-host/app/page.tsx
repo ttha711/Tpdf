@@ -16,6 +16,13 @@ export default function PdfOfficePage() {
     return {
       async loadDocument() {
         // Next serves public/fixture.pdf from the host application's own disk.
+        const large = new URLSearchParams(window.location.search).has("large");
+        if (large) {
+          const url = "http://127.0.0.1:3400/large-fixture.pdf";
+          const response = await fetch(url, { method: "HEAD" });
+          if (!response.ok) throw Error("Range fixture not available");
+          return { url, name: "large-A0.pdf", size: Number(response.headers.get("Content-Length")) };
+        }
         return { url: "/fixture.pdf", name: "building-plan.pdf" };
       },
       async saveVersion(bytes, { name, baseVersionId }) {
