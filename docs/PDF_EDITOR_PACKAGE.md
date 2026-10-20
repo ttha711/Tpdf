@@ -195,15 +195,19 @@ Minimal host example:
 
 ```bash
 npm run build --workspace=@tpdf/pdf-editor
-cd examples/next-host
-pnpm install
+# Standalone staging avoids pnpm resolving unrelated Tpdf workspaces
+# such as @tpdf/core from the npm registry.
+HOST_DIR=$(node examples/next-host/scripts/stage.mjs)
+cd "$HOST_DIR"
+pnpm install --no-frozen-lockfile
 pnpm dev
 # navigate to http://localhost:3300/office/pdf
+# from another terminal in "$HOST_DIR":
 pnpm exec playwright install chromium
 pnpm exec playwright test
 ```
 
-The example's fixture generator writes a **2-page** PDF under its own
+The example is staged outside the root pnpm-workspace scope to avoid attempting to download unpublished sibling packages from npm. Its fixture generator writes a **2-page** PDF under its own
 `public/`. The host's adapter loads that disk-backed document and stores
 new versions **in browser memory**; the browser test selects a highlight and
 checks Ctrl+S invokes `saveVersion` with changed PDF bytes.
