@@ -11,6 +11,9 @@ export const SHELL_BUILTINS: ShellBuiltin[] = [
   { id: "signature", group: "insert", label: "signature", tool: "signature" },
   { id: "pages", group: "view", label: "pages" },
   { id: "fit", group: "view", label: "fit" },
+  ...[25, 50, 100, 200, 400, 800].map((percent) => ({
+    id: "zoom" + percent, group: "view" as const, label: percent + "%",
+  })),
   { id: "rotate", group: "view", label: "rotate" },
   { id: "delete", group: "view", label: "delete" },
   { id: "moveUp", group: "view", label: "moveUp" },
@@ -21,6 +24,7 @@ export const SHELL_BUILTINS: ShellBuiltin[] = [
 export function visibleBuiltins(tab: ShellTab, canEdit: boolean, canForms: boolean) {
   return SHELL_BUILTINS.filter((item) => (tab === "all" || item.group === tab) &&
     (item.id === "region" || item.id === "pages" || item.id === "fit" ||
+      item.id.startsWith("zoom") ||
       (item.id === "form" ? canForms : canEdit)));
 }
 export const APP_WORDS = {
