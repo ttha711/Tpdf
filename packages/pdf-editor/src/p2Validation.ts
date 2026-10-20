@@ -81,6 +81,9 @@ export function validateP2(change: P2Change, existing: Map<string,P2CreateField|
             change.value.length > field.maxLength)) throw Error("Invalid text fill");
       if (field.required && !change.value.trim()) throw Error("Required text cannot be empty");
     } else if (change.fieldType === "checkbox") {
+      if (!caps.checkboxExportValue && "widgets" in field &&
+          field.widgets.some(w=>w.exportValue && w.exportValue !== "Yes"))
+        throw Error("Checkbox exportValue must be Yes");
       if (typeof change.value !== "boolean" || (field.required && !change.value))
         throw Error("Invalid checkbox fill");
     } else if (change.fieldType === "radio" || change.fieldType === "dropdown") {
@@ -91,12 +94,15 @@ export function validateP2(change: P2Change, existing: Map<string,P2CreateField|
       if (change.value !== null && allowed?.length && !allowed.includes(change.value) &&
           !("editable" in field && field.editable)) throw Error("Unknown choice value");
     } else {
+      const multi = "multiSelect" in field && field.multiSelect === true;
+      if (multi && !caps.multiSelect) throw Error("Multi-select not supported by host");
       if (!Array.isArray(change.value) || change.value.some(x=>typeof x!=="string") ||
-          change.value.length > (field.multiSelect ? 200 : 1) ||
+          change.value.length > (multi ? 200 : 1) ||
           (change.value.length > 1 && !caps.multiSelect))
         throw Error("Only one listBox choice supported");
       if (field.required && change.value.length===0) throw Error("Required listBox cannot be empty");
-      if (field.options?.length && change.value.some(x=>!field.options?.some(o=>o.value===x)))
+      const options = "options" in field ? field.options : undefined;
+      if (options?.length && change.value.some(x=>!options.some(o=>o.value===x)))
         throw Error("Unknown listBox selection");
     }
     return;
