@@ -1,5 +1,16 @@
 # @tpdf/pdf-editor for 360i (React/Next.js)
 
+## S1 large-PDF PDFium Range gate (blocked; 2026-10-20)
+
+**Not implemented / not verified.** The new branch `feat/pdf-viewer-large-s1` does
+not yet provide PDFium streaming. Tpdf's existing `apps/web` uses EmbedPDF
+2.15.1, whose documented `openDocumentUrl()` downloads the complete PDF.
+The `mode: "range-request"` option is reserved but does not implement Range.
+Moving that viewer into this package alone **would violate** the 250 MB/300-page
+first-page-before-25%-bytes condition. Do not label S1 complete or ship it to 360i.
+See [S1 blocker and verification gate](./PDF_VIEWER_LARGE_S1_BLOCKED.md).
+
+
 ## Scope and separation
 
 This package is a **React 18 client component**, not an iframe or a Tpdf site.
