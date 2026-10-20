@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import type { PdfRegion } from "./types.js";
 import type { P2Change } from "./p2Types.js";
+import { validateAttachmentSize } from "./p2Validation.js";
 export function P2ActionPanel({ tool, region, onRecord, onError, selectAttachment,
   totalPages }: {
   tool: "link" | "attachment"; region: PdfRegion | null;
@@ -24,8 +25,7 @@ export function P2ActionPanel({ tool, region, onRecord, onError, selectAttachmen
         if (!selectAttachment) throw Error("Host attachment picker is unavailable");
         const asset = await selectAttachment();
         if (!asset) return;
-        if (asset.size !== undefined && (asset.size < 0 || asset.size > 10_000_000))
-          throw Error("Attachment exceeds 10 MB");
+        validateAttachmentSize(asset.size);
         // Attachment uses icon point only, width/height are intentionally ignored.
         onRecord({kind:"attachment", schemaVersion:1,
           region:{...region,width:0,height:0}, assetId:asset.assetId});
