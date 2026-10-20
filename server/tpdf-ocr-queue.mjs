@@ -46,9 +46,12 @@ export function createOcrJobQueue(dataDir, options = {}) {
     try {
       const bytes = new Uint8Array(await readFile(inputPath));
       renderer = await createPdfiumOcrRenderer(bytes);
+      // PDF.js parses actual PDF text; PDFium extraction may report metadata
+      // or invisible non-searchable content for a raster-only page.
+      const nativePages = await extractPdfPages(inputPath);
       const result = await service.run(jobId, bytes, {
         getNativeText: async (pageIndex) => {
-          const extracted = await renderer.getNativeText(pageIndex);
+          const extracted = nativePages.pages[pageIndex]?.text;
           return usefulOcrText(extracted) ? extracted : "";
         },
         renderPage: (pageIndex) => renderer.renderPage(pageIndex),
