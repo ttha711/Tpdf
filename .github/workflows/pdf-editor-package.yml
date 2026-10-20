@@ -18,6 +18,7 @@ jobs:
   package:
     outputs:
       gzip_kib: ${{ steps.sizes.outputs.gzip_kib }}
+      dom_issue: ${{ steps.dom.outputs.dom_issue }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +39,16 @@ jobs:
         run: npm install --no-save --legacy-peer-deps --package-lock=false jsdom@25
         continue-on-error: true
       - name: Run jsdom event regression
-        run: node --test packages/pdf-editor/tests/events-jsdom.test.mjs
+        id: dom
+        shell: bash
+        run: |
+          set +e
+          node --test packages/pdf-editor/tests/events-jsdom.test.mjs > /tmp/tpdf-dom-test.log 2>&1
+          result=$?
+          issue=$(grep -m1 -E "not ok|error:|Error:" /tmp/tpdf-dom-test.log | head -c 150 || true)
+          echo "dom_issue=${issue}" >> "$GITHUB_OUTPUT"
+          cat /tmp/tpdf-dom-test.log
+          exit $result
       - name: Create npm tarball
         run: |
           mkdir -p release
@@ -101,3 +111,11 @@ jobs:
       - run: npm run typecheck --workspace=@tpdf/web
       - run: npm run build --workspace=@tpdf/web
       - run: node --test tests/cli/*.test.mjs
+
+  dom-diagnostic:
+    if: always()
+    name: "DOM result: ${{ needs.package.outputs.dom_issue }}"
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Inspect package job for full jsdom test log"
