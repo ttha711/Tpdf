@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { AgentWebEmbedPage, type PdfRegion } from "./AgentWebEmbedPage";
+import { AgentWebEmbedPage } from "./AgentWebEmbedPage";
+import { isValidRegion, trustedParentMessage, type PdfRegion } from "../embed/agentWebRegion";
 
 GlobalWorkerOptions.workerSrc = workerUrl;
 type Command = { type: "goto-page" | "set-zoom" | "highlight-region"; page?: number;
@@ -76,12 +77,12 @@ export function AgentWebEmbedViewer() {
     if (!origin || !pdf) return;
     send("ready", { pageCount: pdf.numPages, documentId });
     const listener = (event: MessageEvent<Command>) => {
-      if (event.source !== window.parent || event.origin !== origin || !event.data) return;
+      if (!trustedParentMessage(event.origin, event.source, origin, window.parent) || !event.data) return;
       if (event.data.type === "goto-page" && Number.isInteger(event.data.page)) goto(event.data.page!);
       if (event.data.type === "set-zoom" && Number.isFinite(event.data.zoom)) {
         setZoom(Math.max(0.25, Math.min(2, event.data.zoom!)));
       }
-      if (event.data.type === "highlight-region" && validRegion(event.data.region, pdf.numPages)) {
+      if (event.data.type === "highlight-region" && isValidRegion(event.data.region, pdf.numPages)) {
         setRegion(event.data.region!);
         goto(event.data.region!.page);
       }
@@ -179,9 +180,4 @@ export function AgentWebEmbedViewer() {
           region={region} onSelect={selected} />) : null}
     </div>
   </main>;
-}
-function validRegion(value: PdfRegion | undefined, count: number) {
-  return Boolean(value && Number.isInteger(value.page) && value.page > 0 && value.page <= count &&
-    [value.x, value.y, value.width, value.height].every((n) => Number.isFinite(n) && n >= 0 && n <= 100) &&
-    value.width > 0 && value.height > 0 && value.x + value.width <= 100 && value.y + value.height <= 100);
 }
