@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { TILE_SIZE, type Tile } from "./tiles.js";
-import { TileScheduler } from "./tileScheduler.js";
+import type { TileScheduler } from "./tileScheduler.js";
+import { useTileScheduler } from "./useTileScheduler.js";
 import type { PdfTileAdapter, PdfTileMeta } from "./types.js";
 
 function Thumb({ page, width, height, tiles, scheduler, tick }: {
@@ -37,11 +38,7 @@ export function TileGrid({ adapter, meta, parent, currentPage, onGoto }: {
   adapter: PdfTileAdapter; meta: PdfTileMeta; parent: HTMLElement | null;
   currentPage: number; onGoto: (page: number) => void;
 }) {
-  const scheduler = useMemo(() => new TileScheduler(), [adapter, meta.versionId]);
   const [visible, setVisible] = useState<number[]>([]);
-  const [tick, setTick] = useState(0);
-  useEffect(() => { scheduler.start(); return () => scheduler.dispose(); }, [scheduler]);
-  useEffect(() => scheduler.subscribe(() => setTick((n) => n + 1)), [scheduler]);
   useEffect(() => {
     if (!parent) return;
     const observer = new IntersectionObserver((entries) => {
@@ -74,15 +71,15 @@ export function TileGrid({ adapter, meta, parent, currentPage, onGoto }: {
     }
     return result.sort((a, b) => a.priority - b.priority).slice(0, 96);
   }, [visible, meta, adapter, currentPage]);
-  useEffect(() => { scheduler.setWanted(wanted); }, [scheduler, wanted]);
-  void tick;
+  const { scheduler, revision } = useTileScheduler(adapter, meta.versionId, wanted);
+  void revision;
   return <div className="tpdf-page-grid" data-tpdf-thumbnail-count={visible.length}
-    data-tpdf-thumbnail-active={scheduler.active}>
+    data-tpdf-thumbnail-active={scheduler?.active ?? 0}>
     {meta.pages.map((p, i) => <button key={i} type="button"
       data-tpdf-thumb-page={i} onClick={() => onGoto(i + 1)}
       aria-label={"Open page " + (i + 1)} style={{ padding: 7, minWidth: 0 }}>
-      {visible.includes(i) && <Thumb page={i} width={p.width} height={p.height}
-        tiles={wanted.filter((t) => t.page === i)} scheduler={scheduler} tick={tick} />}
+      {visible.includes(i) && scheduler && <Thumb page={i} width={p.width} height={p.height}
+        tiles={wanted.filter((t) => t.page === i)} scheduler={scheduler} tick={revision} />}
       <span>{i + 1}</span>
     </button>)}
   </div>;
