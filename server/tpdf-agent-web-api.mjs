@@ -112,9 +112,9 @@ export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, send
     }
     return storeNew(Buffer.from(await output.save()), `version-${record.fileName}`);
   }
-  async function dispatch(req, res, url) {
+  async function dispatch(req, res, url, identity) {
     if (url.pathname === prefix + "/embed/session" && req.method === "GET") {
-      return sendJson(res, 200, auth.newEmbedSession(auth.verify(req, url)));
+      return sendJson(res, 200, auth.newEmbedSession(identity));
     }
     if (url.pathname === prefix + "/documents" && req.method === "POST") {
       const saved = await storeNew(await streamUpload(req), url.searchParams.get("name") || "upload.pdf");
@@ -181,7 +181,7 @@ export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, send
     let identity;
     try { identity = auth.authorize(req, url); }
     catch (error) { return sendError(res, error.statusCode || 401, error.message); }
-    try { return await tenantRuntime.run(identity.user, identity.projectId, () => dispatch(req, res, url)); }
+    try { return await tenantRuntime.run(identity.user, identity.projectId, () => dispatch(req, res, url, identity)); }
     catch (error) { return sendError(res, error.statusCode || 500, error.message); }
   };
 }
