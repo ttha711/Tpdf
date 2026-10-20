@@ -25,6 +25,9 @@ export function listedFields(inventory: P2FieldInventory | null,
         options: "options" in f ? f.options : undefined,
         multiSelect: f.type === "listBox" && f.multiSelect,
         editable: f.type === "dropdown" && f.editable,
+        multiline: f.type === "text" && f.multiline,
+        maxLength: f.type === "text" ? f.maxLength : undefined,
+        tooltip: f.tooltip,
         required: f.required, readOnly: f.readOnly,
       });
     } else if (change.kind === "form.fill") {
