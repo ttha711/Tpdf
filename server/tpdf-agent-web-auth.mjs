@@ -3,7 +3,7 @@ import { assertProjectId } from "./tpdf-tenancy.mjs";
 
 const HEADER = "x-tpdf-agent-web-identity";
 const SESSION_HEADER = "x-tpdf-embed-session";
-const EMAIL_RE = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function deny(message = "Invalid Agent Web credentials.", statusCode = 401) {
   return Object.assign(new Error(message), { statusCode });
