@@ -87,7 +87,7 @@ test("P3 stays disabled on P2 host without p3Capabilities",async({page})=>{
   await expect(page.locator(".tpdf-tile-document")).toBeVisible({timeout:30000});
   await page.getByRole("button",{name:"Tools",exact:true}).click();
   for(const name of ["Redact","Distance","Perimeter","Area","Calibrate","Replace text"]){
-    await expect(page.getByRole("dialog").getByRole("button",{name,exact:false})).toBeDisabled();
+    await expect(page.getByRole("dialog").getByRole("button",{name,exact:true})).toBeDisabled();
   }
 });
 
