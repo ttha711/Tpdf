@@ -1,6 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { AppShellIcon } from "./AppShellIcon.js";
-import { APP_WORDS, SHELL_TABS, TAB_TEXT, visibleBuiltins, type ShellTab } from "./appShellModel.js";
+import { APP_WORDS, SHELL_TABS, SHEET_GROUPS, SHELL_BUILTINS, TAB_TEXT,
+  enabledBuiltin, visibleBuiltins, type ShellTab } from "./appShellModel.js";
+import { P1StyleBar } from "./P1StyleBar.js";
+import type { P1Style } from "./p1Types.js";
 import type { PdfHostTool, PdfRegion, PdfSearchHit, PdfTool } from "./types.js";
 
 type Props = {
@@ -9,7 +12,8 @@ type Props = {
   tile: boolean; canEdit: boolean; canForms: boolean; canSave: boolean;
   undoEnabled: boolean; redoEnabled: boolean; tool: PdfTool;
   query: string; results: PdfSearchHit[]; note: string; selection: PdfRegion | null;
-  tools: PdfHostTool[];
+  tools: PdfHostTool[]; canText?: boolean; canAsset?: boolean;
+  style?: P1Style; onStyle?: (value: P1Style) => void;
   onTool: (value: PdfTool) => void; onNote: (value: string) => void;
   onSearchQuery: (value: string) => void; onSearch: () => void;
   onGoto: (page: number) => void; onBuiltin: (id: string) => void;
@@ -24,7 +28,9 @@ export function AppShell(props: Props) {
   const [search, setSearch] = useState(false);
   const [hostBusy, setHostBusy] = useState<string | null>(null);
   const [commentNotice, setCommentNotice] = useState(false);
-  const commands = visibleBuiltins(tab, props.canEdit, props.canForms);
+  const [styleOpen, setStyleOpen] = useState(false);
+  const commands = visibleBuiltins(tab, props.canEdit, props.canForms,
+    props.canText, props.canAsset);
   const selection = props.selection ?? undefined;
   const hostComments = props.tools.find((item) => item.group.toLowerCase() === "comments");
   useEffect(() => {
@@ -38,12 +44,17 @@ export function AppShell(props: Props) {
     setTab(next);
     if (next === "annotate" && props.canEdit) props.onTool("highlight");
     if (next === "shapes") props.onTool("region");
-    if (next === "insert" && props.canEdit) props.onTool("signature");
+    if (next === "insert" && props.canEdit && props.canAsset) props.onTool("signature");
     if (next === "view") props.onTool("region");
   }
   function activate(id: string) {
-    const item = visibleBuiltins("all", props.canEdit, props.canForms).find((entry) => entry.id === id);
-    if (item?.tool) props.onTool(item.tool);
+    if (id === "style" || id === "shapeStyle") {
+      setStyleOpen(true); setSheet(false); return;
+    }
+    const item = visibleBuiltins("all", props.canEdit, props.canForms,
+      props.canText, props.canAsset).find((entry) => entry.id === id);
+    if (!item) return;
+    if (item.tool) props.onTool(item.tool);
     else props.onBuiltin(id);
     setSheet(false);
   }
@@ -112,7 +123,12 @@ export function AppShell(props: Props) {
     {commentNotice && <div className="tpdf-app-notice" role="status">
       {locale === "vi" ? "Host chưa cung cấp công cụ bình luận." : "Comments require a host tool."}
     </div>}
-    {(props.tool === "note" || props.tool === "signature") && <div className="tpdf-app-note">
+    {styleOpen && props.style && props.onStyle && <div className="tpdf-app-p1-style">
+      <P1StyleBar style={props.style} onChange={props.onStyle}/>
+      <button type="button" onClick={() => setStyleOpen(false)}>Done</button>
+    </div>}
+    {(["note","signature","addText","insertText","callout"].includes(props.tool)) &&
+      <div className="tpdf-app-note">
       <input aria-label={words[props.tool]} value={props.note}
         onChange={(event) => props.onNote(event.target.value)} maxLength={160}
         placeholder={words[props.tool]} /></div>}
@@ -147,14 +163,19 @@ export function AppShell(props: Props) {
           <button type="button" aria-label={words.close} onClick={() => setSheet(false)}>
             <AppShellIcon name="close" /></button></div>
         <div className="tpdf-app-sheet-list">
-          {SHELL_TABS.filter((value) => value !== "all").map((group) => {
-            const items = visibleBuiltins(group, props.canEdit, props.canForms);
+          {SHEET_GROUPS.map((group) => {
+            const items = SHELL_BUILTINS.filter((item) => item.group === group);
             return items.length ? <section key={group}>
               <h3>{words[TAB_TEXT[group]]}</h3>
               <div className="tpdf-app-tool-grid">{items.map((item) =>
-                <button type="button" key={item.id} onClick={() => activate(item.id)}>
+                <button type="button" key={item.id}
+                  disabled={!enabledBuiltin(item, props.canEdit, props.canForms,
+                    props.canText, props.canAsset)}
+                  onClick={() => activate(item.id)}>
                   <AppShellIcon name={item.tool ? "pen" : "pages"} size={19} />
                   <span>{words[item.label] || item.label}</span>
+                  {!enabledBuiltin(item, props.canEdit, props.canForms,
+                    props.canText, props.canAsset) && <small>{words.soon}</small>}
                 </button>)}</div>
             </section> : null;
           })}
