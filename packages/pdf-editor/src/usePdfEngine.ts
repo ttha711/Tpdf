@@ -108,9 +108,9 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
   async function formFields(): Promise<string[]> {
     try {
       if (!source) return [];
-      const { PDFDocument } = await import("pdf-lib");
+      const { PDFDocument, PDFTextField } = await import("pdf-lib");
       const document = await PDFDocument.load(await sourceBytes(source));
-      return document.getForm().getFields().filter((field) => field.constructor.name === "PDFTextField")
+      return document.getForm().getFields().filter((field) => field instanceof PDFTextField)
         .map((field) => field.getName()).slice(0, 150);
     } catch (cause) { report("form", cause); return []; }
   }
