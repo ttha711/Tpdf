@@ -196,3 +196,33 @@ Use a shared nonce/session store for multiple processes; confirm
 `frame-ancestors` is origin-specific. Validate wrong signature,
 expired token, replay, path/method mismatch, different project, iframe
 origin mismatch, and OCR cancellation. Do not put either secret in Git.
+
+## OCR searchable-text regression (2026-10-20)
+
+A real raster-PDF report showed a `done` OCR job with no extractable text.
+The queue previously trusted the PDFium `getNativeText` return value to skip
+OCR; a non-empty but non-searchable return can cause a false skip. It now
+uses **PDF.js page text** to decide whether native text exists, and verifies
+PDF.js-extractable text on **each output page before publishing `done`**.
+A missing text layer fails the job with an explicit message. This prevents
+silent success but does not by itself guarantee character-level OCR accuracy.
+
+Pure verification tests:
+```bash
+node --test tests/cli/agent-web-ocr-verification.test.mjs
+```
+
+Opt-in raster -> OCR -> PDF.js text regression (can download Tesseract language
+assets; requires PyMuPDF, Pillow and Tesseract dependencies):
+```bash
+TPDF_OCR_E2E=1 node --test tests/cli/agent-web-ocr-raster.test.mjs
+```
+
+The regression creates a two-page PDF, exports page 2 to PNG, embeds PNG in a
+new raster PDF, runs the real Tpdf OCR queue, and invokes the same
+`createAgentWebIndex.pages()` backend used by `GET /text` to assert
+`Fire escape`. It is **skipped by default** in offline CLI suites. It is not
+an HTTP-level or browser-level integration test. The opt-in OCR regression,
+full repo test suite and Node 24 build/typecheck **have not yet been rerun**
+for these OCR changes by the assistant; user-provided 63/63 belongs to the
+prior commit, not the new OCR commits.
