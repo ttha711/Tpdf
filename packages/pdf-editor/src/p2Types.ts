@@ -32,5 +32,6 @@ export type P2Change =
 export type P2ExistingField = { name: string; type: P2FieldType;
   widgets: Array<{ region: PdfRegion; exportValue?: string }>;
   value: string | boolean | string[] | null; options?: P2Option[];
-  multiSelect?: boolean; editable?: boolean; required?: boolean; readOnly?: boolean };
+  multiSelect?: boolean; editable?: boolean; multiline?: boolean; maxLength?: number;
+  tooltip?: string; required?: boolean; readOnly?: boolean };
 export type P2FieldInventory = { versionId: string; fields: P2ExistingField[] };
