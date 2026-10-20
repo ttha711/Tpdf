@@ -1,0 +1,177 @@
+name: PDF Editor Package
+on:
+  push:
+    branches:
+      - feat/pdf-editor-react-library
+    tags:
+      - 'pdf-editor-v*'
+  pull_request:
+    paths:
+      - 'packages/pdf-editor/**'
+      - 'examples/next-host/**'
+      - 'docs/PDF_EDITOR_PACKAGE.md'
+      - 'package-lock.json'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  package:
+    outputs:
+      gzip_kib: ${{ steps.sizes.outputs.gzip_kib }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install monorepo dependencies (no Electron postinstall)
+        run: npm ci --ignore-scripts
+      - name: Build library, type declarations, size budget
+        run: npm run build --workspace=@tpdf/pdf-editor
+      - name: Explicit PDF editor TypeScript typecheck
+        run: npm run typecheck --workspace=@tpdf/pdf-editor
+      - name: Run deterministic offline package tests
+        run: npm test --workspace=@tpdf/pdf-editor
+      - name: Record actual externalized JavaScript gzip size
+        id: sizes
+        run: echo "gzip_kib=$(node -p 'require("./packages/pdf-editor/dist/size-report.json").gzipJsKiB')" >> "$GITHUB_OUTPUT"
+      - name: Create npm tarball
+        run: |
+          mkdir -p release
+          npm pack --workspace=@tpdf/pdf-editor --pack-destination release
+          tar -tzf release/*.tgz | grep 'package/dist/index.d.ts'
+          tar -tzf release/*.tgz | grep 'package/dist/style.css'
+          cat packages/pdf-editor/dist/size-report.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tpdf-pdf-editor-tarball
+          path: release/*.tgz
+      - name: Publish GitHub tag release (package tarball, not npm publish)
+        if: startsWith(github.ref, 'refs/tags/pdf-editor-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.tgz
+
+  size-report:
+    name: "Externalized JS gzip ${{ needs.package.outputs.gzip_kib }} KiB"
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Read package job output for exact measured JS-only gzip."
+  next-host-e2e:
+    outputs:
+      install_issue: ${{ steps.next-install.outputs.install_issue }}
+      browser_issue: ${{ steps.browser.outputs.browser_issue }}
+    name: Next 14 host Chromium E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build --workspace=@tpdf/pdf-editor
+      - run: |
+          corepack enable
+          corepack prepare pnpm@9.15.9 --activate
+      - name: Stage Next host outside pnpm workspace
+        run: echo "HOST_DIR=$(node examples/next-host/scripts/stage.mjs)" >> "$GITHUB_ENV"
+      - name: Install Next host
+        id: next-install
+        shell: bash
+        run: |
+          set +e
+          cd "$HOST_DIR"
+          pnpm install --no-frozen-lockfile > /tmp/next-pnpm-install.log 2>&1
+          result=$?
+          issue=$(grep -m1 -E 'ERR_PNPM|Error:|ERROR|error:' /tmp/next-pnpm-install.log | head -c 150 || true)
+          echo "install_issue=${issue}" >> "$GITHUB_OUTPUT"
+          cat /tmp/next-pnpm-install.log
+          exit $result
+      - name: Chromium dependencies
+        run: cd "$HOST_DIR" && pnpm exec playwright install --with-deps chromium
+      - name: Run real editor interaction tests
+        id: browser
+        shell: bash
+        run: |
+          set +e
+          cd "$HOST_DIR"
+          pnpm exec playwright test --reporter=line > /tmp/pdf-editor-playwright.log 2>&1
+          code=$?
+          issue=$(grep -m1 -E 'Error:|error:|FAILED|Expected|TypeError:|SyntaxError:' /tmp/pdf-editor-playwright.log | head -c 240 || true)
+          expected=$(grep -m1 -E 'Expected substring:|Received string:|Locator:' /tmp/pdf-editor-playwright.log | head -c 230 || true)
+          issue="${issue} ${expected}"
+          echo "browser_issue=${issue}" >> "$GITHUB_OUTPUT"
+          tail -n 120 /tmp/pdf-editor-playwright.log
+          exit $code
+  legacy-regression:
+    name: Existing Tpdf web/core and offline CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build --workspace=@tpdf/core
+      - run: npm run typecheck --workspace=@tpdf/web
+      - run: npm run build --workspace=@tpdf/web
+      - run: node --test tests/cli/*.test.mjs
+
+  dom-diagnostic:
+    if: always()
+    name: "DOM result: ${{ needs.dom-test.outputs.issue }}"
+    needs: dom-test
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Inspect package job for full jsdom test log"
+
+  dom-test:
+    name: jsdom React pointer event regression
+    runs-on: ubuntu-latest
+    outputs:
+      issue: ${{ steps.dom.outputs.dom_issue }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build --workspace=@tpdf/pdf-editor
+      - name: Install jsdom for optional DOM event test
+        run: npm install --no-save --legacy-peer-deps --package-lock=false jsdom@25
+        continue-on-error: true
+      - name: Run jsdom event regression
+        id: dom
+        shell: bash
+        run: |
+          set +e
+          node --test packages/pdf-editor/tests/events-jsdom.test.mjs > /tmp/tpdf-dom-test.log 2>&1
+          result=$?
+          issue=$(grep -m1 -E "not ok|error:|Error:" /tmp/tpdf-dom-test.log | head -c 150 || true)
+          echo "dom_issue=${issue}" >> "$GITHUB_OUTPUT"
+          cat /tmp/tpdf-dom-test.log
+          exit $result
+
+
+  next-diagnostic:
+    if: always()
+    name: "Next install: ${{ needs.next-host-e2e.outputs.install_issue }}"
+    needs: next-host-e2e
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Inspect Next host job for install/test logs."
+
+  browser-diagnostic:
+    if: always()
+    name: "Browser result: ${{ needs.next-host-e2e.outputs.browser_issue }}"
+    needs: next-host-e2e
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Read Next host Playwright log in failed job for complete trace."

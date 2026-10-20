@@ -1,0 +1,46 @@
+import { test, expect } from "@playwright/test";
+
+test("two-page PDF can be marked and saved through host adapter with Ctrl+S", async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  const response = await page.goto("/office/pdf");
+  try {
+    await expect(page.locator('[data-tpdf-page="1"]')).toBeVisible({ timeout: 20000 });
+  } catch {
+    throw new Error("PDF did not open (HTTP " + response?.status() + "): " +
+      (await page.locator("body").innerText()).slice(0, 350) + " JS errors: " + pageErrors.join("; "));
+  }
+  await expect(page.locator('[data-tpdf-page="2"]')).toHaveCount(1);
+  await page.getByLabel("Annotation tool").selectOption("highlight");
+  const layer = page.locator('[data-tpdf-page="1"] .tpdf-page-overlay');
+  const box = await layer.boundingBox();
+  expect(box).toBeTruthy();
+  const x = box!.x + box!.width * 0.2, y = box!.y + box!.height * 0.15;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 105, y + 32, { steps: 5 });
+  await page.mouse.up();
+  await expect(page.getByTestId("region")).toContainText("page 1");
+  await expect(page.locator('[data-tpdf-page="1"] .tpdf-mark-highlight')).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /Save version/ })).toBeEnabled();
+  await page.locator(".tpdf-editor").focus();
+  await page.keyboard.press("Control+s");
+  await page.waitForTimeout(1500);
+  if ((await page.getByTestId("saved").innerText()) === "Not saved") {
+    const errors = await page.locator('[role="alert"]').allTextContents();
+    throw new Error("saveVersion was not committed: " + errors.join(" | "));
+  }
+  const savedText = await page.getByTestId("saved").innerText();
+  if (!savedText.includes("changed=true") || !savedText.includes("annotation=true") ||
+      !savedText.includes("bytes")) {
+    const alerts = await page.locator('[role="alert"]').allTextContents();
+    throw new Error("Unexpected adapter save result: " + savedText + " | " + alerts.join("; "));
+  }
+});
+test("toolbar fits a 390px host and emits area percentages", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 840 });
+  await page.goto("/office/pdf");
+  await expect(page.getByLabel("Zoom")).toBeVisible();
+  await page.getByLabel("Zoom").selectOption("0.5");
+  await expect(page.locator(".tpdf-scroll")).toBeVisible();
+});

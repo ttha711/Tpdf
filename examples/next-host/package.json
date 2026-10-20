@@ -1,0 +1,26 @@
+{
+  "name": "tpdf-next-host-demo",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "prepare:assets": "node scripts/make-fixture.mjs && node ../../packages/pdf-editor/scripts/copy-assets.mjs public",
+    "dev": "pnpm run prepare:assets && next dev -p 3300",
+    "build": "pnpm run prepare:assets && next build",
+    "start": "next start -p 3300",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "@tpdf/pdf-editor": "file:../../packages/pdf-editor",
+    "next": "^14.2.35",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "pdf-lib": "^1.17.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.10.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.8.3"
+  }
+}
