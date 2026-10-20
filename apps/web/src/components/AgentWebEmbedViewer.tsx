@@ -71,7 +71,7 @@ export function AgentWebEmbedViewer() {
       element.height = Math.ceil(viewport.height);
       const context = element.getContext("2d");
       if (!context) return;
-      render = pdfPage.render({ canvasContext: context, canvas: element, viewport });
+      render = pdfPage.render({ canvasContext: context, viewport });
       return render.promise;
     }).catch((cause) => { if (!cancelled && cause?.name !== "RenderingCancelledException") setError(String(cause)); });
     return () => { cancelled = true; render?.cancel(); };
