@@ -211,7 +211,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
             <button type="button" key={i} onClick={() => goto(i + 1)}>{text.pages} {i + 1}</button>)}</div>)
         : useTiles && tileMeta && props.adapter.tiles ? <TileViewer tiles={props.adapter.tiles} meta={tileMeta}
           zoom={scale} parent={scrollNode} selected={region} onRegion={selected} tool={tool} marks={marks} assetUrl={props.adapter.assetUrl} p2Changes={p2Changes}
-          onPage={(value) => { if (value !== engine.page) engine.setPage(value); }} />
+          p3Changes={p3Changes} onPage={(value) => { if (value !== engine.page) engine.setPage(value); }} />
         : engine.pdf && Array.from({ length: engine.pdf.numPages }, (_, i) =>
           <PageSurface key={i} pdf={engine.pdf!} number={i + 1} scale={scale} parent={scrollNode}
             tool={tool} marks={marks} highlight={region} onRegion={selected}
