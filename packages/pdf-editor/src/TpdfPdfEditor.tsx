@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import { usePdfEngine } from "./usePdfEngine.js";
 import { PageSurface } from "./PageSurface.js";
 import { TileViewer } from "./TileViewer.js";
+import { TileGrid } from "./TileGrid.js";
 import { validMeta, tileLevel } from "./tiles.js";
 import type { PdfTileMeta } from "./types.js";
 import { validRegion, type Mark } from "./history.js";
@@ -185,16 +186,11 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     {results.length > 0 && <div className="tpdf-inline-panel">{results.map((r) =>
       <button key={r.page} onClick={() => goto(r.page)}>{r.page}: {r.snippet.slice(0, 75)}</button>)}</div>}
     <div ref={scroller} className="tpdf-scroll" onScroll={scroll}>
-      {grid ? <div className="tpdf-page-grid">{Array.from({
-        length: (useTiles ? tileMeta?.pages.length : engine.pdf?.numPages) || 0 }, (_, i) => i)
-        .filter((i) => !useTiles || Math.abs(i + 1 - engine.page) <= 45)
-        .map((i) =>
-        <button type="button" key={i} onClick={() => goto(i + 1)}>
-          {useTiles && props.adapter.tiles && <img loading="lazy" alt=""
-            style={{ width: 72, height: 92, objectFit: "contain" }}
-            src={props.adapter.tiles.tileUrl(i, 0.25, 0, 0)} />}
-          {text.pages} {i + 1}
-        </button>)}</div>
+      {grid ? (useTiles && tileMeta && props.adapter.tiles
+        ? <TileGrid adapter={props.adapter.tiles} meta={tileMeta} parent={scrollNode}
+            currentPage={engine.page} onGoto={goto} />
+        : <div className="tpdf-page-grid">{Array.from({ length: engine.pdf?.numPages || 0 }, (_, i) =>
+            <button type="button" key={i} onClick={() => goto(i + 1)}>{text.pages} {i + 1}</button>)}</div>)
         : useTiles && tileMeta && props.adapter.tiles ? <TileViewer tiles={props.adapter.tiles} meta={tileMeta}
           zoom={scale} parent={scrollNode} selected={region} onRegion={selected}
           onPage={(value) => { if (value !== engine.page) engine.setPage(value); }} />
