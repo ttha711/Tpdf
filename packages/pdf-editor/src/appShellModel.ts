@@ -1,5 +1,8 @@
 import type { PdfTool } from "./types.js";
 import { ASSET_TOOL, TEXT_MARKUP, P1_TOOLS } from "./p1Types.js";
+import { allowedP3 } from "./p3Validation.js";
+import type { P3Capabilities } from "./p3Types.js";
+export type P3Availability = { caps?:P3Capabilities; enabled:boolean; count:boolean; calibrated:boolean };
 export type ShellTab = "view" | "annotate" | "shapes" | "insert" |
   "forms" | "redact" | "measure" | "all";
 export const SHELL_TABS: ShellTab[] = ["view", "annotate", "shapes", "insert", "forms", "all"];
@@ -10,7 +13,8 @@ export type ShellBuiltin = { id: string; group: ShellTab; label: string; tool?: 
   stage?: "p2" | "p3" };
 const command = (id: string, group: ShellTab, label = id,
   stage?: "p2" | "p3"): ShellBuiltin => ({ id, group, label, stage,
-    ...(!stage || (stage === "p2" && id !== "radio" && id !== "comment") ?
+    ...(!stage || ((stage === "p2" && id !== "radio" && id !== "comment") ||
+      (stage === "p3" && id !== "applyRedact")) ?
       { tool: id as PdfTool } : {}) });
 export const SHELL_BUILTINS: ShellBuiltin[] = [
   command("region", "shapes"), command("highlight", "annotate"),
@@ -41,8 +45,11 @@ export const SHELL_BUILTINS: ShellBuiltin[] = [
 ];
 export function enabledBuiltin(item: ShellBuiltin, canEdit: boolean, canForms: boolean,
   canText = false, canAsset = false, canP1 = false,
-  canP2 = false, canFill = false, canAttachment = false): boolean {
-  if (item.stage === "p3") return false;
+  canP2 = false, canFill = false, canAttachment = false,
+  p3?:P3Availability): boolean {
+  if (item.stage === "p3") return !!p3?.enabled && item.id!=="applyRedact" &&
+    allowedP3(item.id,p3.caps) && (item.id!=="replaceText" || p3.count) &&
+    (!["distance","perimeter","area"].includes(item.id) || p3.calibrated);
   if (item.stage === "p2") {
     if (!canP2) return false;
     if (item.id === "radio" || item.id === "comment") return false;
@@ -64,10 +71,11 @@ export function enabledBuiltin(item: ShellBuiltin, canEdit: boolean, canForms: b
 }
 export function visibleBuiltins(tab: ShellTab, canEdit: boolean, canForms: boolean,
   canText = false, canAsset = false, canP1 = false,
-  canP2 = false, canFill = false, canAttachment = false) {
+  canP2 = false, canFill = false, canAttachment = false,
+  p3?:P3Availability) {
   return SHELL_BUILTINS.filter((item) => (tab === "all" || item.group === tab) &&
     enabledBuiltin(item, canEdit, canForms, canText, canAsset, canP1,
-      canP2, canFill, canAttachment));
+      canP2, canFill, canAttachment,p3));
 }
 export const APP_WORDS = {
   vi: { view: "Xem", annotate: "Chú thích", shapes: "Hình dạng", insertTab: "Chèn",

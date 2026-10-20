@@ -14,6 +14,7 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
   const [page, setPage] = useState(1);
   const [zoom, setZoom] = useState<number | "fit">("fit");
   const [error, setError] = useState("");
+  const [saveNotes, setSaveNotes] = useState<string[]>([]);
   const locked = useRef(false);
   const dirty = history.current.length > 0 || ocrDirty;
   const report = (code: string, cause: unknown, retryable = true) => {
@@ -26,7 +27,8 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
     let disposed = false;
     setBusy(true);
     props.adapter.loadDocument().then((next) => {
-      if (!disposed) { setSource(next); setHistory(emptyHistory()); setOcrDirty(false); }
+      if (!disposed) { setSource(next); setHistory(emptyHistory());
+        setOcrDirty(false); setSaveNotes([]); }
     }).catch((cause) => { if (!disposed) report("load", cause); })
       .finally(() => { if (!disposed) setBusy(false); });
     return () => { disposed = true; };
@@ -63,7 +65,7 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
   }
   async function save(): Promise<void> {
     if (props.readOnly || locked.current || !source || !dirty) return;
-    locked.current = true; setBusy(true);
+    locked.current = true; setBusy(true); setSaveNotes([]);
     try {
       const info = { name: source.name, baseVersionId: revision };
       // Host-owned changes never download/re-encode the original PDF.
@@ -78,8 +80,13 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
       setRevision(saved.versionId);
       if (bytes) setSource({ bytes: new Uint8Array(bytes), name: saved.name });
       setHistory(emptyHistory()); setOcrDirty(false); setError("");
+      setSaveNotes(Array.isArray(saved.notes) ? saved.notes.filter((note) => typeof note === "string") : []);
       props.onSaved?.(saved);
-    } catch (cause) { report("save", cause); }
+    } catch (cause) {
+      report("save", cause);
+      if (history.current.some((op) => ["redact","measure","measure.calibrate",
+        "text.replace"].includes(op.kind))) throw cause;
+    }
     finally { locked.current = false; setBusy(false); }
   }
   async function ocr(): Promise<void> {
@@ -119,7 +126,7 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
         .map((field) => field.getName()).slice(0, 150);
     } catch (cause) { report("form", cause); return []; }
   }
-  return { source, pdf, history, dirty, busy, page, setPage, zoom, setZoom, error,
+  return { source, pdf, history, dirty, busy, page, setPage, zoom, setZoom, error, saveNotes,
     record, save, ocr, search, formFields, undo: () => setHistory(undo),
     redo: () => setHistory(redo), report };
 }

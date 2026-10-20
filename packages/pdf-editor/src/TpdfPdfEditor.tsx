@@ -5,9 +5,11 @@ import { TileViewer } from "./TileViewer.js";
 import { TileGrid } from "./TileGrid.js";
 import { AppShell } from "./AppShell.js";
 import { useP2Editor } from "./useP2Editor.js";
-import { buildP1Mark } from "./p1Marks.js";
-import { DEFAULT_P1_STYLE, P1_TOOLS, TEXT_MARKUP, ASSET_TOOL,
-  type P1Asset, type P1Point, type P1Quad, type P1Style } from "./p1Types.js";
+import { useP3Editor } from "./useP3Editor.js";
+import { useP3SaveGuard } from "./useP3SaveGuard.js";
+import { useCanvasPageGeometry } from "./useCanvasPageGeometry.js";
+import { recordP1Selection } from "./recordP1Selection.js";
+import { DEFAULT_P1_STYLE, type P1Style } from "./p1Types.js";
 import { validMeta, tileLevel } from "./tiles.js";
 import type { PdfTileMeta } from "./types.js";
 import { validRegion, type Mark } from "./history.js";
@@ -74,6 +76,8 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     return () => { alive = false; };
   }, [props.adapter, props.renderMode, props.tilesOnly]);
   const marks: Mark[] = engine.history.current.filter((op) => op.kind === "mark").map((op) => op.mark);
+  const p3Changes = engine.history.current.filter((op) => ["redact","measure.calibrate",
+    "measure","text.replace"].includes(op.kind)) as import("./p3Types.js").P3Change[];
   const p2Changes = engine.history.current.filter((op) => ["form.create","form.fill",
     "link","attachment"].includes(op.kind)) as import("./p2Types.js").P2Change[];
   useEffect(() => {
@@ -100,7 +104,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     engine.setZoom(value === "fit" ? "fit" : Math.max(0.05, Math.min(16 / dpr, value)));
   }
   useImperativeHandle(ref, () => ({
-    save: engine.save, goToPage: goto, setZoom,
+    save: saveGuard.saveSafely, goToPage: goto, setZoom,
     highlightRegion: (value) => {
       if (validRegion(value, tileMeta?.pages.length || engine.pdf?.numPages || 0)) {
         setRegion(value); goto(value.page);
@@ -115,42 +119,20 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     changes: engine.history.current, record: engine.record, report: engine.report,
     versionId: tileMeta?.versionId, pageCount: tileMeta?.pages.length ||
       engine.pdf?.numPages || 0, readOnly: !canEdit, onPlaced: () => setRegion(null) });
-  function selected(value: PdfRegion, points?: Array<[number, number]>) {
-    setRegion(value); props.onRegionSelected?.(value);
-    if (!canEdit || tool === "region") return;
-    const legacy: Array<PdfTool> = ["highlight","note","draw","cover","signature"];
-    const useP1 = P1_TOOLS.includes(tool as typeof P1_TOOLS[number]) &&
-      !(tool === "highlight" && !props.adapter.resolveTextQuads) &&
-      !(tool === "signature" && !props.adapter.selectAsset);
-    if (useP1 && !props.adapter.applyChanges) {
-      engine.report("p1-mark", Error("P1 marks require host adapter.applyChanges"), false);
-      return;
-    }
-    if (!useP1) {
-      if (!legacy.includes(tool)) return;
-      const oldType = tool as "highlight" | "note" | "draw" | "cover" | "signature";
-      engine.record({ kind: "mark", mark: { type: oldType, region: value,
-        value: tool === "note" || tool === "signature" ? note : undefined, points } });
-      return;
-    }
-    void (async () => {
-      try {
-        const p1Tool = tool as typeof P1_TOOLS[number];
-        const quads: P1Quad[] | undefined =
-          TEXT_MARKUP.includes(p1Tool as typeof TEXT_MARKUP[number])
-            ? await props.adapter.resolveTextQuads?.(value.page, value) : undefined;
-        const asset = ASSET_TOOL.includes(p1Tool as P1Asset)
-          ? await props.adapter.selectAsset?.(p1Tool as P1Asset) : undefined;
-        if (ASSET_TOOL.includes(p1Tool as P1Asset) && !asset) return;
-        const path: P1Point[] = (points || [[value.x, value.y],
-          [value.x + value.width, value.y + value.height]])
-          .map(([x,y]) => ({ x, y }));
-        const mark = buildP1Mark({ tool: p1Tool, region: value, style: p1Style,
-          path, text: note, quads, assetId: asset?.assetId });
-        engine.record({ kind: "mark", mark });
-        setRegion(null);
-      } catch (error) { engine.report("p1-mark", error, false); }
-    })();
+  const canvasGeometry = useCanvasPageGeometry(engine.pdf,engine.page);
+  const p3=useP3Editor({adapter:props.adapter,tool,page:engine.page,
+    pages:tileMeta?.pages||canvasGeometry.sizes, versionId:tileMeta?.versionId,
+    changes:engine.history.current,readOnly:!canEdit,
+    record:engine.record,report:engine.report,selection:region,
+    clearSelection:()=>setRegion(null)});
+  const saveGuard=useP3SaveGuard(engine.history.current,engine.save);
+  function selected(value:PdfRegion,points?:Array<[number,number]>) {
+    setRegion(value);props.onRegionSelected?.(value);
+    if(!canEdit||tool==="region")return;
+    if(p3.onRegion(value,points))return;
+    void recordP1Selection({tool,region:value,points,adapter:props.adapter,
+      note,style:p1Style,record:engine.record,report:engine.report,
+      clearSelection:()=>setRegion(null)});
   }
   function builtIn(id: string) {
     if (id === "pages") { setGrid((value) => !value); return; }
@@ -175,7 +157,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       event.preventDefault(); setZoom(scale * (event.key === "-" ? 0.8 : 1.25)); return;
     }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
-      event.preventDefault(); void engine.save();
+      event.preventDefault(); void saveGuard.saveSafely().catch(()=>{});
     } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z" && !props.readOnly) {
       event.preventDefault(); if (event.shiftKey) engine.redo(); else engine.undo();
     }
@@ -211,6 +193,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     {tileError && <div className="tpdf-error" role="alert">{tileError}</div>}
     {engine.busy && <div className="tpdf-status" role="status">{text.loading}</div>}
     {engine.error && <div className="tpdf-error" role="alert">{engine.error}</div>}
+    {saveGuard.dialog}
     {fields && <div className="tpdf-inline-panel">{fields.map((field) =>
       <label key={field}>{field}<input disabled={!canEdit} aria-label={field}
         onChange={(e) => engine.record({ kind: "field", field, value: e.target.value })} /></label>)}</div>}
@@ -228,12 +211,12 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
             <button type="button" key={i} onClick={() => goto(i + 1)}>{text.pages} {i + 1}</button>)}</div>)
         : useTiles && tileMeta && props.adapter.tiles ? <TileViewer tiles={props.adapter.tiles} meta={tileMeta}
           zoom={scale} parent={scrollNode} selected={region} onRegion={selected} tool={tool} marks={marks} assetUrl={props.adapter.assetUrl} p2Changes={p2Changes}
-          onPage={(value) => { if (value !== engine.page) engine.setPage(value); }} />
+          p3Changes={p3Changes} onPage={(value) => { if (value !== engine.page) engine.setPage(value); }} />
         : engine.pdf && Array.from({ length: engine.pdf.numPages }, (_, i) =>
           <PageSurface key={i} pdf={engine.pdf!} number={i + 1} scale={scale} parent={scrollNode}
             tool={tool} marks={marks} highlight={region} onRegion={selected}
             readOnly={Boolean(props.readOnly) && tool !== "region"}
-            assetUrl={props.adapter.assetUrl} p2Changes={p2Changes} />)}
+            assetUrl={props.adapter.assetUrl} p2Changes={p2Changes} p3Changes={p3Changes} />)}
     </div>
     {props.children}
   </>;
@@ -252,10 +235,13 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       canText={Boolean(props.adapter.resolveTextQuads)} canAsset={Boolean(props.adapter.selectAsset)}
       canP1={Boolean(props.adapter.applyChanges) && canEdit}
       canP2={p2.canP2} canFill={p2.canFill} canAttachment={p2.canAttachment}
-      p2Panel={p2.p2Panel}
+      p2Panel={p2.p2Panel} p3Panel={p3.panel}
+      p3={{ caps:props.adapter.p3Capabilities,enabled:canEdit,
+        count:Boolean(props.adapter.countTextMatches),calibrated:p3.calibrated }}
+      saveNotes={engine.saveNotes}
       style={p1Style} onStyle={setP1Style}
       onSearchQuery={setQuery} onSearch={() => void engine.search(query).then(setResults)}
-      onGoto={goto} onBuiltin={builtIn} onSave={() => void engine.save()}
+      onGoto={goto} onBuiltin={builtIn} onSave={() => { void saveGuard.saveSafely().catch(()=>{}); }}
       onUndo={engine.undo} onRedo={engine.redo}
       onToolError={(error) => engine.report("host-tool", error)}>{viewer}</AppShell>
       : <><div className="tpdf-toolbar" role="toolbar" aria-label="PDF controls">
@@ -289,7 +275,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
         <button type="button" onClick={() => engine.record({ kind: "move", page: engine.page, to: engine.page + 1 })}>{text.moveDown}</button>
         <button type="button" onClick={() => void engine.formFields().then(setFields)}>{text.form}</button>
         {props.adapter.runOcr && <button type="button" onClick={() => void engine.ocr()}>{text.ocr}</button>}
-        <button type="button" disabled={!canSave} onClick={() => void engine.save()}>{text.save}{engine.dirty ? " ●" : ""}</button>
+        <button type="button" disabled={!canSave} onClick={() => { void saveGuard.saveSafely().catch(()=>{}); }}>{text.save}{engine.dirty ? " ●" : ""}</button>
       </>}
       {props.adapter.listVersions && <button type="button" onClick={() => void props.adapter.listVersions!().then(setVersions).catch(
         (err) => engine.report("versions", err))}>{text.versions}</button>}

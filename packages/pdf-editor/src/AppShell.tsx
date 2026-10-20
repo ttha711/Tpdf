@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { AppShellIcon } from "./AppShellIcon.js";
 import { APP_WORDS, SHELL_TABS, SHEET_GROUPS, SHELL_BUILTINS, TAB_TEXT,
-  enabledBuiltin, visibleBuiltins, type ShellTab } from "./appShellModel.js";
+  enabledBuiltin, visibleBuiltins, type ShellTab, type P3Availability } from "./appShellModel.js";
 import { P1StyleBar } from "./P1StyleBar.js";
 import { toolLabel } from "./p1Labels.js";
 import type { P1Style } from "./p1Types.js";
@@ -15,7 +15,8 @@ type Props = {
   query: string; results: PdfSearchHit[]; note: string; selection: PdfRegion | null;
   tools: PdfHostTool[]; canText?: boolean; canAsset?: boolean; canP1?: boolean;
   style?: P1Style; onStyle?: (value: P1Style) => void;
-  p2Panel?: ReactNode; canP2?: boolean; canFill?: boolean; canAttachment?: boolean;
+  p2Panel?: ReactNode; p3Panel?:ReactNode; p3?:P3Availability;
+  saveNotes?:string[]; canP2?: boolean; canFill?: boolean; canAttachment?: boolean;
   onTool: (value: PdfTool) => void; onNote: (value: string) => void;
   onSearchQuery: (value: string) => void; onSearch: () => void;
   onGoto: (page: number) => void; onBuiltin: (id: string) => void;
@@ -33,7 +34,7 @@ export function AppShell(props: Props) {
   const [styleOpen, setStyleOpen] = useState(false);
   const commands = visibleBuiltins(tab, props.canEdit, props.canForms,
     props.canText, props.canAsset, props.canP1,
-    props.canP2, props.canFill, props.canAttachment);
+    props.canP2, props.canFill, props.canAttachment,props.p3);
   const selection = props.selection ?? undefined;
   const hostComments = props.tools.find((item) => item.group.toLowerCase() === "comments");
   useEffect(() => {
@@ -56,7 +57,7 @@ export function AppShell(props: Props) {
     }
     const item = visibleBuiltins("all", props.canEdit, props.canForms,
       props.canText, props.canAsset, props.canP1,
-      props.canP2, props.canFill, props.canAttachment).find((entry) => entry.id === id);
+      props.canP2, props.canFill, props.canAttachment,props.p3).find((entry) => entry.id === id);
     if (!item) return;
     if (item.tool) { props.onTool(item.tool); setTab(item.group); }
     else props.onBuiltin(id);
@@ -137,6 +138,10 @@ export function AppShell(props: Props) {
         onChange={(event) => props.onNote(event.target.value)} maxLength={160}
         placeholder={words[props.tool]} /></div>}
     {props.p2Panel}
+    {props.p3Panel}
+    {!!props.saveNotes?.length && <aside role="status" className="tpdf-p3-notes"
+      data-testid="p3-save-notes"><strong>Save notes</strong>
+      {props.saveNotes.map((note,i)=><p key={i}>{note}</p>)}</aside>}
     <div className="tpdf-app-viewer">
       {props.children}
       {props.tile && <span className="tpdf-app-viewer-badge">{words.lightweight}</span>}
@@ -176,13 +181,13 @@ export function AppShell(props: Props) {
                 <button type="button" key={item.id}
                   disabled={!enabledBuiltin(item, props.canEdit, props.canForms,
                     props.canText, props.canAsset, props.canP1,
-                    props.canP2, props.canFill, props.canAttachment)}
+                    props.canP2, props.canFill, props.canAttachment,props.p3)}
                   onClick={() => activate(item.id)}>
                   <AppShellIcon name={item.tool ? "pen" : "pages"} size={19} />
                   <span>{toolLabel(item.label, words, locale)}</span>
                   {!enabledBuiltin(item, props.canEdit, props.canForms,
                     props.canText, props.canAsset, props.canP1,
-                    props.canP2, props.canFill, props.canAttachment) && <small>{words.soon}</small>}
+                    props.canP2, props.canFill, props.canAttachment,props.p3) && <small>{words.soon}</small>}
                 </button>)}</div>
             </section> : null;
           })}

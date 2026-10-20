@@ -4,14 +4,17 @@ import { normalizeRegion, type Mark } from "./history.js";
 import { P1MarkPreview } from "./P1MarkPreview.js";
 import { P2PlacementOverlay } from "./P2PlacementOverlay.js";
 import type { P2Change } from "./p2Types.js";
+import type { P3Change } from "./p3Types.js";
+import { P3PendingOverlay } from "./P3PendingOverlay.js";
 import type { PdfTool } from "./types.js";
 import type { PdfRegion } from "./types.js";
 
-export function TileOverlay({ number, selected, onRegion, pan, tool = "region", marks = [], assetUrl, p2Changes = [] }: {
+export function TileOverlay({ number, selected, onRegion, pan, tool = "region", marks = [], assetUrl, p2Changes = [], p3Changes = [], pageSize }: {
   number: number; selected: PdfRegion | null;
   onRegion: (region: PdfRegion, points?: Array<[number, number]>) => void;
   pan: boolean; tool?: PdfTool; marks?: Mark[];
   assetUrl?: (id: string) => string; p2Changes?: P2Change[];
+  p3Changes?:P3Change[]; pageSize?:{width:number;height:number};
 }) {
   const start = useRef<{ origin: [number, number]; points: Array<[number, number]> } | null>(null);
   function coords(event: PointerEvent<HTMLDivElement>): [number, number] {
@@ -27,16 +30,23 @@ export function TileOverlay({ number, selected, onRegion, pan, tool = "region", 
       event.currentTarget.setPointerCapture(event.pointerId);
     }}
     onPointerMove={(event) => { if (start.current &&
-      ["draw","inkHighlight","polygon","polyline"].includes(tool))
+      ["draw","inkHighlight","polygon","polyline","perimeter","area"].includes(tool))
       start.current.points.push(coords(event)); }}
     onPointerUp={(event) => {
       if (!start.current) return;
       const last = coords(event);
-      const region = normalizeRegion(number, ...start.current.origin, ...last);
+      const origin = start.current.origin;
+      const linear = tool === "distance" || tool === "calibrate";
+      const x = linear && Math.abs(origin[0] - last[0]) < 0.2 ?
+        (last[0] < 99.7 ? last[0] + 0.3 : last[0] - 0.3) : last[0];
+      const y = linear && Math.abs(origin[1] - last[1]) < 0.2 ?
+        (last[1] < 99.7 ? last[1] + 0.3 : last[1] - 0.3) : last[1];
+      const region = normalizeRegion(number, ...origin, x, y);
       const points = start.current.points;
       start.current = null;
       if (region) onRegion(region,
-        ["draw","inkHighlight","polygon","polyline","line","arrow","callout"].includes(tool)
+        ["draw","inkHighlight","polygon","polyline","line","arrow","callout",
+          "perimeter","area","distance","calibrate"].includes(tool)
           ? [...points, last] : undefined);
     }}
     onPointerCancel={() => { start.current = null; }}>
@@ -49,6 +59,8 @@ export function TileOverlay({ number, selected, onRegion, pan, tool = "region", 
           <span>{mark.value || mark.region.note}</span>}
       </div>)}
     <P2PlacementOverlay changes={p2Changes} page={number}/>
+    {pageSize && <P3PendingOverlay changes={p3Changes} page={number}
+      width={pageSize.width} height={pageSize.height}/>}
     {selected?.page === number && <div className="tpdf-mark tpdf-mark-region"
       style={{ left: selected.x + "%", top: selected.y + "%",
         width: selected.width + "%", height: selected.height + "%" }} />}
