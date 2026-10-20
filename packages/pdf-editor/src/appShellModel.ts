@@ -10,7 +10,8 @@ export type ShellBuiltin = { id: string; group: ShellTab; label: string; tool?: 
   stage?: "p2" | "p3" };
 const command = (id: string, group: ShellTab, label = id,
   stage?: "p2" | "p3"): ShellBuiltin => ({ id, group, label, stage,
-    ...(!stage ? { tool: id as PdfTool } : {}) });
+    ...(!stage || (stage === "p2" && id !== "radio" && id !== "comment") ?
+      { tool: id as PdfTool } : {}) });
 export const SHELL_BUILTINS: ShellBuiltin[] = [
   command("region", "shapes"), command("highlight", "annotate"),
   command("note", "annotate"), command("draw", "annotate"), command("cover", "annotate"),
