@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { buildP1Mark, validStyle } from "../dist/p1Marks.js";
 import { DEFAULT_P1_STYLE, P1_TOOLS } from "../dist/p1Types.js";
 import { SHELL_BUILTINS, enabledBuiltin, SHEET_GROUPS } from "../dist/appShellModel.js";
+import { toolLabel } from "../dist/p1Labels.js";
 
 const region = { page: 1, x: 10, y: 20, width: 40, height: 30, note: "" };
 const tl = {x: 10,y:20},tr={x:50,y:20},br={x:50,y:50},bl={x:10,y:50};
@@ -59,4 +60,12 @@ test("catalog shows P1 and future phases locked until supported", () => {
   }
   assert.equal(enabledBuiltin(SHELL_BUILTINS.find((x)=>x.id==="underline"),true,false,false,false,true),false);
   assert.equal(enabledBuiltin(SHELL_BUILTINS.find((x)=>x.id==="underline"),true,false,true,false,true),true);
+});
+
+test("visible names match mobile PDF tools and locale overrides", () => {
+  assert.equal(toolLabel("underline", {}, "en"), "Underline");
+  assert.equal(toolLabel("replaceText", {}, "en"), "Replace text");
+  assert.equal(toolLabel("inkHighlight", {}, "en"), "Ink highlight");
+  assert.equal(toolLabel("underline", {}, "vi"), "Gạch dưới");
+  assert.equal(toolLabel("underline", { underline: "Dưới dòng" }, "vi"), "Dưới dòng");
 });
