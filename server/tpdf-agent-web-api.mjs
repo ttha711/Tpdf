@@ -4,6 +4,7 @@ import { assertDocumentId, sanitizeFileName } from "./tpdf-storage.mjs";
 import { createAgentWebIndex } from "./tpdf-agent-web-index.mjs";
 import { createAgentWebJobs } from "./tpdf-agent-web-jobs.mjs";
 import { createAgentWebJobExecutor } from "./tpdf-agent-web-render-jobs.mjs";
+import { assertOperationBudget } from "./tpdf-agent-web-limits.mjs";
 
 export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, sendJson, sendError, readJsonBody, maxBytes, serveDocument }) {
   const index = createAgentWebIndex({ tenantRuntime });
@@ -49,6 +50,9 @@ export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, send
     const pageCount = source.getPageCount();
     const validPage = (n) => Number.isInteger(n) && n >= 1 && n <= pageCount;
     let output = source;
+    if (body.type === "split" || body.type === "merge") {
+      assertOperationBudget([{ size: record.size, pages: pageCount }], maxBytes);
+    }
     if (body.type === "rotate") {
       if (![90, 180, 270, -90, -180, -270].includes(body.degrees)) throw new Error("Invalid rotation.");
       const target = body.pages ?? Array.from({ length: pageCount }, (_, i) => i + 1);
@@ -98,9 +102,15 @@ export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, send
       }
     } else if (body.type === "merge") {
       if (!Array.isArray(body.documentIds) || !body.documentIds.length || body.documentIds.length > 10) throw new Error("Invalid documentIds.");
+      let totalBytes = record.size, totalPages = pageCount;
       for (const id of body.documentIds) {
         const second = await loadDocument(id);
+        // Reject before reading the additional PDF into memory.
+        assertOperationBudget([{ size: totalBytes, pages: totalPages },
+          { size: second.size, pages: 1 }], maxBytes);
         const other = await PDFDocument.load(await readFile(second.pdfPath));
+        totalBytes += second.size; totalPages += other.getPageCount();
+        assertOperationBudget([{ size: totalBytes, pages: totalPages }], maxBytes);
         const copied = await source.copyPages(other, other.getPageIndices());
         copied.forEach((page) => source.addPage(page));
       }
