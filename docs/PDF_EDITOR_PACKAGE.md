@@ -228,70 +228,70 @@ adapter.selectAttachment?():Promise<{assetId:string;size?:number}|null>;
   change producer only. P2b radio, multi-select and custom checkbox export
   values are not claimed as supported by the PyMuPDF host yet.
 
-## P3 proposed contract — DRAFT, waiting for 360i confirmation
+## P3 accepted contract — host PyMuPDF + embedded viewer (schemaVersion 1)
 
-**Documentation only.** P3 is not exported or executable. Proposed additions
-to `PdfChange[]` for host `applyChanges()`; keep P1/P2 unchanged.
-All positions use **0–100% of the displayed (rotated) page**, top-left origin;
-page numbers are 1-based. No raw PDF/image data goes through the library.
+P3 changes are appended **in order** to `PdfChange[]` and sent unchanged
+through host `adapter.applyChanges`. P1 and P2a remain compatible. Positions
+and points are 0–100% of the **displayed, rotated** page, top-left origin;
+page numbers are 1-based. No PDF bytes are transferred by P3.
 
 ```ts
-type P3Point = { x: number; y: number };
-type P3LengthUnit = "mm" | "cm" | "m" | "in" | "ft";
-type P3PageCalibration = {
-  id: string; page: number; points: [P3Point, P3Point];
-  realLength: number; unit: P3LengthUnit;
-};
+type P3Point = { x:number; y:number };
+type P3LengthUnit = "mm"|"cm"|"m"|"in"|"ft";
+type P3PageCalibration = { id:string; page:number;
+  points:[P3Point,P3Point]; realLength:number; unit:P3LengthUnit };
+type P3Scope = {kind:"region";region:PdfRegion} |
+  {kind:"pages";pages:number[]} | {kind:"document"};
 type P3Change =
- | { kind: "redact"; schemaVersion: 1; regions: PdfRegion[];
-     terms?: string[]; pages?: number[] }
- | { kind: "measure.calibrate"; schemaVersion: 1;
-     calibration: P3PageCalibration }
- | { kind: "measure"; schemaVersion: 1;
-     type: "distance" | "perimeter" | "area"; page: number;
-     points: P3Point[]; calibration: P3PageCalibration }
- | { kind: "text.replace"; schemaVersion: 1;
-     search: string; replacement: string;
-     scope: { kind: "region"; region: PdfRegion }
-       | { kind: "pages"; pages: number[] }
-       | { kind: "document" };
-     caseSensitive?: boolean };
+ | {kind:"redact";schemaVersion:1;regions:PdfRegion[];terms?:string[];pages?:number[]}
+ | {kind:"measure.calibrate";schemaVersion:1;calibration:P3PageCalibration}
+ | {kind:"measure";schemaVersion:1;type:"distance"|"perimeter"|"area";
+    page:number;points:P3Point[];calibration:P3PageCalibration}
+ | {kind:"text.replace";schemaVersion:1;search:string;replacement:string;
+    scope:P3Scope;caseSensitive?:boolean};
 type P3Capabilities = {
-  redact?: { secureErase?: boolean; regions?: boolean; terms?: boolean };
-  measure?: { calibrate?: boolean; distance?: boolean;
-    perimeter?: boolean; area?: boolean };
-  replaceText?: { region?: boolean; pages?: boolean; document?: boolean };
+  redact?:{secureErase?:boolean;regions?:boolean;terms?:boolean};
+  measure?:{calibrate?:boolean;distance?:boolean;perimeter?:boolean;area?:boolean};
+  replaceText?:{region?:boolean;pages?:boolean;document?:boolean;count?:boolean};
 };
-adapter.p3Capabilities?: P3Capabilities;
-adapter.listPageCalibrations?(): Promise<{
-  versionId: string; calibrations: P3PageCalibration[];
+adapter.p3Capabilities?:P3Capabilities;
+adapter.listPageCalibrations?():Promise<{
+  versionId:string;calibrations:P3PageCalibration[]
 }>;
+adapter.countTextMatches?(query:{search:string;caseSensitive?:boolean;
+  scope:P3Scope}):Promise<{count:number;pages:number[]}>;
+type PdfSaved = {versionId:string;name:string;notes?:string[]};
 ```
 
-- **Redact:** require at least one `region` or a nonempty `terms[]`;
-  terms are literal text (not regex) and **require explicit `pages[]`**.
-  No implicit whole-document search. Stage a *pending* outline only; before
-  Save require an explicit destructive-action confirmation listing affected
-  pages and terms. Host must remove underlying **text and image pixels**,
-  not overlay black rectangles; reject if secure erasure cannot be guaranteed.
-  Once saved, the new PDF cannot undo erasure; **earlier versions/backups may
-  still contain the originals**, which 360i must handle separately.
-- **Measure:** calibrate from two distinct points on one page plus positive
-  real-world length/unit; one active calibration per page. Each measurement
-  embeds its calibration **snapshot**, not only an ID, so the host can
-  calculate the length or area consistently after reopening. Distance needs
-  exactly 2 points; Perimeter/Area need at least 3 (closed shape). Server
-  derives the result/label (area in squared units) from PDF geometry,
-  then writes Line/PolyLine/Polygon annotations. Changing a page calibration
-  must not retroactively change existing marks.
-- **Replace text:** exact literal `search` and `replacement` within a
-  selected region, explicit pages, or the entire document. Show match count
-  and obtain user confirmation for document-wide changes. Host may use a
-  **nearest available base font**, not the original font, and must report
-  unreplaceable text; replacement is **not secure redaction**.
-- **UI capability gating:** missing `p3Capabilities` or missing sub-flags
-  means **disabled + “Sắp có” / “Coming soon”**. Redact requires
-  `secureErase=true` *and* the relevant region/term flag; Measure requires
-  `calibrate=true`, the requested mode flag, and a valid per-page
-  calibration; Replace enables only declared scope(s). Never simulate a
-  successful server operation. Details: [P3 design notes](./PDF_EDITOR_P3_NOTES.md).
+**Redact:** `regions[]` and/or literal `terms[]` (no regex);
+text terms require explicit `pages[]`. Show *Pending redaction* and
+require a **separate destructive confirmation before any Save** (including
+keyboard and imperative save). Host removes underlying text and image pixels.
+CAD vector strokes are removed only when entirely within the redacted area;
+crossing strokes may remain. Host verifies text/terms are gone, else rejects
+the operation **without creating a version**. Prior versions retain originals
+and are governed separately by 360i, not the package.
+
+**Measure:** two different calibration points and positive real length;
+exactly one active calibration per page, replaced by newest. Host stores
+calibration as **PDF-embedded catalog metadata** (not an annotation); reader
+reloads via `listPageCalibrations`. Every Line/PolyLine/Polygon annotation
+carries a calibration **snapshot** so historical measurements never change.
+Visible FreeText label is computed from page geometry, formatted to two
+decimals; Area has squared units (e.g. m²).
+
+**Replace text:** must call `countTextMatches` and display count/pages
+before confirmation; explicit region/pages/document scope and optional
+case-sensitive search. Host can replace supported runs using the closest
+available base font, **not necessarily the original font**. Image-only text
+(needs OCR), non-orthogonal rotated runs and text split across blocks may be
+skipped; server saves successful partial replacements and reports skipped
+counts in `PdfSaved.notes`. Render notes after Save. Replace is **not**
+secure redaction.
+
+**Capabilities:** absence of `p3Capabilities` or a subflag means disabled
+with “Sắp có” / “Coming soon”. Redact needs `secureErase:true` plus
+regions/terms capability, Measure requires mode flags and a valid page
+calibration, Replace needs its scope flag, `count:true` and the
+`countTextMatches` adapter. Never pretend an unsupported action succeeded.
+See [P3 safety and UI notes](./PDF_EDITOR_P3_NOTES.md).
