@@ -697,7 +697,7 @@ const handleSigningApi = createSigningApi({
 
 const agentWebApi = createAgentWebApi({
   auth: agentWebAuth, tenantRuntime, storage, ocrQueue, sendJson, sendError,
-  readJsonBody, maxBytes: Math.min(maxOperationBytes, maxBytes),
+  readJsonBody, maxBytes: Math.min(maxOperationBytes, maxBytes), serveDocument,
 });
 
 async function handleOcrApi(req, res, url) {
