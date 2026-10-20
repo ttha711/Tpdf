@@ -13,7 +13,9 @@ function publicJob(job) {
 }
 
 export function createOcrJobQueue(dataDir, options = {}) {
-  const service = new OcrService();
+  const service = options.service ?? new OcrService();
+  const rendererFactory = options.rendererFactory ?? createPdfiumOcrRenderer;
+  const extractPages = options.extractPages ?? extractPdfPages;
   const root = resolve(dataDir, "ocr");
   const requestedConcurrency = Number(options.concurrency || 1);
   const concurrency = Number.isFinite(requestedConcurrency)
@@ -45,10 +47,10 @@ export function createOcrJobQueue(dataDir, options = {}) {
     let renderer;
     try {
       const bytes = new Uint8Array(await readFile(inputPath));
-      renderer = await createPdfiumOcrRenderer(bytes);
+      renderer = await rendererFactory(bytes);
       // PDF.js parses actual PDF text; PDFium extraction may report metadata
       // or invisible non-searchable content for a raster-only page.
-      const nativePages = await extractPdfPages(inputPath);
+      const nativePages = await extractPages(inputPath);
       const result = await service.run(jobId, bytes, {
         getNativeText: async (pageIndex) => {
           const extracted = nativePages.pages[pageIndex]?.text;
@@ -69,8 +71,8 @@ export function createOcrJobQueue(dataDir, options = {}) {
         try {
           await writeFile(beforePath, bytes);
           await writeFile(afterPath, result.outputBytes);
-          const before = await extractPdfPages(beforePath);
-          const after = await extractPdfPages(afterPath);
+          const before = await extractPages(beforePath);
+          const after = await extractPages(afterPath);
           assertSearchableOcr(before.pages.map((item) => item.text),
             after.pages.map((item) => item.text));
         } finally {
