@@ -16,6 +16,8 @@ import { createOcrJobQueue } from "./tpdf-ocr-queue.mjs";
 import { createCertificateStore } from "./tpdf-certificate-store.mjs";
 import { createSigningApi } from "./tpdf-signing-api.mjs";
 import { createAuthService } from "./tpdf-auth.mjs";
+import { createAgentWebAuth } from "./tpdf-agent-web-auth.mjs";
+import { createAgentWebApi } from "./tpdf-agent-web-api.mjs";
 import { createAgentPairingBroker } from "./tpdf-agent-pairing.mjs";
 import { createTenantRuntime } from "./tpdf-tenancy.mjs";
 import {
@@ -58,6 +60,7 @@ const uploadChunkBytes = Number.isFinite(configuredUploadChunkBytes)
   ? Math.min(Math.max(configuredUploadChunkBytes, minimumUploadChunkBytes), 32 * 1024 * 1024)
   : 8 * 1024 * 1024;
 const auth = createAuthService(dataDir, process.env, { objectStore });
+const agentWebAuth = createAgentWebAuth(process.env);
 const tenantRuntime = createTenantRuntime(dataDir, {
   authEnabled: auth.enabled,
   objectStore,
@@ -685,6 +688,11 @@ const handleSigningApi = createSigningApi({
   parseOperationOptions,
 });
 
+const agentWebApi = createAgentWebApi({
+  auth: agentWebAuth, tenantRuntime, storage, ocrQueue, sendJson, sendError,
+  readJsonBody, maxBytes: Math.min(maxOperationBytes, maxBytes),
+});
+
 async function handleOcrApi(req, res, url) {
   if (url.pathname === "/api/tpdf/ocr/jobs") {
     if (req.method === "GET") return sendJson(res, 200, ocrQueue.list());
@@ -1159,6 +1167,10 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
     requestPath = url.pathname;
+    if (url.pathname.startsWith("/api/tpdf/agent/v1/")) {
+      await agentWebApi(req, res, url);
+      return;
+    }
     if (url.pathname.startsWith("/api/tpdf/")) {
       await handleApi(req, res, url);
       return;
