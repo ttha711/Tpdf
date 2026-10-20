@@ -14,6 +14,7 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
   const [page, setPage] = useState(1);
   const [zoom, setZoom] = useState<number | "fit">("fit");
   const [error, setError] = useState("");
+  const [saveNotes, setSaveNotes] = useState<string[]>([]);
   const locked = useRef(false);
   const dirty = history.current.length > 0 || ocrDirty;
   const report = (code: string, cause: unknown, retryable = true) => {
@@ -78,6 +79,7 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
       setRevision(saved.versionId);
       if (bytes) setSource({ bytes: new Uint8Array(bytes), name: saved.name });
       setHistory(emptyHistory()); setOcrDirty(false); setError("");
+      setSaveNotes(Array.isArray(saved.notes) ? saved.notes.filter((note) => typeof note === "string") : []);
       props.onSaved?.(saved);
     } catch (cause) { report("save", cause); }
     finally { locked.current = false; setBusy(false); }
@@ -119,7 +121,7 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
         .map((field) => field.getName()).slice(0, 150);
     } catch (cause) { report("form", cause); return []; }
   }
-  return { source, pdf, history, dirty, busy, page, setPage, zoom, setZoom, error,
+  return { source, pdf, history, dirty, busy, page, setPage, zoom, setZoom, error, saveNotes,
     record, save, ocr, search, formFields, undo: () => setHistory(undo),
     redo: () => setHistory(redo), report };
 }
