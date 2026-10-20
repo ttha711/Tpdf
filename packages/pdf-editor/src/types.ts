@@ -24,6 +24,7 @@ export interface TpdfPdfAdapter {
   searchPages?(query: string): Promise<PdfSearchHit[]>;
   resolveTextQuads?(page: number, region: PdfRegion): Promise<P1Quad[]>;
   selectAsset?(kind: P1Asset): Promise<{ assetId: string } | null>;
+  assetUrl?(assetId: string): string;
 }
 export type PdfTool = "region" | "highlight" | "note" | "draw" | "cover" | "signature" | P1Tool;
 export type PdfAssets = { pdfiumWasmUrl?: string; workerUrl: string };
