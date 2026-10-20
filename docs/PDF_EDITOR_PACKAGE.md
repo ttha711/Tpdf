@@ -251,7 +251,7 @@ remains readable; **do not silently reinterpret** old marks as P1.
 
 ```ts
 type Point = { x: number; y: number }; // finite 0..100, page origin top-left
-type Quad = [Point, Point, Point, Point]; // TL,TR,BR,BL per line
+type Quad = [Point, Point, Point, Point]; // reading order: start-top, end-top, end-bottom, start-bottom
 type Style = {
   strokeColor: string; fillColor: string;  // #RRGGBB
   opacity: number;                        // 0..1
@@ -269,12 +269,22 @@ type P1Mark =
 ```
 
 Page is **1-based** in `region.page`. `region.x/y/width/height`
-and every point/quad coordinate are percentages of the **unrotated page
-rectangle**, top-left origin, not pixels, CSS units, tile level or DPR.
-Host converts to PDF points using page width/height. Respect page
-rotation explicitly on the host; this contract does not rotate positions.
-`quads[]` describes precise text line geometry, never a bounding box
-guessed from pointer drag. Text tools require
+and every point/quad coordinate are percentages of the **displayed page
+rectangle, after page rotation**, with top-left origin. They are **not**
+percentages of the unrotated PDF page, nor CSS/tile/DPR coordinates.
+This matches the 360i tile renderer, selection overlay and PyMuPDF host.
+The host must transform coordinates between displayed-page and PDF-native
+spaces using the actual page rotation before writing annotations.
+
+`quads[]` describes precise text-line geometry in displayed-page
+percentages, never a bounding box guessed from pointer drag. The four points
+follow **text reading direction**: start/top, end/top, end/bottom, start/bottom
+(top/bottom are relative to the glyph orientation, not fixed screen axes).
+At 90°/270°, Underline/Strikeout/Squiggly previews must use the
+text baseline direction and its normal; do not treat these quads as fixed
+screen TL/TR/BR/BL. **Known viewer follow-up:** rotated-text markup
+preview still needs validation/fix; the 360i server's actual annotations are
+already independently verified. Text tools require
 `adapter.resolveTextQuads(page,region): Promise<Quad[]>` from host
 (PyMuPDF word/character geometry); without it, these entries are disabled.
 `adapter.selectAsset(type)` returns a host-managed immutable
@@ -290,6 +300,18 @@ unsupported schema versions server-side. PyMuPDF must implement
 the actual PDF annotations, text quad handling, redaction semantics
 if added in P3, and version regeneration; this frontend **does not**
 claim to save P1 marks into PDF bytes using pdf-lib.
+
+**360i font behavior (independently accepted):** basic WinAnsi Latin text
+is stored as a real PDF `/FreeText` annotation; Vietnamese characters
+outside WinAnsi (such as “ễ”, “ạ”) are rendered with DejaVu into the PDF
+page content **instead of** `/FreeText`. Both use the same P1 text payload;
+callers must not assume that every text mark remains an editable annotation.
+
+**S3/P1 UI follow-ups, not part of this documentation-only change:**
+after `resolveTextQuads` completes and Underline/Strikeout/Squiggly renders,
+clear the transient red region-selection rectangle. When a tool is picked from
+the Tools sheet, synchronize the mode selector/tab to that tool's group
+(Underline → Annotate; do not leave “Shapes” selected).
 
 P2 Form/Link/Attachment and P3 Measure/Redact/Replace text are
 **displayed but disabled** with “Sắp có” / “Coming soon”, and have
