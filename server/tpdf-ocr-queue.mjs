@@ -2,6 +2,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { OcrService } from "@tpdf/core";
 import { createPdfiumOcrRenderer } from "./tpdf-ocr-renderer.mjs";
+import { usefulOcrText } from "./tpdf-ocr-verification.mjs";
 
 function publicJob(job) {
   if (!job) return null;
@@ -44,7 +45,10 @@ export function createOcrJobQueue(dataDir, options = {}) {
       const bytes = new Uint8Array(await readFile(inputPath));
       renderer = await createPdfiumOcrRenderer(bytes);
       const result = await service.run(jobId, bytes, {
-        getNativeText: (pageIndex) => renderer.getNativeText(pageIndex),
+        getNativeText: async (pageIndex) => {
+          const extracted = await renderer.getNativeText(pageIndex);
+          return usefulOcrText(extracted) ? extracted : "";
+        },
         renderPage: (pageIndex) => renderer.renderPage(pageIndex),
         isCancelled: () => service.get(jobId)?.status === "cancelled",
       });
