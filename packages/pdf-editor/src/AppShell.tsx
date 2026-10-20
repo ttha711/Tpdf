@@ -13,7 +13,7 @@ type Props = {
   tile: boolean; canEdit: boolean; canForms: boolean; canSave: boolean;
   undoEnabled: boolean; redoEnabled: boolean; tool: PdfTool;
   query: string; results: PdfSearchHit[]; note: string; selection: PdfRegion | null;
-  tools: PdfHostTool[]; canText?: boolean; canAsset?: boolean;
+  tools: PdfHostTool[]; canText?: boolean; canAsset?: boolean; canP1?: boolean;
   style?: P1Style; onStyle?: (value: P1Style) => void;
   onTool: (value: PdfTool) => void; onNote: (value: string) => void;
   onSearchQuery: (value: string) => void; onSearch: () => void;
@@ -31,7 +31,7 @@ export function AppShell(props: Props) {
   const [commentNotice, setCommentNotice] = useState(false);
   const [styleOpen, setStyleOpen] = useState(false);
   const commands = visibleBuiltins(tab, props.canEdit, props.canForms,
-    props.canText, props.canAsset);
+    props.canText, props.canAsset, props.canP1);
   const selection = props.selection ?? undefined;
   const hostComments = props.tools.find((item) => item.group.toLowerCase() === "comments");
   useEffect(() => {
@@ -53,7 +53,7 @@ export function AppShell(props: Props) {
       setStyleOpen(true); setSheet(false); return;
     }
     const item = visibleBuiltins("all", props.canEdit, props.canForms,
-      props.canText, props.canAsset).find((entry) => entry.id === id);
+      props.canText, props.canAsset, props.canP1).find((entry) => entry.id === id);
     if (!item) return;
     if (item.tool) props.onTool(item.tool);
     else props.onBuiltin(id);
@@ -171,7 +171,7 @@ export function AppShell(props: Props) {
               <div className="tpdf-app-tool-grid">{items.map((item) =>
                 <button type="button" key={item.id}
                   disabled={!enabledBuiltin(item, props.canEdit, props.canForms,
-                    props.canText, props.canAsset)}
+                    props.canText, props.canAsset, props.canP1)}
                   onClick={() => activate(item.id)}>
                   <AppShellIcon name={item.tool ? "pen" : "pages"} size={19} />
                   <span>{words[item.label] || item.label}</span>
