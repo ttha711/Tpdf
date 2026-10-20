@@ -2,7 +2,9 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { OcrService } from "@tpdf/core";
 import { createPdfiumOcrRenderer } from "./tpdf-ocr-renderer.mjs";
-import { usefulOcrText } from "./tpdf-ocr-verification.mjs";
+import { usefulOcrText, assertSearchableOcr } from "./tpdf-ocr-verification.mjs";
+import { extractPdfPages } from "./tpdf-agent-web-index.mjs";
+import { randomUUID } from "node:crypto";
 
 function publicJob(job) {
   if (!job) return null;
@@ -53,6 +55,22 @@ export function createOcrJobQueue(dataDir, options = {}) {
         isCancelled: () => service.get(jobId)?.status === "cancelled",
       });
       if (result?.status === "done" && result.outputBytes?.length) {
+        // Validate PDF.js text extraction before publishing an OCR result.
+        const verificationDir = join(root, jobId);
+        await mkdir(verificationDir, { recursive: true });
+        const beforePath = join(verificationDir, "verify-input-" + randomUUID() + ".pdf");
+        const afterPath = join(verificationDir, "verify-output-" + randomUUID() + ".pdf");
+        try {
+          await writeFile(beforePath, bytes);
+          await writeFile(afterPath, result.outputBytes);
+          const before = await extractPdfPages(beforePath);
+          const after = await extractPdfPages(afterPath);
+          assertSearchableOcr(before.pages.map((item) => item.text),
+            after.pages.map((item) => item.text));
+        } finally {
+          await rm(beforePath, { force: true }).catch(() => {});
+          await rm(afterPath, { force: true }).catch(() => {});
+        }
         // OcrService marks computation done before this queue has durably written
         // the downloadable output. Keep the public job non-terminal until the
         // output file is ready so poll -> download cannot observe a race.
