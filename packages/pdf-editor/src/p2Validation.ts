@@ -9,6 +9,10 @@ const nonempty = (x: unknown): x is string =>
 const optionsOK = (values: Array<{label:string;value:string}> | undefined) =>
   !!values?.length && values.length <= 200 && values.every(x=>nonempty(x.label)&&nonempty(x.value)) &&
   new Set(values.map(x=>x.value)).size === values.length;
+export function validateAttachmentSize(size?: number) {
+  if (size !== undefined && (!Number.isFinite(size) || size < 0 || size > 10_000_000))
+    throw Error("Attachment exceeds 10 MB");
+}
 export const formCaps = (caps?: Partial<P2FormCapabilities>): P2FormCapabilities =>
   ({ ...DEFAULT_FORM_CAPABILITIES, ...caps });
 export function validateCreate(field: P2CreateField,
@@ -107,6 +111,8 @@ export function validateP2(change: P2Change, existing: Map<string,P2CreateField|
     }
     return;
   }
+  if (change.kind === "link" && "zoom" in change.target)
+    throw Error("Link destination zoom is not supported");
   if (!validRegion(change.region, pageCount) && (change.kind !== "attachment" ||
       !Number.isInteger(change.region.page) || change.region.page < 1 ||
       change.region.page > pageCount || !validPoint(change.region)))
