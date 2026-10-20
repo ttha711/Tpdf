@@ -7,7 +7,7 @@ import type { P2Change } from "./p2Types.js";
 import type { PdfTool } from "./types.js";
 import type { PdfRegion } from "./types.js";
 
-export function TileOverlay({ number, selected, onRegion, pan, tool = "region", marks = [], assetUrl }: {
+export function TileOverlay({ number, selected, onRegion, pan, tool = "region", marks = [], assetUrl, p2Changes = [] }: {
   number: number; selected: PdfRegion | null;
   onRegion: (region: PdfRegion, points?: Array<[number, number]>) => void;
   pan: boolean; tool?: PdfTool; marks?: Mark[];
