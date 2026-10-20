@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { TileScheduler } from "./tileScheduler.js";
 import type { Tile } from "./tiles.js";
+import type { PdfTileAdapter } from "./types.js";
 
 // One scheduler belongs to exactly one committed effect lifetime.
 // React StrictMode replays setup -> cleanup -> setup in development;
 // the second setup must never inherit the disposed first instance.
-export function useTileScheduler(identity: object | string, wanted: Tile[]) {
+export function useTileScheduler(adapter: PdfTileAdapter, versionId: string, wanted: Tile[]) {
   const [scheduler, setScheduler] = useState<TileScheduler | null>(null);
   const [revision, setRevision] = useState(0);
 
@@ -17,7 +18,7 @@ export function useTileScheduler(identity: object | string, wanted: Tile[]) {
       unsubscribe();
       instance.dispose();
     };
-  }, [identity]);
+  }, [adapter, versionId]);
 
   useEffect(() => {
     scheduler?.setWanted(wanted);
