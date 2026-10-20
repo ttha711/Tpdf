@@ -35,6 +35,7 @@ test("tile-only P2a create text then fill same field before saving keeps ordered
   await page.getByLabel("Max length").fill("64");
   await page.getByRole("button",{name:"Add field"}).click();
   await expect(page.locator('[data-tpdf-p2="form"]')).toHaveCount(1);
+  await page.screenshot({path:"test-results/screenshots/p2a-375-create.png"});
   await openTool(page,"Fill");
   await page.getByLabel("Choose field").selectOption("new-on-board");
   await page.getByLabel("Fill text").fill("Nguyễn Thị Ạ");
@@ -79,6 +80,7 @@ test("single-select list box allows only one option, Fill selects one export val
   await page.getByRole("button",{name:"Add field"}).click();
   await openTool(page,"Fill");
   await page.getByLabel("Choose field").selectOption("priority");
+  await page.screenshot({path:"test-results/screenshots/p2a-390-fill.png"});
   await page.getByLabel("Fill choice").selectOption("L");
   await page.getByRole("button",{name:"Apply fill"}).click();
   const changes=await payload(page);
