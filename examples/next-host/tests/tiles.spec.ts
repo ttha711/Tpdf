@@ -42,6 +42,10 @@ test("scroll through 100 pages keeps tile cache bounded", async ({ page }) => {
 });
 
 test("right and bottom edge tiles are clipped precisely", async ({ page }) => {
+  const tileRequests: Array<{url: string; status?: number; failure?: string}> = [];
+  page.on("request", (request) => { if (request.url().includes("/api/tiles/")) tileRequests.push({ url: request.url() }); });
+  page.on("response", (res) => { if (res.url().includes("/api/tiles/")) { const item = tileRequests.find((item) => item.url === res.url()); if (item) item.status = res.status(); } });
+  page.on("requestfailed", (req) => { if (req.url().includes("/api/tiles/")) { const item = tileRequests.find((item) => item.url === req.url()); if (item) item.failure = req.failure()?.errorText; } });
   await page.goto("/office/pdf?tiles=1");
   await expect(page.locator(".tpdf-tile-document")).toBeVisible({ timeout: 30000 });
   await page.getByLabel("Zoom").selectOption("0.5");
@@ -55,10 +59,12 @@ test("right and bottom edge tiles are clipped precisely", async ({ page }) => {
     height: el.clientHeight, scrollWidth: el.scrollWidth,
     level: document.querySelector(".tpdf-tile-document")?.getAttribute("data-tpdf-level"),
     active: document.querySelector(".tpdf-tile-document")?.getAttribute("data-tpdf-active"),
+    wanted: document.querySelector(".tpdf-tile-document")?.getAttribute("data-tpdf-wanted"),
+    cache: document.querySelector(".tpdf-tile-document")?.getAttribute("data-tpdf-cache"),
     loaded: [...document.querySelectorAll("[data-tpdf-tile]")]
       .map((item) => item.getAttribute("data-tpdf-tile")).slice(0, 24),
   }));
-  console.log("EDGE_TILE_DEBUG", diagnostic);
+  console.log("EDGE_TILE_DEBUG", diagnostic, tileRequests.slice(-15));
   const corner = page.locator('[data-tpdf-page="1"] [data-tpdf-tile$=":3:2"]');
   await expect(corner).toHaveCount(1, { timeout: 20000 });
   const positions = await corner.evaluate((img) => {
