@@ -17,12 +17,16 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
   const [decoded, setDecoded] = useState<Set<string>>(() => new Set());
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const boxes = useMemo(() => pageBoxes(meta, zoom), [meta, zoom]);
-  const contentWidth = Math.max(...boxes.map((p) => p.width), view.width);
+  const padding = parent ? getComputedStyle(parent) : null;
+  const insideWidth = Math.max(1, view.width - (padding ?
+    (parseFloat(padding.paddingLeft) || 0) + (parseFloat(padding.paddingRight) || 0) : 0));
+  const contentWidth = Math.max(...boxes.map((p) => p.width), insideWidth);
   const height = boxes.length ? boxes[boxes.length - 1].top + boxes[boxes.length - 1].height : 0;
   const dpr = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
   const level = tileLevel(zoom, dpr);
   useTileGestures(parent, zoom, dpr);
-  const needed = useMemo(() => wantedTiles(tiles, meta, zoom, dpr, view), [tiles, meta, zoom, dpr, view]);
+  const needed = useMemo(() => wantedTiles(tiles, meta, zoom, dpr,
+    { ...view, width: insideWidth }), [tiles, meta, zoom, dpr, view, insideWidth]);
   const { scheduler, revision } = useTileScheduler(tiles, meta.versionId, needed);
   function sync() {
     if (!parent) return;
