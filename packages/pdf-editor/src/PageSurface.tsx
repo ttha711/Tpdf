@@ -63,10 +63,15 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
     gesture.current = null;
     if (!state) return;
     const end = coords(e);
-    const region = normalizeRegion(number, ...state.start, ...end);
+    const linear = tool === "distance" || tool === "calibrate";
+    const x = linear && Math.abs(state.start[0] - end[0]) < 0.2 ?
+      (end[0] < 99.7 ? end[0] + 0.3 : end[0] - 0.3) : end[0];
+    const y = linear && Math.abs(state.start[1] - end[1]) < 0.2 ?
+      (end[1] < 99.7 ? end[1] + 0.3 : end[1] - 0.3) : end[1];
+    const region = normalizeRegion(number, ...state.start, x, y);
     if (!region) return;
     onRegion(region, ["draw","inkHighlight","polygon","polyline","line","arrow","callout",
-      "perimeter","area"].includes(tool)
+      "perimeter","area","distance","calibrate"].includes(tool)
       ? [...state.points, end] : undefined);
   }
   return <div ref={element} data-tpdf-page={number} role="group" aria-label={"PDF page " + number}
