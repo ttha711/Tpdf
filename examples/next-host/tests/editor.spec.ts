@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test("two-page PDF can be marked and saved through host adapter with Ctrl+S", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/office/pdf");
   await expect(page.locator('[data-tpdf-page="1"]')).toBeVisible({ timeout: 30000 });
   await expect(page.locator('[data-tpdf-page="2"]')).toHaveCount(1);
   await page.getByLabel("Annotation tool").selectOption("highlight");
@@ -22,7 +22,7 @@ test("two-page PDF can be marked and saved through host adapter with Ctrl+S", as
 });
 test("toolbar fits a 390px host and emits area percentages", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 840 });
-  await page.goto("/");
+  await page.goto("/office/pdf");
   await expect(page.getByLabel("Zoom")).toBeVisible();
   await page.getByLabel("Zoom").selectOption("0.5");
   await expect(page.locator(".tpdf-scroll")).toBeVisible();
