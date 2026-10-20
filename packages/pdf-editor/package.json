@@ -34,8 +34,9 @@
     "typescript": "^5.8.3"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/pack-assets.mjs",
+    "build": "tsc -p tsconfig.json && node scripts/pack-assets.mjs && node scripts/report-size.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "pack": "npm run build && npm pack --ignore-scripts --pack-destination ."
+    "pack": "npm run build && npm pack --ignore-scripts --pack-destination .",
+    "test": "node --test tests/*.test.mjs"
   }
 }
