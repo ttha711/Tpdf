@@ -43,7 +43,9 @@ export function enabledBuiltin(item: ShellBuiltin, canEdit: boolean, canForms: b
   if (item.id === "pages" || item.id === "fit" || item.id === "region" ||
       item.id.startsWith("zoom")) return true;
   if (item.id === "form") return canForms;
+  if (item.id === "highlight") return canEdit;
   if (TEXT_MARKUP.some((tool) => tool === item.id)) return canEdit && canText;
+  if (item.id === "signature") return canEdit;
   if (ASSET_TOOL.some((tool) => tool === item.id)) return canEdit && canAsset;
   return canEdit;
 }
