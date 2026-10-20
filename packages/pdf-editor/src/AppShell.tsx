@@ -99,7 +99,7 @@ export function AppShell(props: Props) {
         onChange={(event) => activate(event.target.value)}>
         <option value="">{words[TAB_TEXT[tab]]}</option>
         {commands.map((item) => <option key={item.id} value={item.id}>
-          {toolLabel(item.label, words)}</option>)}
+          {toolLabel(item.label, words, locale)}</option>)}
       </select>
       <button className="tpdf-app-icon" type="button" aria-label={words.search}
         onClick={focusSearch}><AppShellIcon name="search" /></button>
