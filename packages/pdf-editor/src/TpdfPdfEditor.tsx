@@ -4,6 +4,7 @@ import { PageSurface } from "./PageSurface.js";
 import { TileViewer } from "./TileViewer.js";
 import { TileGrid } from "./TileGrid.js";
 import { AppShell } from "./AppShell.js";
+import { useP2Editor } from "./useP2Editor.js";
 import { buildP1Mark } from "./p1Marks.js";
 import { DEFAULT_P1_STYLE, P1_TOOLS, TEXT_MARKUP, ASSET_TOOL,
   type P1Asset, type P1Point, type P1Quad, type P1Style } from "./p1Types.js";
@@ -108,6 +109,10 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   const canEdit = !props.readOnly && (!useTiles || Boolean(props.adapter.applyChanges));
   const canSave = canEdit && engine.dirty && !engine.busy &&
     Boolean(props.adapter.saveVersion || props.adapter.applyChanges);
+  const p2 = useP2Editor({ tool, adapter: props.adapter, region,
+    changes: engine.history.current, record: engine.record, report: engine.report,
+    versionId: tileMeta?.versionId, pageCount: tileMeta?.pages.length ||
+      engine.pdf?.numPages || 0, readOnly: !canEdit });
   function selected(value: PdfRegion, points?: Array<[number, number]>) {
     setRegion(value); props.onRegionSelected?.(value);
     if (!canEdit || tool === "region") return;
@@ -141,6 +146,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
         const mark = buildP1Mark({ tool: p1Tool, region: value, style: p1Style,
           path, text: note, quads, assetId: asset?.assetId });
         engine.record({ kind: "mark", mark });
+        setRegion(null);
       } catch (error) { engine.report("p1-mark", error, false); }
     })();
   }
@@ -243,6 +249,8 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       tools={props.tools || []} onTool={setTool} onNote={setNote}
       canText={Boolean(props.adapter.resolveTextQuads)} canAsset={Boolean(props.adapter.selectAsset)}
       canP1={Boolean(props.adapter.applyChanges) && canEdit}
+      canP2={p2.canP2} canFill={p2.canFill} canAttachment={p2.canAttachment}
+      p2Panel={p2.p2Panel}
       style={p1Style} onStyle={setP1Style}
       onSearchQuery={setQuery} onSearch={() => void engine.search(query).then(setResults)}
       onGoto={goto} onBuiltin={builtIn} onSave={() => void engine.save()}
