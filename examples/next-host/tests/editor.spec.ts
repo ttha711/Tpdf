@@ -18,6 +18,7 @@ test("two-page PDF can be marked and saved through host adapter with Ctrl+S", as
   await page.locator(".tpdf-editor").focus();
   await page.keyboard.press("Control+s");
   await expect(page.getByTestId("saved")).toContainText("changed=true", { timeout: 30000 });
+  await expect(page.getByTestId("saved")).toContainText("annotation=true");
   await expect(page.getByTestId("saved")).toContainText("bytes");
 });
 test("toolbar fits a 390px host and emits area percentages", async ({ page }) => {
