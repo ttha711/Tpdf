@@ -43,8 +43,8 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   const [versions, setVersions] = useState<PdfVersion[] | null>(null);
   const text = { ...words[props.locale || "vi"], ...props.messages };
   const pageWidth = tileMeta?.pages[0]?.width || 612;
-  const scale = engine.zoom === "fit" ? Math.max(0.25,
-    Math.min(16 / dpr, (viewWidth - 42) / pageWidth)) : Math.min(engine.zoom, 16 / dpr);
+  const scale = engine.zoom === "fit" ? Math.max(0.05,
+    Math.min(16 / dpr, (viewWidth - (props.shell === "app" ? 24 : 42)) / pageWidth)) : Math.min(engine.zoom, 16 / dpr);
   const oversized = tileMeta && tileMeta.pages.some((page) => page.width * page.height * scale * scale * dpr * dpr > 8_000_000);
   const sourceSize = engine.source && ("size" in engine.source ? engine.source.size :
     "bytes" in engine.source ? engine.source.bytes.byteLength : undefined);
@@ -90,7 +90,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     });
   }
   function setZoom(value: number | "fit") {
-    engine.setZoom(value === "fit" ? "fit" : Math.max(0.25, Math.min(16 / dpr, value)));
+    engine.setZoom(value === "fit" ? "fit" : Math.max(0.05, Math.min(16 / dpr, value)));
   }
   useImperativeHandle(ref, () => ({
     save: engine.save, goToPage: goto, setZoom,
