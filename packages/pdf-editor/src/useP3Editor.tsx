@@ -44,9 +44,11 @@ export function useP3Editor(input: {
     if(!TOOLS.includes(tool))return false;
     if(!canTool(tool))return true;
     try {
-      const start:{x:number;y:number}={x:region.x,y:region.y};
-      const end:{x:number;y:number}={x:region.x+region.width,y:region.y+region.height};
-      const pts:P3Point[]=(raw?.length ? raw.map(([x,y])=>({x,y})) : [start,end]);
+      const pts:P3Point[]=(raw?.length ? raw.map(([x,y])=>({x,y})) : [
+        {x:region.x,y:region.y},
+        {x:region.x+region.width,y:region.y+region.height},
+      ]);
+      const start=pts[0],end=pts[pts.length-1];
       let edit:P3Change;
       if(tool==="redact" || tool==="applyRedact") {
         if(!adapter.p3Capabilities?.redact?.regions)throw Error("Region redaction not supported");
