@@ -73,8 +73,14 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     if ((!engine.pdf && !tileMeta) || !Number.isInteger(n)) return;
     const page = Math.max(1, Math.min(tileMeta?.pages.length || engine.pdf!.numPages, n));
     engine.setPage(page); setGrid(false);
-    requestAnimationFrame(() => scroller.current?.querySelector(
-      '[data-tpdf-page="' + page + '"]')?.scrollIntoView({ block: "start" }));
+    requestAnimationFrame(() => {
+      const node = scroller.current;
+      if (!node) return;
+      if (useTiles && tileMeta) {
+        node.scrollTop = tileMeta.pages.slice(0, page - 1)
+          .reduce((sum, item) => sum + item.height * scale + 16, 0);
+      } else node.querySelector('[data-tpdf-page="' + page + '"]')?.scrollIntoView({ block: "start" });
+    });
   }
   function setZoom(value: number | "fit") {
     engine.setZoom(value === "fit" ? "fit" : Math.max(0.25, Math.min(16 / dpr, value)));
@@ -179,8 +185,16 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     {results.length > 0 && <div className="tpdf-inline-panel">{results.map((r) =>
       <button key={r.page} onClick={() => goto(r.page)}>{r.page}: {r.snippet.slice(0, 75)}</button>)}</div>}
     <div ref={scroller} className="tpdf-scroll" onScroll={scroll}>
-      {grid ? <div className="tpdf-page-grid">{Array.from({ length: (useTiles ? tileMeta?.pages.length : engine.pdf?.numPages) || 0 }, (_, i) =>
-        <button type="button" key={i} onClick={() => goto(i + 1)}>{text.pages} {i + 1}</button>)}</div>
+      {grid ? <div className="tpdf-page-grid">{Array.from({
+        length: (useTiles ? tileMeta?.pages.length : engine.pdf?.numPages) || 0 }, (_, i) => i)
+        .filter((i) => !useTiles || Math.abs(i + 1 - engine.page) <= 45)
+        .map((i) =>
+        <button type="button" key={i} onClick={() => goto(i + 1)}>
+          {useTiles && props.adapter.tiles && <img loading="lazy" alt=""
+            style={{ width: 72, height: 92, objectFit: "contain" }}
+            src={props.adapter.tiles.tileUrl(i, 0.25, 0, 0)} />}
+          {text.pages} {i + 1}
+        </button>)}</div>
         : useTiles && tileMeta && props.adapter.tiles ? <TileViewer tiles={props.adapter.tiles} meta={tileMeta}
           zoom={scale} parent={scrollNode} selected={region} onRegion={selected}
           onPage={(value) => { if (value !== engine.page) engine.setPage(value); }} />
