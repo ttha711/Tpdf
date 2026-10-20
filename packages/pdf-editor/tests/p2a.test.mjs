@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_FORM_CAPABILITIES } from "../dist/p2Types.js";
-import { formCaps, validateCreate, validateP2Batch } from "../dist/p2Validation.js";
+import { formCaps, validateCreate, validateP2Batch,
+  validateAttachmentSize } from "../dist/p2Validation.js";
 import { listedFields, optionsFromText } from "../dist/p2ViewModel.js";
 import { SHELL_BUILTINS, enabledBuiltin } from "../dist/appShellModel.js";
 const region = { page:1,x:10,y:12,width:30,height:8,note:"" };
@@ -84,4 +85,12 @@ test("P2a viewer tools map to real tools, P2b/P3 stay disabled",()=>{
     const item=SHELL_BUILTINS.find(x=>x.id===id);
     assert.equal(enabledBuiltin(item,true,true,true,true,true,true,true,true),false,id);
   }
+});
+
+test("attachment picker enforces 10MB and link destination disallows zoom",()=>{
+  assert.doesNotThrow(()=>validateAttachmentSize(10_000_000));
+  assert.throws(()=>validateAttachmentSize(10_000_001),/10 MB/);
+  assert.throws(()=>validateAttachmentSize(-1),/10 MB/);
+  assert.throws(()=>check([{kind:"link",schemaVersion:1,region,
+    target:{kind:"page",page:2,zoom:2}}]),/zoom/);
 });
