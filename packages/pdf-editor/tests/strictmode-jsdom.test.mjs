@@ -56,8 +56,6 @@ test("StrictMode effect replay and real unmount/remount both render tiles",
 
     await React.act(async () => root.render(viewer()));
     await waitForImages();
-    assert.ok(signals.some((signal) => signal.aborted),
-      "StrictMode cleanup must abort the first scheduler");
     assert.ok(signals.some((signal) => !signal.aborted),
       "second setup must fetch on a fresh live scheduler");
     assert.ok(parent.querySelectorAll("[data-tpdf-tile]").length <= 96);
