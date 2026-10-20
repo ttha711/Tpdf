@@ -27,7 +27,8 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
     let disposed = false;
     setBusy(true);
     props.adapter.loadDocument().then((next) => {
-      if (!disposed) { setSource(next); setHistory(emptyHistory()); setOcrDirty(false); }
+      if (!disposed) { setSource(next); setHistory(emptyHistory());
+        setOcrDirty(false); setSaveNotes([]); }
     }).catch((cause) => { if (!disposed) report("load", cause); })
       .finally(() => { if (!disposed) setBusy(false); });
     return () => { disposed = true; };
