@@ -60,7 +60,7 @@ Paths begin `/api/tpdf/agent/v1`:
   Successful writes produce **new document IDs**, not in-place updates.
 - `POST /jobs` accepts JSON `{"type":"merge"|"split"|"export-images"|"compare", "documentId":"<uuid>", ...}`.
   `GET /jobs/{jobId}` polls, `POST /jobs/{jobId}/cancel` cancels, `GET /jobs/{jobId}/result` returns `{result:{documentId, document, ...}}`.
-  Work is scoped to authenticated user/project and has at most 2 concurrent workers, 32 waiting slots and 120s deadline.
+  Work is scoped to authenticated user/project, capped at 300 combined pages and TPDF_MAX_OPERATION_BYTES combined input for merge/split, and has at most 2 concurrent jobs, 32 waiting slots and 120s deadline.
 - For `export-images`: `{"type":"export-images","documentId":"...","pages":[1,3],"dpi":144,"format":"png"}`
   or `jpeg` (1–8 pages, 36–180 DPI, max image 15 MiB, max side 6000px). Result has
   **new rasterized PDF documentId** plus an `images` array of private authenticated
@@ -149,6 +149,7 @@ passed:
 node --test tests/cli/agent-web-ranking.test.mjs
 node --test tests/cli/agent-web-index.test.mjs
 node --test tests/cli/agent-web-jobs.test.mjs
+node --test tests/cli/agent-web-limits.test.mjs
 node --test tests/cli/agent-web-raster.test.mjs
 node --test tests/cli/agent-web-worker.test.mjs
 node --test tests/cli/agent-web-region.test.mjs
