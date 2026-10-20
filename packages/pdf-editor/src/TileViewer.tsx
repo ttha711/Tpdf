@@ -34,9 +34,9 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
     parent.addEventListener("scroll", sync, { passive: true });
     return () => { observer.disconnect(); parent.removeEventListener("scroll", sync); };
   }, [parent]);
+  useEffect(() => { scheduler.start(); return () => scheduler.dispose(); }, [scheduler]);
   useEffect(() => scheduler.subscribe(() => setTick((n) => n + 1)), [scheduler]);
   useEffect(() => { scheduler.setWanted(needed); }, [scheduler, needed]);
-  useEffect(() => () => scheduler.dispose(), [scheduler]);
   useEffect(() => {
     const mid = view.top + view.height / 2;
     let nearest = 0;
