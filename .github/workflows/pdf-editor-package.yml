@@ -62,3 +62,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "Read package job output for exact measured JS-only gzip."
+  next-host-e2e:
+    name: Next 14 host Chromium E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build --workspace=@tpdf/pdf-editor
+      - run: |
+          corepack enable
+          corepack prepare pnpm@9.15.9 --activate
+      - name: Install Next host
+        working-directory: examples/next-host
+        run: pnpm install --no-frozen-lockfile
+      - name: Chromium dependencies
+        working-directory: examples/next-host
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run real editor interaction tests
+        working-directory: examples/next-host
+        run: pnpm exec playwright test --reporter=line
