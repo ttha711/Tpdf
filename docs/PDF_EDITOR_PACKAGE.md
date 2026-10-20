@@ -235,7 +235,9 @@ adapter.selectAttachment?():Promise<{assetId:string;size?:number}|null>;
 - **Geometry:** `PdfRegion.page` is 1-based. All region and point
   coordinates are percentages (0–100) of the **displayed, rotated** page,
   top-left origin. Server transforms to native PDF coordinates.
-- **P2a capabilities:** without `formCapabilities`, all three flags are
+- **P2a capabilities:** the host opts in to P2a by supplying
+  `formCapabilities`, even when all three values are `false`. Omission
+  keeps P1-only integrations unchanged and defaults the three flags to
   `false`. Radio group remains disabled pending P2b. List Box supports
   only 0 or 1 selected item (`defaultValues`/fill `string[]`); multi
   default/selection is rejected while `multiSelect=false`. Checkbox
