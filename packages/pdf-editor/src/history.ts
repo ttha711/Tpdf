@@ -1,5 +1,9 @@
-import type { PdfRegion, PdfTool } from "./types.js";
-export type Mark = { type: PdfTool; region: PdfRegion; value?: string; points?: Array<[number, number]> };
+import type { PdfRegion } from "./types.js";
+import type { P1Mark } from "./p1Types.js";
+export type LegacyMark = { type: "region" | "highlight" | "note" | "draw" | "cover" | "signature";
+  region: PdfRegion; value?: string; points?: Array<[number, number]>;
+  schemaVersion?: never };
+export type Mark = LegacyMark | P1Mark;
 export type PdfChange = { kind: "mark"; mark: Mark } | { kind: "rotate" | "delete" | "insert"; page: number } |
   { kind: "move"; page: number; to: number } | { kind: "field"; field: string; value: string };
 export type EditHistory = { past: PdfChange[][]; current: PdfChange[]; future: PdfChange[][] };
