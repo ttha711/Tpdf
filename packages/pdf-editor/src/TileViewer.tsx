@@ -6,13 +6,14 @@ import { useTileGestures } from "./useTileGestures.js";
 import type { PdfTileAdapter, PdfTileMeta, PdfTileLevel, PdfRegion, PdfTool } from "./types.js";
 import type { Mark } from "./history.js";
 import type { P2Change } from "./p2Types.js";
+import type { P3Change } from "./p3Types.js";
 
 export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPage,
-  tool = "region", marks = [], assetUrl, p2Changes = [] }: {
+  tool = "region", marks = [], assetUrl, p2Changes = [],p3Changes=[] }: {
   tiles: PdfTileAdapter; meta: PdfTileMeta; zoom: number; parent: HTMLElement | null;
   selected: PdfRegion | null; onRegion: (region: PdfRegion, points?: Array<[number, number]>) => void;
   onPage: (page: number) => void; tool?: PdfTool; marks?: Mark[];
-  assetUrl?: (id: string) => string; p2Changes?: P2Change[];
+  assetUrl?: (id: string) => string; p2Changes?: P2Change[]; p3Changes?:P3Change[];
 }) {
   const [view, setView] = useState({ left: 0, top: 0, width: 800, height: 700 });
   const [pan, setPan] = useState(false);
@@ -130,7 +131,8 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
         </div>;
       })}
       <TileOverlay number={i + 1} selected={selected} pan={pan} onRegion={onRegion}
-        tool={tool} marks={marks} assetUrl={assetUrl} p2Changes={p2Changes} />
+        tool={tool} marks={marks} assetUrl={assetUrl} p2Changes={p2Changes}
+        p3Changes={p3Changes} pageSize={meta.pages[i]} />
     </div>)}
   </div>;
 }
