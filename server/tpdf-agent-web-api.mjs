@@ -101,6 +101,9 @@ export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, send
     return storeNew(Buffer.from(await output.save()), `version-${record.fileName}`);
   }
   async function dispatch(req, res, url) {
+    if (url.pathname === prefix + "/embed/session" && req.method === "GET") {
+      return sendJson(res, 200, auth.newEmbedSession(auth.verify(req, url)));
+    }
     if (url.pathname === prefix + "/documents" && req.method === "POST") {
       const saved = await storeNew(await streamUpload(req), url.searchParams.get("name") || "upload.pdf");
       return sendJson(res, 201, { document: saved });
