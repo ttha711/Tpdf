@@ -278,7 +278,7 @@ guessed from pointer drag. Text tools require
 `adapter.resolveTextQuads(page,region): Promise<Quad[]>` from host
 (PyMuPDF word/character geometry); without it, these entries are disabled.
 `adapter.selectAsset(type)` returns a host-managed immutable
-`{assetId}` for image/stamp/signature. Never put base64 PDF/image bytes
+`{assetId}` for image/stamp/signature. `adapter.assetUrl(assetId)` provides an optional preview URL; never put base64 PDF/image bytes
 inside changes. Host validates asset access and MIME before save.
 
 `arrowEnd` defaults to `"end"` for Arrow; polygon has at least
