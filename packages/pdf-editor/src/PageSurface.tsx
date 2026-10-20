@@ -6,13 +6,15 @@ import type { Mark } from "./history.js";
 import { P1MarkPreview } from "./P1MarkPreview.js";
 import { P2PlacementOverlay } from "./P2PlacementOverlay.js";
 import type { P2Change } from "./p2Types.js";
+import type { P3Change } from "./p3Types.js";
+import { P3PendingOverlay } from "./P3PendingOverlay.js";
 import type { PdfRegion, PdfTool } from "./types.js";
 
-export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight, onRegion, readOnly, assetUrl, p2Changes = [] }: {
+export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight, onRegion, readOnly, assetUrl, p2Changes = [], p3Changes=[] }: {
   pdf: PDFDocumentProxy; number: number; scale: number; parent: HTMLElement | null; tool: PdfTool;
   marks: Mark[]; highlight: PdfRegion | null;
   onRegion: (value: PdfRegion, points?: Array<[number, number]>) => void; readOnly: boolean;
-  assetUrl?: (id: string) => string; p2Changes?: P2Change[];
+  assetUrl?: (id: string) => string; p2Changes?: P2Change[]; p3Changes?:P3Change[];
 }) {
   const element = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -63,7 +65,8 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
     const end = coords(e);
     const region = normalizeRegion(number, ...state.start, ...end);
     if (!region) return;
-    onRegion(region, ["draw","inkHighlight","polygon","polyline","line","arrow","callout"].includes(tool)
+    onRegion(region, ["draw","inkHighlight","polygon","polyline","line","arrow","callout",
+      "perimeter","area"].includes(tool)
       ? [...state.points, end] : undefined);
   }
   return <div ref={element} data-tpdf-page={number} role="group" aria-label={"PDF page " + number}
@@ -73,7 +76,7 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
       onPointerDown={(e) => { if (readOnly) return; e.currentTarget.setPointerCapture(e.pointerId);
         const start = coords(e); gesture.current = { start, points: [start] }; }}
       onPointerMove={(e) => { if (gesture.current &&
-        ["draw","inkHighlight","polygon","polyline"].includes(tool))
+        ["draw","inkHighlight","polygon","polyline","perimeter","area"].includes(tool))
         gesture.current.points.push(coords(e)); }}
       onPointerUp={finish} onPointerCancel={() => { gesture.current = null; }}
       style={{ cursor: readOnly ? "default" : "crosshair", touchAction: readOnly ? "auto" : "none" }}>
@@ -85,6 +88,7 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
           {(mark.type === "note" || mark.type === "signature") && <span>{mark.value || mark.region.note}</span>}
         </div>)}
       <P2PlacementOverlay changes={p2Changes} page={number}/>
+      <P3PendingOverlay changes={p3Changes} page={number} width={size.width} height={size.height}/>
     {highlight?.page === number && <div className="tpdf-mark tpdf-mark-region" style={{
         left: highlight.x + "%", top: highlight.y + "%",
         width: highlight.width + "%", height: highlight.height + "%" }} />}
