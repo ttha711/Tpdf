@@ -39,8 +39,16 @@ export const SHELL_BUILTINS: ShellBuiltin[] = [
   { id: "form", group: "forms", label: "form" },
 ];
 export function enabledBuiltin(item: ShellBuiltin, canEdit: boolean, canForms: boolean,
-  canText = false, canAsset = false, canP1 = false): boolean {
-  if (item.stage) return false;
+  canText = false, canAsset = false, canP1 = false,
+  canP2 = false, canFill = false, canAttachment = false): boolean {
+  if (item.stage === "p3") return false;
+  if (item.stage === "p2") {
+    if (!canP2) return false;
+    if (item.id === "radio" || item.id === "comment") return false;
+    if (item.id === "fill") return canFill;
+    if (item.id === "attachment") return canAttachment;
+    return ["textField","checkbox","dropdown","listBox","link"].includes(item.id);
+  }
   if (item.id === "pages" || item.id === "fit" || item.id === "region" ||
       item.id.startsWith("zoom")) return true;
   if (item.id === "form") return canForms;
@@ -54,9 +62,11 @@ export function enabledBuiltin(item: ShellBuiltin, canEdit: boolean, canForms: b
   return canEdit;
 }
 export function visibleBuiltins(tab: ShellTab, canEdit: boolean, canForms: boolean,
-  canText = false, canAsset = false, canP1 = false) {
+  canText = false, canAsset = false, canP1 = false,
+  canP2 = false, canFill = false, canAttachment = false) {
   return SHELL_BUILTINS.filter((item) => (tab === "all" || item.group === tab) &&
-    enabledBuiltin(item, canEdit, canForms, canText, canAsset, canP1));
+    enabledBuiltin(item, canEdit, canForms, canText, canAsset, canP1,
+      canP2, canFill, canAttachment));
 }
 export const APP_WORDS = {
   vi: { view: "Xem", annotate: "Chú thích", shapes: "Hình dạng", insertTab: "Chèn",
