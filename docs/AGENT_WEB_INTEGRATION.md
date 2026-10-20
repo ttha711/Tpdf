@@ -151,8 +151,12 @@ node --test tests/cli/agent-web-index.test.mjs
 node --test tests/cli/agent-web-jobs.test.mjs
 node --test tests/cli/agent-web-raster.test.mjs
 node --test tests/cli/agent-web-worker.test.mjs
+node --test tests/cli/agent-web-region.test.mjs
 ```
 
+An additional `tests/cli/agent-web-pdfjs.test.mjs` exercises the real PDF.js
+text worker after `npm ci` (it skips when PDF.js/pdf-lib are absent); this
+particular parser test was **not executed** in the isolated environment.
 The worker test used **generated PDF fixtures** and locally installed
 PyMuPDF/Pillow. It conditionally skips when those Python packages are absent.
 These are NOT claims that the full checked-out GitHub branch was built or
