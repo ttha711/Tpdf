@@ -14,7 +14,8 @@ const command = (id: string, group: ShellTab, label = id,
 export const SHELL_BUILTINS: ShellBuiltin[] = [
   command("region", "shapes"), command("highlight", "annotate"),
   command("note", "annotate"), command("draw", "annotate"), command("cover", "annotate"),
-  ...["comment","link"].map((id) => command(id, "annotate", id, "p2")),
+  command("comment","annotate","comment","p2"),
+  command("link","annotate","link","p2"),
   ...["underline","strikeout","squiggly","inkHighlight","addText","insertText","callout"]
     .map((id) => command(id, "annotate")),
   command("style","annotate", "Style"),
