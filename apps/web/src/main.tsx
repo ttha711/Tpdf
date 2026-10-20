@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { App } from "./App";
+import { AgentWebEmbedViewer } from "./components/AgentWebEmbedViewer";
 import { ToastProvider } from "./components/ToastProvider";
 import { ConfirmProvider } from "./components/ConfirmDialog";
 import "./styles.css";
@@ -29,13 +30,12 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <AppErrorBoundary buildSha={__TPDF_BUILD_SHA__}>
       <ToastProvider>
         <ConfirmProvider>
-          <ServerAuthGate>
-            <App />
-          </ServerAuthGate>
+          {window.location.pathname === "/embed/viewer" ? <AgentWebEmbedViewer /> :
+            <ServerAuthGate><App /></ServerAuthGate>}
         </ConfirmProvider>
       </ToastProvider>
     </AppErrorBoundary>
   </React.StrictMode>
 );
 
-registerOfflineAppCache(__TPDF_BUILD_SHA__);
+if (window.location.pathname !== "/embed/viewer") registerOfflineAppCache(__TPDF_BUILD_SHA__);
