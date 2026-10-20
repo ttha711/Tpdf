@@ -125,7 +125,7 @@ export function AppShell(props: Props) {
       {locale === "vi" ? "Host chưa cung cấp công cụ bình luận." : "Comments require a host tool."}
     </div>}
     {styleOpen && props.style && props.onStyle && <div className="tpdf-app-p1-style">
-      <P1StyleBar style={props.style} onChange={props.onStyle}/>
+      <P1StyleBar style={props.style} onChange={props.onStyle} locale={locale}/>
       <button type="button" onClick={() => setStyleOpen(false)}>Done</button>
     </div>}
     {(["note","signature","addText","insertText","callout"].includes(props.tool)) &&
