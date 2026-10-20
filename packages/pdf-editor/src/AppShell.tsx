@@ -3,6 +3,7 @@ import { AppShellIcon } from "./AppShellIcon.js";
 import { APP_WORDS, SHELL_TABS, SHEET_GROUPS, SHELL_BUILTINS, TAB_TEXT,
   enabledBuiltin, visibleBuiltins, type ShellTab } from "./appShellModel.js";
 import { P1StyleBar } from "./P1StyleBar.js";
+import { toolLabel } from "./p1Labels.js";
 import type { P1Style } from "./p1Types.js";
 import type { PdfHostTool, PdfRegion, PdfSearchHit, PdfTool } from "./types.js";
 
@@ -98,7 +99,7 @@ export function AppShell(props: Props) {
         onChange={(event) => activate(event.target.value)}>
         <option value="">{words[TAB_TEXT[tab]]}</option>
         {commands.map((item) => <option key={item.id} value={item.id}>
-          {words[item.label] || item.label}</option>)}
+          {toolLabel(item.label, words)}</option>)}
       </select>
       <button className="tpdf-app-icon" type="button" aria-label={words.search}
         onClick={focusSearch}><AppShellIcon name="search" /></button>
