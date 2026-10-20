@@ -2,6 +2,9 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { OcrService } from "@tpdf/core";
 import { createPdfiumOcrRenderer } from "./tpdf-ocr-renderer.mjs";
+import { usefulOcrText, assertSearchableOcr } from "./tpdf-ocr-verification.mjs";
+import { extractPdfPages } from "./tpdf-agent-web-index.mjs";
+import { randomUUID } from "node:crypto";
 
 function publicJob(job) {
   if (!job) return null;
@@ -10,7 +13,9 @@ function publicJob(job) {
 }
 
 export function createOcrJobQueue(dataDir, options = {}) {
-  const service = new OcrService();
+  const service = options.service ?? new OcrService();
+  const rendererFactory = options.rendererFactory ?? createPdfiumOcrRenderer;
+  const extractPages = options.extractPages ?? extractPdfPages;
   const root = resolve(dataDir, "ocr");
   const requestedConcurrency = Number(options.concurrency || 1);
   const concurrency = Number.isFinite(requestedConcurrency)
@@ -42,18 +47,38 @@ export function createOcrJobQueue(dataDir, options = {}) {
     let renderer;
     try {
       const bytes = new Uint8Array(await readFile(inputPath));
-      renderer = await createPdfiumOcrRenderer(bytes);
+      renderer = await rendererFactory(bytes);
+      // PDF.js parses actual PDF text; PDFium extraction may report metadata
+      // or invisible non-searchable content for a raster-only page.
+      const nativePages = await extractPages(inputPath);
       const result = await service.run(jobId, bytes, {
-        getNativeText: (pageIndex) => renderer.getNativeText(pageIndex),
+        getNativeText: async (pageIndex) => {
+          const extracted = nativePages.pages[pageIndex]?.text;
+          return usefulOcrText(extracted) ? extracted : "";
+        },
         renderPage: (pageIndex) => renderer.renderPage(pageIndex),
         isCancelled: () => service.get(jobId)?.status === "cancelled",
       });
       if (result?.status === "done" && result.outputBytes?.length) {
-        // OcrService marks computation done before this queue has durably written
-        // the downloadable output. Keep the public job non-terminal until the
-        // output file is ready so poll -> download cannot observe a race.
+        // Hide the service's early "done" while the output is verified and written.
         result.status = "running";
         result.progress = 99;
+        // Validate PDF.js text extraction before publishing an OCR result.
+        const verificationDir = join(root, jobId);
+        await mkdir(verificationDir, { recursive: true });
+        const beforePath = join(verificationDir, "verify-input-" + randomUUID() + ".pdf");
+        const afterPath = join(verificationDir, "verify-output-" + randomUUID() + ".pdf");
+        try {
+          await writeFile(beforePath, bytes);
+          await writeFile(afterPath, result.outputBytes);
+          const before = await extractPages(beforePath);
+          const after = await extractPages(afterPath);
+          assertSearchableOcr(before.pages.map((item) => item.text),
+            after.pages.map((item) => item.text));
+        } finally {
+          await rm(beforePath, { force: true }).catch(() => {});
+          await rm(afterPath, { force: true }).catch(() => {});
+        }
         const jobDir = join(root, jobId);
         const outputPath = join(jobDir, "output.pdf");
         await mkdir(jobDir, { recursive: true });

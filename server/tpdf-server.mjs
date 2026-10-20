@@ -16,6 +16,8 @@ import { createOcrJobQueue } from "./tpdf-ocr-queue.mjs";
 import { createCertificateStore } from "./tpdf-certificate-store.mjs";
 import { createSigningApi } from "./tpdf-signing-api.mjs";
 import { createAuthService } from "./tpdf-auth.mjs";
+import { createAgentWebAuth } from "./tpdf-agent-web-auth.mjs";
+import { createAgentWebApi } from "./tpdf-agent-web-api.mjs";
 import { createAgentPairingBroker } from "./tpdf-agent-pairing.mjs";
 import { createTenantRuntime } from "./tpdf-tenancy.mjs";
 import {
@@ -58,6 +60,7 @@ const uploadChunkBytes = Number.isFinite(configuredUploadChunkBytes)
   ? Math.min(Math.max(configuredUploadChunkBytes, minimumUploadChunkBytes), 32 * 1024 * 1024)
   : 8 * 1024 * 1024;
 const auth = createAuthService(dataDir, process.env, { objectStore });
+const agentWebAuth = createAgentWebAuth(process.env);
 const tenantRuntime = createTenantRuntime(dataDir, {
   authEnabled: auth.enabled,
   objectStore,
@@ -651,6 +654,13 @@ async function serveWeb(req, res, pathname) {
     res.statusCode = 200;
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache");
+    if (pathname === "/embed/viewer" && agentWebAuth.origins.length) {
+      res.removeHeader("X-Frame-Options");
+      const current = String(res.getHeader("Content-Security-Policy") || "");
+      const ancestors = "frame-ancestors " + agentWebAuth.origins.join(" ");
+      res.setHeader("Content-Security-Policy", current.replace(/frame-ancestors [^;]+/, ancestors));
+      res.setHeader("Referrer-Policy", "no-referrer");
+    }
     res.end(html);
     return;
   }
@@ -683,6 +693,11 @@ const handleSigningApi = createSigningApi({
   sendPdf,
   readPdfBody,
   parseOperationOptions,
+});
+
+const agentWebApi = createAgentWebApi({
+  auth: agentWebAuth, tenantRuntime, storage, ocrQueue, sendJson, sendError,
+  readJsonBody, maxBytes: Math.min(maxOperationBytes, maxBytes), serveDocument,
 });
 
 async function handleOcrApi(req, res, url) {
@@ -806,6 +821,16 @@ async function handleApi(req, res, url) {
       : sendError(res, 404, "Agent task not found.");
   }
 
+  // Existing Agent Web OCR transport uses the same HMAC contract without
+  // changing cookie-authenticated standalone Tpdf behavior.
+  if (url.pathname.startsWith("/api/tpdf/ocr/jobs") &&
+      req.headers["x-tpdf-agent-web-identity"]) {
+    if (!auth.enabled || !agentWebAuth.enabled) {
+      return sendError(res, 503, "Agent Web tenant bridge is disabled.");
+    }
+    const identity = agentWebAuth.verify(req, url);
+    return tenantRuntime.run(identity.user, identity.projectId, () => handleOcrApi(req, res, url));
+  }
   assertSafeMutationRequest(req, process.env);
 
   if (url.pathname === "/api/tpdf/auth/login" && req.method === "POST") {
@@ -1159,6 +1184,10 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
     requestPath = url.pathname;
+    if (url.pathname.startsWith("/api/tpdf/agent/v1/")) {
+      await agentWebApi(req, res, url);
+      return;
+    }
     if (url.pathname.startsWith("/api/tpdf/")) {
       await handleApi(req, res, url);
       return;

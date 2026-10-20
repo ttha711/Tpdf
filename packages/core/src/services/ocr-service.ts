@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { OcrJob } from "../types/index.js";
+import { collectLines } from "./ocr-text.js";
 
 export type OcrRenderedPage = {
   bytes: Uint8Array;
@@ -13,63 +14,11 @@ export type OcrRenderedPage = {
 export type SearchablePdfOcrOptions = {
   getNativeText?: (pageIndex: number) => Promise<string>;
   renderPage: (pageIndex: number) => Promise<OcrRenderedPage>;
+  renderFallbackPage?: (pageIndex: number) => Promise<OcrRenderedPage>;
+  recognizePage?: (image: Uint8Array, language: string) => Promise<any>;
   onProgress?: (progress: number) => void;
   isCancelled?: () => boolean;
 };
-
-type OcrWord = {
-  text: string;
-  confidence: number;
-  bbox: { x0: number; y0: number; x1: number; y1: number };
-};
-
-type OcrLine = {
-  text: string;
-  bbox: OcrWord["bbox"];
-};
-
-function collectLines(data: any): OcrLine[] {
-  if (Array.isArray(data?.lines) && data.lines.length) {
-    return data.lines.flatMap((line: any) => {
-      const words: OcrWord[] = (line?.words ?? []).filter((word: OcrWord) => {
-        const confidence = Number(word?.confidence ?? (word as any)?.conf ?? 0);
-        return String(word?.text ?? "").trim() && !(confidence > 0 && confidence < 45);
-      });
-      const text = words.length
-        ? words.map((word) => String(word.text).trim()).join(" ")
-        : String(line?.text ?? "").trim();
-      const bounds = words.length ? words.map((word) => word.bbox) : [line?.bbox];
-      const validBounds = bounds.filter((bbox): bbox is OcrWord["bbox"] => Boolean(bbox));
-      if (!text || !validBounds.length) return [];
-      return [{
-        text,
-        bbox: {
-          x0: Math.min(...validBounds.map((bbox) => Number(bbox.x0))),
-          y0: Math.min(...validBounds.map((bbox) => Number(bbox.y0))),
-          x1: Math.max(...validBounds.map((bbox) => Number(bbox.x1))),
-          y1: Math.max(...validBounds.map((bbox) => Number(bbox.y1))),
-        },
-      }];
-    });
-  }
-
-  const lines: any[] = [];
-  for (const block of data?.blocks ?? []) {
-    for (const paragraph of block?.paragraphs ?? []) {
-      lines.push(...(paragraph?.lines ?? []));
-    }
-  }
-  if (lines.length) return collectLines({ lines });
-
-  const words: OcrWord[] = Array.isArray(data?.words) ? data.words : [];
-  return words.flatMap((word) => {
-    const confidence = Number(word?.confidence ?? (word as any)?.conf ?? 0);
-    const text = String(word?.text ?? "").trim();
-    return text && !(confidence > 0 && confidence < 45) && word?.bbox
-      ? [{ text, bbox: word.bbox }]
-      : [];
-  });
-}
 
 export class OcrService {
   private readonly jobs = new Map<string, OcrJob>();
@@ -223,15 +172,33 @@ export class OcrService {
           continue;
         }
 
-        const rendered = await options.renderPage(index);
-        const ocrWorker = await ensureWorker();
-        const result = await ocrWorker.recognize(rendered.bytes);
-        const data = result?.data ?? {};
-        const lines = collectLines(data);
+        let rendered = await options.renderPage(index);
+        const recognize = async (image: Uint8Array) => {
+          if (options.recognizePage) {
+            const value = await options.recognizePage(image, language);
+            return value?.data ?? value ?? {};
+          }
+          const ocrWorker = await ensureWorker();
+          // Tesseract.js 7 returns only text unless block geometry is requested.
+          return (await ocrWorker.recognize(image, {}, { text: true, blocks: true }))?.data ?? {};
+        };
+        let data = await recognize(rendered.bytes);
+        let lines = collectLines(data);
+        let fallbackText = typeof data.text === "string" ? data.text.trim() : "";
+        if (lines.length === 0 && !fallbackText && options.renderFallbackPage) {
+          rendered = await options.renderFallbackPage(index);
+          data = await recognize(rendered.bytes);
+          lines = collectLines(data);
+          fallbackText = typeof data.text === "string" ? data.text.trim() : "";
+        }
+        if (lines.length === 0 && !fallbackText) {
+          throw new Error(`OCR recognized no text on scanned page ${index + 1}. No searchable PDF was saved.`);
+        }
         const targetPage = pages[index];
         const { width: pdfWidth, height: pdfHeight } = targetPage.getSize();
         const sx = pdfWidth / Math.max(1, rendered.width);
         const sy = pdfHeight / Math.max(1, rendered.height);
+        let written = 0;
 
         for (const line of lines) {
           const text = supportsUnicode ? line.text : this.toWinAnsiSafeText(line.text);
@@ -253,10 +220,11 @@ export class OcrService {
             opacity: 0.01,
             maxWidth: Math.max(boxWidth, font.widthOfTextAtSize(text, fontSize)),
           });
+          written += 1;
         }
 
-        if (lines.length === 0 && typeof data.text === "string" && data.text.trim()) {
-          const lines = data.text.split(/\r?\n/).map((line: string) => line.trim()).filter(Boolean);
+        if (written === 0 && fallbackText) {
+          const lines = fallbackText.split(/\r?\n/).map((line: string) => line.trim()).filter(Boolean);
           lines.slice(0, 160).forEach((line: string, lineIndex: number) => {
             const text = supportsUnicode ? line : this.toWinAnsiSafeText(line);
             if (!text) return;
@@ -269,9 +237,11 @@ export class OcrService {
               opacity: 0.01,
               maxWidth: Math.max(1, pdfWidth - 36),
             });
+            written += 1;
           });
         }
 
+        if (written === 0) throw new Error(`OCR produced no writable text on scanned page ${index + 1}.`);
         options.onProgress?.(Math.max(2, Math.round(((index + 1) / pages.length) * 96)));
       }
     } finally {
