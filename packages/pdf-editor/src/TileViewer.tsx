@@ -17,7 +17,7 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
   const [decoded, setDecoded] = useState<Set<string>>(() => new Set());
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const boxes = useMemo(() => pageBoxes(meta, zoom), [meta, zoom]);
-  const padding = parent ? getComputedStyle(parent) : null;
+  const padding = parent ? parent.ownerDocument.defaultView?.getComputedStyle(parent) : null;
   const insideWidth = Math.max(1, view.width - (padding ?
     (parseFloat(padding.paddingLeft) || 0) + (parseFloat(padding.paddingRight) || 0) : 0));
   const contentWidth = Math.max(...boxes.map((p) => p.width), insideWidth);
