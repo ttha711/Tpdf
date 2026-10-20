@@ -103,10 +103,13 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
           if (cached) { source = cached; display = candidate; break; }
         }
         if (!source) return null;
-        return <img key={tile.key} src={source} alt="" draggable={false} data-tpdf-tile={tile.key}
-          style={{ position: "absolute", pointerEvents: "none", imageRendering: "auto",
-            left: display.left * zoom, top: display.top * zoom,
-            width: display.width * zoom, height: display.height * zoom }} />;
+        return <div key={tile.key} style={{ position: "absolute", overflow: "hidden", pointerEvents: "none",
+          left: tile.left * zoom, top: tile.top * zoom, width: tile.width * zoom, height: tile.height * zoom }}>
+          <img src={source} alt="" draggable={false} data-tpdf-tile={tile.key}
+            style={{ position: "absolute", maxWidth: "none",
+              left: (display.left - tile.left) * zoom, top: (display.top - tile.top) * zoom,
+              width: display.width * zoom, height: display.height * zoom }} />
+        </div>;
       })}
       <TileOverlay number={i + 1} selected={selected} pan={pan} onRegion={onRegion} />
     </div>)}
