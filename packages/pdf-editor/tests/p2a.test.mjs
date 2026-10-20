@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { DEFAULT_FORM_CAPABILITIES } from "../dist/p2Types.js";
 import { formCaps, validateCreate, validateP2Batch } from "../dist/p2Validation.js";
 import { listedFields, optionsFromText } from "../dist/p2ViewModel.js";
+import { SHELL_BUILTINS, enabledBuiltin } from "../dist/appShellModel.js";
 const region = { page:1,x:10,y:12,width:30,height:8,note:"" };
 const create = (field) => ({kind:"form.create",schemaVersion:1,field});
 const fill = (name,fieldType,value) => ({kind:"form.fill",schemaVersion:1,name,fieldType,value});
@@ -70,4 +71,17 @@ test("inventory groups widgets by field; staged create/fill reflected without lo
   assert.equal(list[1].widgets[0].exportValue,"Yes");
   assert.deepEqual(optionsFromText("Approved=ok\nPending=wait"),[
     {label:"Approved",value:"ok"},{label:"Pending",value:"wait"}]);
+});
+
+test("P2a viewer tools map to real tools, P2b/P3 stay disabled",()=>{
+  for (const id of ["textField","checkbox","dropdown","listBox","fill","link","attachment"]) {
+    const item=SHELL_BUILTINS.find(x=>x.id===id);
+    assert.equal(item?.tool,id);
+    assert.equal(enabledBuiltin(item,true,false,false,false,true,true,true,true),true,id);
+    assert.equal(enabledBuiltin(item,true,false,false,false,true,false,true,true),false,id);
+  }
+  for(const id of ["radio","distance","replaceText"]){
+    const item=SHELL_BUILTINS.find(x=>x.id===id);
+    assert.equal(enabledBuiltin(item,true,true,true,true,true,true,true,true),false,id);
+  }
 });
