@@ -3,12 +3,14 @@ import { useTileScheduler } from "./useTileScheduler.js";
 import { pageBoxes, tileLevel, wantedTiles, fallbackTile, LEVELS } from "./tiles.js";
 import { TileOverlay } from "./TileOverlay.js";
 import { useTileGestures } from "./useTileGestures.js";
-import type { PdfTileAdapter, PdfTileMeta, PdfTileLevel, PdfRegion } from "./types.js";
+import type { PdfTileAdapter, PdfTileMeta, PdfTileLevel, PdfRegion, PdfTool } from "./types.js";
+import type { Mark } from "./history.js";
 
-export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPage, register }: {
+export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPage,
+  tool = "region", marks = [] }: {
   tiles: PdfTileAdapter; meta: PdfTileMeta; zoom: number; parent: HTMLElement | null;
-  selected: PdfRegion | null; onRegion: (region: PdfRegion) => void; onPage: (page: number) => void;
-  register?: (api: { zoomAt: (next: number, x: number, y: number) => void }) => void;
+  selected: PdfRegion | null; onRegion: (region: PdfRegion, points?: Array<[number, number]>) => void;
+  onPage: (page: number) => void; tool?: PdfTool; marks?: Mark[];
 }) {
   const [view, setView] = useState({ left: 0, top: 0, width: 800, height: 700 });
   const [pan, setPan] = useState(false);
@@ -109,7 +111,8 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
               width: display.width * zoom, height: display.height * zoom }} />
         </div>;
       })}
-      <TileOverlay number={i + 1} selected={selected} pan={pan} onRegion={onRegion} />
+      <TileOverlay number={i + 1} selected={selected} pan={pan} onRegion={onRegion}
+        tool={tool} marks={marks} />
     </div>)}
   </div>;
 }
