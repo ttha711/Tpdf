@@ -13,10 +13,12 @@ export default function PdfOfficePage() {
   const tileMode = params.get("tiles") === "1";
   const appShell = params.get("shell") === "app";
   const tilesOnly = params.get("tileonly") === "1";
+  const p1Mode = params.get("p1") === "1";
   const [saved, setSaved] = useState("");
   const [selected, setSelected] = useState<PdfRegion | null>(null);
   const [error, setError] = useState("");
   const [toolResult, setToolResult] = useState("");
+  const [p1Payload, setP1Payload] = useState("");
   const [mountId, setMountId] = useState(0);
   const adapter = useMemo<TpdfPdfAdapter>(() => {
     const versions: Array<{ versionId: string; name: string; createdAt: string; bytes: Uint8Array }> = [];
@@ -31,11 +33,20 @@ export default function PdfOfficePage() {
           return "/api/tiles/" + page + "/" + level + "/" + x + "/" + y + "?v=synthetic-a0-v1";
         },
       } } : {}),
+      ...(p1Mode ? {
+        resolveTextQuads: async (_page: number, r: { x:number;y:number;width:number;height:number }) => [[
+          {x:r.x,y:r.y},{x:r.x+r.width,y:r.y},
+          {x:r.x+r.width,y:r.y+r.height},{x:r.x,y:r.y+r.height},
+        ]],
+        selectAsset: async (kind: string) => ({assetId:"host-" + kind + "-fixture"}),
+        assetUrl: (_id: string) => "/api/tiles/0/0.25/0/0?v=synthetic-a0-v1",
+      } : {}),
       ...(appShell && tileMode ? {
         searchPages: async (query: string) => [{ page: 35,
           snippet: "Found " + query + " on drawing 35", score: 1 }],
         applyChanges: async (changes: unknown[], info: { name: string }) => {
           setSaved("applied=" + changes.length + " · " + info.name);
+          setP1Payload(JSON.stringify(changes));
           return { versionId: "remote-" + Date.now(), name: info.name };
         },
       } : {}),
@@ -66,7 +77,7 @@ export default function PdfOfficePage() {
         return versions.map(({ versionId, name, createdAt }) => ({ versionId, name, createdAt }));
       },
     };
-  }, [tileMode, appShell]);
+  }, [tileMode, appShell, p1Mode]);
   const hostTools = useMemo(() => [
     { id: "page-numbers", label: "Page numbers", group: "Edit PDF",
       run: (context: { page: number }) => setToolResult("page-numbers page " + context.page) },
@@ -91,6 +102,7 @@ export default function PdfOfficePage() {
     </header>}
     <span data-testid="tool-run" style={{ display: "none" }}>{toolResult}</span>
     <span data-testid="host-saved" style={{ display: "none" }}>{saved}</span>
+    <span data-testid="p1-payload" style={{ display: "none" }}>{p1Payload}</span>
     <div style={{ flex: 1, minHeight: 0 }}>
       <StrictMode><Editor key={mountId} adapter={adapter} renderMode={tileMode ? "tiles" : "auto"}
         shell={appShell ? "app" : "classic"} tools={appShell ? hostTools : undefined}

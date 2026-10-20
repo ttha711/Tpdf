@@ -233,62 +233,86 @@ GitHub Actions on Node 22 confirmed:
 
 **Not verified:** extraction/migration of the full legacy PDFium/EmbedPDF editor, secure PDF redaction, cryptographic signatures, structural form preservation, 100+ page Range performance, multi-browser/touch matrix, production 360i HMAC adapter, desktop packaging, and opt-in network-enabled OCR.
 
-## S2: Host-controlled tile viewer
+## S2 tile adapter
 
-`renderMode?: "auto" | "canvas" | "tiles"` defaults to `auto`.
-In auto, the editor selects tiles if `adapter.tiles` exists and the known
-PDF size exceeds `largeFileBytes` (default **30,000,000 bytes**) OR a page
-would require more than **8,000,000 pixels** at `zoom * devicePixelRatio`.
-Without `adapter.tiles`, the existing PDF.js canvas path remains available;
-the canvas is DPR-aware and capped at 8 MP.
-
-```ts
-adapter.tiles = {
-  async meta() {
-    const res = await fetch("/api/office/pdf/tile-meta");
-    if (!res.ok) throw new Error("Tile metadata unavailable");
-    return res.json(); // {versionId:string,pages:[{width:number,height:number}]}
-  },
-  tileUrl(page, level, x, y) {
-    // Host signs URL and binds it to the immutable version.
-    return `/api/office/pdf/tiles/${page}/${level}/${x}/${y}?version=v123`;
-  },
-};
-```
-
-`meta()` returns page dimensions in **PDF points (1/72 inch)**, in page
-order, with zero-based tile page indices. `level` is one of
-`0.25 | 0.5 | 1 | 2 | 4 | 8 | 16`; choose the smallest level at least
-`zoom * devicePixelRatio`. At level L, tile (x,y) represents the PDF-point
-rectangle `[x*512/L,(x+1)*512/L) × [y*512/L,(y+1)*512/L)`.
-The right/bottom edge is clipped to the actual page. Image pixels correspond
-to L pixels per PDF point; images are at most **512×512 pixels**, and PNG
-or WebP may be returned with a valid image content type.
-
-The host **must guarantee** that each tile URL is immutable for its version
-(include `versionId` in the path, query or signature), authenticate and
-authorize tile access on the host API, and rotate URLs when document version
-changes. The example URLs are illustrative only; the library never constructs
-or signs URLs and never calls remote APIs independently except by fetching URLs
-returned by `tileUrl`. On another origin, configure **CORS** to allow the
-host origin and handle credentials/security explicitly; do not embed
-long-lived credentials in public client code. Browser/cache proxies may use
-`Cache-Control: public,max-age=31536000,immutable` only when URLs are truly
-immutable and access-control semantics permit that cache policy.
-
-Tiles are limited to **8 simultaneous fetches**, **96 visible tiles**, and
-a **256-blob in-memory LRU**. Requests for tiles outside the current viewport
-are aborted; horizontal panning and vertically continuous scrolling use page
-dimensions from metadata rather than calling PDF.js to measure every page.
-Tile mode intentionally exposes **region selection only**. Other page edits
-and mark tools are hidden (not silently committed).
-
-The synthetic Next host example is accessible at `/office/pdf?tiles=1`,
-serves **100 generated large pages**, and creates coordinate-labeled PNGs at
-`/api/tiles/:page/:level/:x/:y`. It is a **geometry/performance test
-fixture**, not a production PyMuPDF tile server. It does not simulate 461 MB
-document decode or prove the 360i production service meets latency targets.
+See [PDF_EDITOR_TILE_VIEWER.md](./PDF_EDITOR_TILE_VIEWER.md) for the tile geometry and cache contract.
 
 ## S3 mobile app shell
 
 See [PDF_EDITOR_MOBILE_SHELL.md](./PDF_EDITOR_MOBILE_SHELL.md) for the optional app shell, host tools, tilesOnly, remote applyChanges, examples, and screenshot test instructions.
+
+## P1 annotation change contract (schemaVersion = 1)
+
+The **final wire contract for 360i PyMuPDF** is exported in
+`packages/pdf-editor/src/p1Types.ts` as `P1Mark` and `P1Style`.
+It is sent unchanged through `adapter.applyChanges(changes, info)` as
+`{kind:"mark", mark: P1Mark}`. Existing unversioned `LegacyMark`
+remains readable; **do not silently reinterpret** old marks as P1.
+
+```ts
+type Point = { x: number; y: number }; // finite 0..100, page origin top-left
+type Quad = [Point, Point, Point, Point]; // reading order: start-top, end-top, end-bottom, start-bottom
+type Style = {
+  strokeColor: string; fillColor: string;  // #RRGGBB
+  opacity: number;                        // 0..1
+  strokeWidthPt: number; fontSizePt: number; // PDF points (1/72 inch)
+};
+type Base = { schemaVersion: 1; region: PdfRegion; style: Style };
+type P1Mark =
+ | Base & { type:"highlight"|"underline"|"strikeout"|"squiggly"; quads: Quad[] }
+ | Base & { type:"inkHighlight"; paths: Point[][] }
+ | Base & { type:"addText"|"insertText"|"callout"; text:string; anchor?:Point }
+ | Base & { type:"rectangle"|"circle" }
+ | Base & { type:"line"|"arrow"|"polygon"|"polyline";
+            points:Point[]; arrowEnd?:"none"|"start"|"end"|"both" }
+ | Base & { type:"stamp"|"image"|"signature"; assetId:string };
+```
+
+Page is **1-based** in `region.page`. `region.x/y/width/height`
+and every point/quad coordinate are percentages of the **displayed page
+rectangle, after page rotation**, with top-left origin. They are **not**
+percentages of the unrotated PDF page, nor CSS/tile/DPR coordinates.
+This matches the 360i tile renderer, selection overlay and PyMuPDF host.
+The host must transform coordinates between displayed-page and PDF-native
+spaces using the actual page rotation before writing annotations.
+
+`quads[]` describes precise text-line geometry in displayed-page
+percentages, never a bounding box guessed from pointer drag. The four points
+follow **text reading direction**: start/top, end/top, end/bottom, start/bottom
+(top/bottom are relative to the glyph orientation, not fixed screen axes).
+At 90°/270°, Underline/Strikeout/Squiggly previews must use the
+text baseline direction and its normal; do not treat these quads as fixed
+screen TL/TR/BR/BL. **Known viewer follow-up:** rotated-text markup
+preview still needs validation/fix; the 360i server's actual annotations are
+already independently verified. Text tools require
+`adapter.resolveTextQuads(page,region): Promise<Quad[]>` from host
+(PyMuPDF word/character geometry); without it, these entries are disabled.
+`adapter.selectAsset(type)` returns a host-managed immutable
+`{assetId}` for image/stamp/signature. `adapter.assetUrl(assetId)` provides an optional preview URL; never put base64 PDF/image bytes
+inside changes. Host validates asset access and MIME before save.
+
+`arrowEnd` defaults to `"end"` for Arrow; polygon has at least
+3 vertices, all other point/ink paths at least 2. Every field is
+JSON-serializable. Colors must be 6-digit hex; opacity 0..1;
+`strokeWidthPt` (0,72]; `fontSizePt` (0,200]. Text is max
+2000 characters, asset ID max 256. Reject invalid geometry and
+unsupported schema versions server-side. PyMuPDF must implement
+the actual PDF annotations, text quad handling, redaction semantics
+if added in P3, and version regeneration; this frontend **does not**
+claim to save P1 marks into PDF bytes using pdf-lib.
+
+**360i font behavior (independently accepted):** basic WinAnsi Latin text
+is stored as a real PDF `/FreeText` annotation; Vietnamese characters
+outside WinAnsi (such as “ễ”, “ạ”) are rendered with DejaVu into the PDF
+page content **instead of** `/FreeText`. Both use the same P1 text payload;
+callers must not assume that every text mark remains an editable annotation.
+
+**S3/P1 UI follow-ups, not part of this documentation-only change:**
+after `resolveTextQuads` completes and Underline/Strikeout/Squiggly renders,
+clear the transient red region-selection rectangle. When a tool is picked from
+the Tools sheet, synchronize the mode selector/tab to that tool's group
+(Underline → Annotate; do not leave “Shapes” selected).
+
+P2 Form/Link/Attachment and P3 Measure/Redact/Replace text are
+**displayed but disabled** with “Sắp có” / “Coming soon”, and have
+no change wire format yet.

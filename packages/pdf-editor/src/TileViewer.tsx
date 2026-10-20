@@ -7,10 +7,11 @@ import type { PdfTileAdapter, PdfTileMeta, PdfTileLevel, PdfRegion, PdfTool } fr
 import type { Mark } from "./history.js";
 
 export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPage,
-  tool = "region", marks = [] }: {
+  tool = "region", marks = [], assetUrl }: {
   tiles: PdfTileAdapter; meta: PdfTileMeta; zoom: number; parent: HTMLElement | null;
   selected: PdfRegion | null; onRegion: (region: PdfRegion, points?: Array<[number, number]>) => void;
   onPage: (page: number) => void; tool?: PdfTool; marks?: Mark[];
+  assetUrl?: (id: string) => string;
 }) {
   const [view, setView] = useState({ left: 0, top: 0, width: 800, height: 700 });
   const [pan, setPan] = useState(false);
@@ -128,7 +129,7 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
         </div>;
       })}
       <TileOverlay number={i + 1} selected={selected} pan={pan} onRegion={onRegion}
-        tool={tool} marks={marks} />
+        tool={tool} marks={marks} assetUrl={assetUrl} />
     </div>)}
   </div>;
 }
