@@ -5,9 +5,9 @@ import type { P2Change, P2ExistingField, P2FormCapabilities,
 import { optionsFromText } from "./p2ViewModel.js";
 
 export type P2FormTool = "textField" | "checkbox" | "dropdown" | "listBox" | "fill";
-export function P2FormPanel({ tool, region, fields, caps, onRecord, onError }: {
+export function P2FormPanel({ tool, region, fields, caps, onRecord, onError, loading = false }: {
   tool: P2FormTool; region: PdfRegion | null; fields: P2ExistingField[];
-  caps: P2FormCapabilities; onRecord: (change: P2Change) => void;
+  caps: P2FormCapabilities; loading?: boolean; onRecord: (change: P2Change) => void;
   onError: (error: unknown) => void;
 }) {
   const [name, setName] = useState("");
@@ -73,6 +73,7 @@ export function P2FormPanel({ tool, region, fields, caps, onRecord, onError }: {
   const activeOptions = creating ? options : field?.options || [];
   return <form className="tpdf-p2-panel" data-testid="p2-form-panel" onSubmit={submit}>
     <strong>{tool === "fill" ? "Fill form" : "Create " + type + " field"}</strong>
+    {loading && <span role="status">Loading form fields…</span>}
     {creating ? <>
       <span className="tpdf-p2-hint">{region ? "Page " + region.page + " selected" :
         "Drag to select field placement on the page"}</span>
@@ -142,7 +143,7 @@ export function P2FormPanel({ tool, region, fields, caps, onRecord, onError }: {
         {field.type === "radio" && <span>Radio: Coming soon</span>}
       </>}
     </>}
-    <button type="submit" disabled={creating ? !region : !field || field.readOnly ||
-      field.type==="radio"}>{creating ? "Add field" : "Apply fill"}</button>
+    <button type="submit" disabled={loading || (creating ? !region : !field || field.readOnly ||
+      field.type==="radio")}>{creating ? "Add field" : "Apply fill"}</button>
   </form>;
 }
