@@ -35,12 +35,18 @@ export function TileOverlay({ number, selected, onRegion, pan, tool = "region", 
     onPointerUp={(event) => {
       if (!start.current) return;
       const last = coords(event);
-      const region = normalizeRegion(number, ...start.current.origin, ...last);
+      const origin = start.current.origin;
+      const linear = tool === "distance" || tool === "calibrate";
+      const x = linear && Math.abs(origin[0] - last[0]) < 0.2 ?
+        (last[0] < 99.7 ? last[0] + 0.3 : last[0] - 0.3) : last[0];
+      const y = linear && Math.abs(origin[1] - last[1]) < 0.2 ?
+        (last[1] < 99.7 ? last[1] + 0.3 : last[1] - 0.3) : last[1];
+      const region = normalizeRegion(number, ...origin, x, y);
       const points = start.current.points;
       start.current = null;
       if (region) onRegion(region,
         ["draw","inkHighlight","polygon","polyline","line","arrow","callout",
-          "perimeter","area"].includes(tool)
+          "perimeter","area","distance","calibrate"].includes(tool)
           ? [...points, last] : undefined);
     }}
     onPointerCancel={() => { start.current = null; }}>
