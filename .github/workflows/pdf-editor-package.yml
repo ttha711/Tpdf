@@ -158,7 +158,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          node --test packages/pdf-editor/tests/events-jsdom.test.mjs packages/pdf-editor/tests/strictmode-jsdom.test.mjs > /tmp/tpdf-dom-test.log 2>&1
+          node --test packages/pdf-editor/tests/events-jsdom.test.mjs packages/pdf-editor/tests/strictmode-jsdom.test.mjs packages/pdf-editor/tests/appShell-jsdom.test.mjs > /tmp/tpdf-dom-test.log 2>&1
           result=$?
           issue=$(grep -m1 -E "not ok|error:|Error:" /tmp/tpdf-dom-test.log | head -c 150 || true)
           echo "dom_issue=${issue}" >> "$GITHUB_OUTPUT"
