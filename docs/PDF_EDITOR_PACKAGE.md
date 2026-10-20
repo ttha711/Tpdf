@@ -227,3 +227,71 @@ adapter.selectAttachment?():Promise<{assetId:string;size?:number}|null>;
   and provides the inventory/picker. P2a is an embedded UI and structured
   change producer only. P2b radio, multi-select and custom checkbox export
   values are not claimed as supported by the PyMuPDF host yet.
+
+## P3 proposed contract — DRAFT, waiting for 360i confirmation
+
+**Documentation only.** P3 is not exported or executable. Proposed additions
+to `PdfChange[]` for host `applyChanges()`; keep P1/P2 unchanged.
+All positions use **0–100% of the displayed (rotated) page**, top-left origin;
+page numbers are 1-based. No raw PDF/image data goes through the library.
+
+```ts
+type P3Point = { x: number; y: number };
+type P3LengthUnit = "mm" | "cm" | "m" | "in" | "ft";
+type P3PageCalibration = {
+  id: string; page: number; points: [P3Point, P3Point];
+  realLength: number; unit: P3LengthUnit;
+};
+type P3Change =
+ | { kind: "redact"; schemaVersion: 1; regions: PdfRegion[];
+     terms?: string[]; pages?: number[] }
+ | { kind: "measure.calibrate"; schemaVersion: 1;
+     calibration: P3PageCalibration }
+ | { kind: "measure"; schemaVersion: 1;
+     type: "distance" | "perimeter" | "area"; page: number;
+     points: P3Point[]; calibration: P3PageCalibration }
+ | { kind: "text.replace"; schemaVersion: 1;
+     search: string; replacement: string;
+     scope: { kind: "region"; region: PdfRegion }
+       | { kind: "pages"; pages: number[] }
+       | { kind: "document" };
+     caseSensitive?: boolean };
+type P3Capabilities = {
+  redact?: { secureErase?: boolean; regions?: boolean; terms?: boolean };
+  measure?: { calibrate?: boolean; distance?: boolean;
+    perimeter?: boolean; area?: boolean };
+  replaceText?: { region?: boolean; pages?: boolean; document?: boolean };
+};
+adapter.p3Capabilities?: P3Capabilities;
+adapter.listPageCalibrations?(): Promise<{
+  versionId: string; calibrations: P3PageCalibration[];
+}>;
+```
+
+- **Redact:** require at least one `region` or a nonempty `terms[]`;
+  terms are literal text (not regex) and **require explicit `pages[]`**.
+  No implicit whole-document search. Stage a *pending* outline only; before
+  Save require an explicit destructive-action confirmation listing affected
+  pages and terms. Host must remove underlying **text and image pixels**,
+  not overlay black rectangles; reject if secure erasure cannot be guaranteed.
+  Once saved, the new PDF cannot undo erasure; **earlier versions/backups may
+  still contain the originals**, which 360i must handle separately.
+- **Measure:** calibrate from two distinct points on one page plus positive
+  real-world length/unit; one active calibration per page. Each measurement
+  embeds its calibration **snapshot**, not only an ID, so the host can
+  calculate the length or area consistently after reopening. Distance needs
+  exactly 2 points; Perimeter/Area need at least 3 (closed shape). Server
+  derives the result/label (area in squared units) from PDF geometry,
+  then writes Line/PolyLine/Polygon annotations. Changing a page calibration
+  must not retroactively change existing marks.
+- **Replace text:** exact literal `search` and `replacement` within a
+  selected region, explicit pages, or the entire document. Show match count
+  and obtain user confirmation for document-wide changes. Host may use a
+  **nearest available base font**, not the original font, and must report
+  unreplaceable text; replacement is **not secure redaction**.
+- **UI capability gating:** missing `p3Capabilities` or missing sub-flags
+  means **disabled + “Sắp có” / “Coming soon”**. Redact requires
+  `secureErase=true` *and* the relevant region/term flag; Measure requires
+  `calibrate=true`, the requested mode flag, and a valid per-page
+  calibration; Replace enables only declared scope(s). Never simulate a
+  successful server operation. Details: [P3 design notes](./PDF_EDITOR_P3_NOTES.md).
