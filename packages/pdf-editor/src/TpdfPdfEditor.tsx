@@ -114,7 +114,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   const p2 = useP2Editor({ tool, adapter: props.adapter, region,
     changes: engine.history.current, record: engine.record, report: engine.report,
     versionId: tileMeta?.versionId, pageCount: tileMeta?.pages.length ||
-      engine.pdf?.numPages || 0, readOnly: !canEdit });
+      engine.pdf?.numPages || 0, readOnly: !canEdit, onPlaced: () => setRegion(null) });
   function selected(value: PdfRegion, points?: Array<[number, number]>) {
     setRegion(value); props.onRegionSelected?.(value);
     if (!canEdit || tool === "region") return;
