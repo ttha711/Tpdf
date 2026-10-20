@@ -188,90 +188,91 @@ P2 Form/Link/Attachment and P3 Measure/Redact/Replace text are
 **displayed but disabled** with “Sắp có” / “Coming soon”. A proposed
 P2 format follows below; P3 does not have a wire contract yet.
 
-## P2 proposed Form / Fill / Link / Attachment contract — awaiting 360i approval
+## P2a accepted — Form Create / Fill / Link / Attachment (schemaVersion 1)
 
-**Proposal only — not implemented or exported in TypeScript yet.**
-No P2 tool is enabled, and no P2 change is sent by the current library.
-After 360i approves this schema, extend the existing `PdfChange` union
-without changing P1 `{kind:"mark",mark:P1Mark}` or legacy `kind:"field"`.
-All new P2 mutations are JSON-serializable, **schemaVersion: 1**, sent to
-the existing `adapter.applyChanges(changes, {name,baseVersionId?})`.
+360i validated the practical PyMuPDF subset; this is **the approved P2a
+contract**, not a proposal. The exact exported discriminated unions are in
+`packages/pdf-editor/src/p2Types.ts` and validation in `p2Validation.ts`.
+P2 changes extend the original `PdfChange` union, preserving both P1
+`kind:"mark"` and legacy text `kind:"field"`. Browser submits the
+**ordered** `changes[]` to `adapter.applyChanges` without PDF bytes.
 
 ```ts
-// Reuses existing PdfRegion: {page,x,y,width,height,note}.
-// Page is 1-based; x/y/width/height are 0..100% of DISPLAYED (rotated) page.
-type P2Option = { label: string; value: string }; // value = PDF export value
-type P2FieldType = "text" | "checkbox" | "radio" | "dropdown" | "listBox";
-type P2FormBase = { name: string; required?: boolean; readOnly?: boolean;
-  tooltip?: string };
+type P2Option = { label:string; value:string }; // PDF export value
+type FormBase = { name:string; required?:boolean; readOnly?:boolean; tooltip?:string };
 type P2CreateField =
-  | (P2FormBase & { type: "text"; region: PdfRegion;
-      defaultValue?: string; multiline?: boolean; maxLength?: number })
-  | (P2FormBase & { type: "checkbox"; region: PdfRegion;
-      exportValue: string; defaultValue?: boolean })
-  | (P2FormBase & { type: "radio";
-      choices: Array<{ region: PdfRegion; label: string; exportValue: string }>;
-      defaultValue?: string | null })
-  | (P2FormBase & { type: "dropdown"; region: PdfRegion;
-      options: P2Option[]; defaultValue?: string | null; editable?: boolean })
-  | (P2FormBase & { type: "listBox"; region: PdfRegion;
-      options: P2Option[]; defaultValues?: string[]; multiSelect?: boolean });
+ | (FormBase & { type:"text"; region:PdfRegion; defaultValue?:string;
+                 maxLength?:number; multiline?:boolean })
+ | (FormBase & { type:"checkbox"; region:PdfRegion; defaultValue?:boolean;
+                 exportValue?:string }) // defaults to "Yes"
+ | (FormBase & { type:"dropdown"; region:PdfRegion; options:P2Option[];
+                 defaultValue?:string|null; editable?:boolean })
+ | (FormBase & { type:"listBox"; region:PdfRegion; options:P2Option[];
+                 defaultValues?:string[]; multiSelect?:boolean })
+ | (FormBase & { type:"radio"; choices:Array<{
+                 region:PdfRegion; label:string; exportValue:string }>;
+                 defaultValue?:string|null }); // P2b, disabled in P2a
 type P2FillValue =
-  | { fieldType: "text"; value: string }
-  | { fieldType: "checkbox"; value: boolean }
-  | { fieldType: "radio" | "dropdown"; value: string | null }
-  | { fieldType: "listBox"; value: string[] };
+ | { fieldType:"text"; value:string }
+ | { fieldType:"checkbox"; value:boolean }
+ | { fieldType:"dropdown"|"radio"; value:string|null }
+ | { fieldType:"listBox"; value:string[] }; // P2a: [] or [one value]
 type P2Change =
-  | { kind: "form.create"; schemaVersion: 1; field: P2CreateField }
-  | ({ kind: "form.fill"; schemaVersion: 1; name: string } & P2FillValue)
-  | { kind: "link"; schemaVersion: 1; region: PdfRegion;
-      target: { kind: "url"; url: string }
-        | { kind: "page"; page: number; point?: { x: number; y: number } } }
-  | { kind: "attachment"; schemaVersion: 1; region: PdfRegion;
-      assetId: string };
-
-// Read-only discovery from 360i server; the library does not inspect tile PDF bytes.
-type P2ExistingField = { name: string; type: P2FieldType;
-  widgets: Array<{ region: PdfRegion; exportValue?: string }>;
-  value: string | boolean | string[] | null; options?: P2Option[];
-  multiSelect?: boolean; required?: boolean; readOnly?: boolean };
-type P2FieldInventory = { versionId: string; fields: P2ExistingField[] };
-adapter.listFormFields?(): Promise<P2FieldInventory>;
+ | { kind:"form.create"; schemaVersion:1; field:P2CreateField }
+ | ({ kind:"form.fill"; schemaVersion:1; name:string } & P2FillValue)
+ | { kind:"link"; schemaVersion:1; region:PdfRegion;
+     target:{kind:"url";url:string} |
+            {kind:"page";page:number;point?:{x:number;y:number}} }
+ | { kind:"attachment"; schemaVersion:1; region:PdfRegion; assetId:string };
+type P2ExistingField = { name:string; type:"text"|"checkbox"|"radio"|"dropdown"|"listBox";
+  widgets:Array<{region:PdfRegion;exportValue?:string}>;
+  value:string|boolean|string[]|null; options?:P2Option[]; required?:boolean;
+  readOnly?:boolean; multiSelect?:boolean; editable?:boolean;
+  multiline?:boolean; maxLength?:number; tooltip?:string };
+type P2FieldInventory = { versionId:string; fields:P2ExistingField[] };
+adapter.formCapabilities?: {
+  radio:boolean; multiSelect:boolean; checkboxExportValue:boolean;
+};
+adapter.listFormFields?():Promise<P2FieldInventory>;
+adapter.selectAttachment?():Promise<{assetId:string;size?:number}|null>;
 ```
 
-**Interpretation and validation (proposal):**
-- `form.create`: `name` identifies the **AcroForm field**, unique within
-  the document. For radio, one name groups **multiple widgets** in
-  `choices[]`; each has its own displayed-page `region` and unique
-  `exportValue`. Creating a duplicate field name is rejected.
-- `P2Option.value` and radio `exportValue` are **stable PDF export
-  values**; `label` is UI text only. Options cannot have duplicate values.
-  Defaults must match options; list-box `defaultValues` must be unique.
-  When `multiSelect !== true`, the list-box value may contain at most
-  one item. Required fields cannot be cleared to empty/null.
-- `form.fill` targets an **existing field by exact case-sensitive name**,
-  not the widget index or label. Text uses string, checkbox boolean,
-  radio/dropdown selected export string (or null to clear if allowed),
-  list-box selected export-string array. An unknown, read-only or
-  type-mismatched field is rejected. Existing legacy `kind:"field"`
-  remains unchanged (text-only) for backwards compatibility.
-- The proposed `listFormFields()` route returns one record per **field**
-  (not per widget), with `widgets[]` carrying the displayed page regions
-  and checkbox/radio export values. `versionId` must match the open
-  document version; reject stale Fill results or conflicting saves.
-- Link `target` is **exactly one of** HTTPS/HTTP URL or an internal
-  **1-based page**; optional destination `point` is 0..100% in the
-  target displayed page. Reject `javascript:`, `data:`, `file:`,
-  malformed URLs and unauthorized targets.
-- Attachment stores only `assetId` + placement. The host owns file
-  name, MIME, content, permissions and malware/size checking; no raw
-  bytes/base64 in `P2Change`. Asset selection UI/adapter is to be
-  specified after agreement.
-- As with P1, the server transforms displayed-space percentages to
-  native PDF coordinates and validates every page/region/value. Only the
-  host generates PDF widgets/annotations and immutable new versions.
-
-**Awaiting agreement:** radio group `choices[]`, checkbox boolean mapping,
-list-box `string[]`, clearing a choice with `null`, and the inventory
-`{versionId,fields[]}` are deliberate proposals, **not an assertion that
-360i already supports these wire shapes**. Do not implement P2 until confirmed.
+- **Geometry:** `PdfRegion.page` is 1-based. All region and point
+  coordinates are percentages (0–100) of the **displayed, rotated** page,
+  top-left origin. Server transforms to native PDF coordinates.
+- **P2a capabilities:** the host opts in to P2a by supplying
+  `formCapabilities`, even when all three values are `false`. Omission
+  keeps P1-only integrations unchanged and defaults the three flags to
+  `false`. Radio group remains disabled pending P2b. List Box supports
+  only 0 or 1 selected item (`defaultValues`/fill `string[]`); multi
+  default/selection is rejected while `multiSelect=false`. Checkbox
+  export defaults to `"Yes"`; any other value is rejected while
+  `checkboxExportValue=false`. UI locks unavailable controls with
+  “Coming soon”, rather than pretending to execute them.
+- **Create:** unique case-sensitive `name`, `required`, `readOnly`,
+  `tooltip` (PDF field label), text `maxLength`/`multiline`,
+  dropdown `editable`, defaults and choice export values are supported.
+  Host validates duplicates across existing fields and staged operations.
+- **Fill:** exact `name` plus typed `fieldType`/`value`. Checkbox is
+  boolean, text string, dropdown export string or null, list box string
+  array with at most one value. A `form.fill` **may reference a
+  `form.create` earlier in the same changes list**, and the host must
+  apply every operation **in list order**. Reject missing/read-only
+  fields, type mismatch, out-of-option values, and invalid required empties.
+- **Inventory:** `GET .../form-fields` in 360i is exposed as
+  `listFormFields():Promise<{versionId,fields[]}>`. It returns **one
+  record per field**, with `widgets[]` for placements, options,
+  current value, required/readOnly. Version ID must match the displayed
+  document version; reject stale requests.
+- **Link:** `target` is either an HTTP(S) URL or 1-based PDF target page,
+  with optional displayed-page `point` (no zoom property). Reject
+  JavaScript/data/file protocols. Server still checks authorization.
+- **Attachment:** `region.x/y` is the icon anchor; **width/height are
+  ignored**, and may be zero. Host owns file name, MIME, ACL and content,
+  accepts any file type up to **10 MB** (10,000,000 bytes), with only
+  `assetId` in the change. No file bytes/base64 in `applyChanges`.
+- **Compatibility:** legacy `kind:"field"` remains unchanged.
+  360i builds actual AcroForm widgets/annotations, immutable new versions,
+  and provides the inventory/picker. P2a is an embedded UI and structured
+  change producer only. P2b radio, multi-select and custom checkbox export
+  values are not claimed as supported by the PyMuPDF host yet.

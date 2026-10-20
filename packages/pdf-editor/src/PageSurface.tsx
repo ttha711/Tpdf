@@ -4,13 +4,15 @@ import type { PDFDocumentProxy } from "pdfjs-dist";
 import { normalizeRegion } from "./history.js";
 import type { Mark } from "./history.js";
 import { P1MarkPreview } from "./P1MarkPreview.js";
+import { P2PlacementOverlay } from "./P2PlacementOverlay.js";
+import type { P2Change } from "./p2Types.js";
 import type { PdfRegion, PdfTool } from "./types.js";
 
-export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight, onRegion, readOnly, assetUrl }: {
+export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight, onRegion, readOnly, assetUrl, p2Changes = [] }: {
   pdf: PDFDocumentProxy; number: number; scale: number; parent: HTMLElement | null; tool: PdfTool;
   marks: Mark[]; highlight: PdfRegion | null;
   onRegion: (value: PdfRegion, points?: Array<[number, number]>) => void; readOnly: boolean;
-  assetUrl?: (id: string) => string;
+  assetUrl?: (id: string) => string; p2Changes?: P2Change[];
 }) {
   const element = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -82,7 +84,8 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
             width: mark.region.width + "%", height: mark.region.height + "%" }}>
           {(mark.type === "note" || mark.type === "signature") && <span>{mark.value || mark.region.note}</span>}
         </div>)}
-      {highlight?.page === number && <div className="tpdf-mark tpdf-mark-region" style={{
+      <P2PlacementOverlay changes={p2Changes} page={number}/>
+    {highlight?.page === number && <div className="tpdf-mark tpdf-mark-region" style={{
         left: highlight.x + "%", top: highlight.y + "%",
         width: highlight.width + "%", height: highlight.height + "%" }} />}
     </div>

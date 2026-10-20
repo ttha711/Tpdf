@@ -88,3 +88,16 @@
 .tpdf-editor .tpdf-p1-stylebar input[type=range]{width:75px;max-width:75px}
 .tpdf-app-sheet-list .tpdf-app-tool-grid button:disabled{opacity:.72;background:#edf0f4;cursor:not-allowed}
 .tpdf-app-sheet-list .tpdf-app-tool-grid button small{font-size:10px;color:#64748b}
+
+/* Host-owned P2a widgets: mobile editor stays small and scrolls within its own panel. */
+.tpdf-p2-panel{display:flex;align-items:center;gap:8px;flex-wrap:wrap;max-height:min(27dvh,220px);overflow:auto;flex-shrink:0;padding:9px 12px;background:var(--tpdf-panel,#fff);border-bottom:1px solid var(--tpdf-border,#d9dde5);font-size:12px;overscroll-behavior:contain}
+.tpdf-p2-panel>strong{flex-basis:100%;font-size:13px}
+.tpdf-p2-panel label{display:flex;align-items:center;gap:5px;min-height:44px}
+.tpdf-p2-panel label input:not([type=checkbox]),.tpdf-p2-panel label select,.tpdf-p2-panel textarea{width:128px;min-width:0;max-width:180px;min-height:40px;border:1px solid var(--tpdf-border,#a4afc0);border-radius:6px;padding:5px;background:var(--tpdf-input,#fff);color:inherit}
+.tpdf-p2-panel input[type=checkbox]{width:18px;height:18px;flex-shrink:0}
+.tpdf-p2-panel .tpdf-p2-hint{color:var(--tpdf-muted,#586472);font-size:12px}
+.tpdf-editor .tpdf-p2-panel button[type=submit]{min-height:44px;padding:8px 14px;background:#e8effd;color:#064e9f;border:1px solid #9ab9e4;border-radius:8px;flex-shrink:0}
+.tpdf-p2-mark{z-index:2;outline:1.5px dashed #2475b9;background:#6ca2e922;overflow:hidden;color:#124374;font:11px/1.3 system-ui,sans-serif}
+.tpdf-p2-mark>span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#e6f2ffb8}
+.tpdf-p2-attachment{outline:0;background:transparent;font-size:18px;overflow:visible}
+@media(max-width:430px){.tpdf-p2-panel label input:not([type=checkbox]),.tpdf-p2-panel label select,.tpdf-p2-panel textarea{max-width:140px}}

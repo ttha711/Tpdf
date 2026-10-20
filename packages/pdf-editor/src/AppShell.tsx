@@ -15,6 +15,7 @@ type Props = {
   query: string; results: PdfSearchHit[]; note: string; selection: PdfRegion | null;
   tools: PdfHostTool[]; canText?: boolean; canAsset?: boolean; canP1?: boolean;
   style?: P1Style; onStyle?: (value: P1Style) => void;
+  p2Panel?: ReactNode; canP2?: boolean; canFill?: boolean; canAttachment?: boolean;
   onTool: (value: PdfTool) => void; onNote: (value: string) => void;
   onSearchQuery: (value: string) => void; onSearch: () => void;
   onGoto: (page: number) => void; onBuiltin: (id: string) => void;
@@ -31,7 +32,8 @@ export function AppShell(props: Props) {
   const [commentNotice, setCommentNotice] = useState(false);
   const [styleOpen, setStyleOpen] = useState(false);
   const commands = visibleBuiltins(tab, props.canEdit, props.canForms,
-    props.canText, props.canAsset, props.canP1);
+    props.canText, props.canAsset, props.canP1,
+    props.canP2, props.canFill, props.canAttachment);
   const selection = props.selection ?? undefined;
   const hostComments = props.tools.find((item) => item.group.toLowerCase() === "comments");
   useEffect(() => {
@@ -53,9 +55,10 @@ export function AppShell(props: Props) {
       setStyleOpen(true); setSheet(false); return;
     }
     const item = visibleBuiltins("all", props.canEdit, props.canForms,
-      props.canText, props.canAsset, props.canP1).find((entry) => entry.id === id);
+      props.canText, props.canAsset, props.canP1,
+      props.canP2, props.canFill, props.canAttachment).find((entry) => entry.id === id);
     if (!item) return;
-    if (item.tool) props.onTool(item.tool);
+    if (item.tool) { props.onTool(item.tool); setTab(item.group); }
     else props.onBuiltin(id);
     setSheet(false);
   }
@@ -133,6 +136,7 @@ export function AppShell(props: Props) {
       <input aria-label={words[props.tool]} value={props.note}
         onChange={(event) => props.onNote(event.target.value)} maxLength={160}
         placeholder={words[props.tool]} /></div>}
+    {props.p2Panel}
     <div className="tpdf-app-viewer">
       {props.children}
       {props.tile && <span className="tpdf-app-viewer-badge">{words.lightweight}</span>}
@@ -171,12 +175,14 @@ export function AppShell(props: Props) {
               <div className="tpdf-app-tool-grid">{items.map((item) =>
                 <button type="button" key={item.id}
                   disabled={!enabledBuiltin(item, props.canEdit, props.canForms,
-                    props.canText, props.canAsset, props.canP1)}
+                    props.canText, props.canAsset, props.canP1,
+                    props.canP2, props.canFill, props.canAttachment)}
                   onClick={() => activate(item.id)}>
                   <AppShellIcon name={item.tool ? "pen" : "pages"} size={19} />
                   <span>{toolLabel(item.label, words, locale)}</span>
                   {!enabledBuiltin(item, props.canEdit, props.canForms,
-                    props.canText, props.canAsset, props.canP1) && <small>{words.soon}</small>}
+                    props.canText, props.canAsset, props.canP1,
+                    props.canP2, props.canFill, props.canAttachment) && <small>{words.soon}</small>}
                 </button>)}</div>
             </section> : null;
           })}

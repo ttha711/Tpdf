@@ -2,14 +2,16 @@ import { useRef } from "react";
 import type { PointerEvent } from "react";
 import { normalizeRegion, type Mark } from "./history.js";
 import { P1MarkPreview } from "./P1MarkPreview.js";
+import { P2PlacementOverlay } from "./P2PlacementOverlay.js";
+import type { P2Change } from "./p2Types.js";
 import type { PdfTool } from "./types.js";
 import type { PdfRegion } from "./types.js";
 
-export function TileOverlay({ number, selected, onRegion, pan, tool = "region", marks = [], assetUrl }: {
+export function TileOverlay({ number, selected, onRegion, pan, tool = "region", marks = [], assetUrl, p2Changes = [] }: {
   number: number; selected: PdfRegion | null;
   onRegion: (region: PdfRegion, points?: Array<[number, number]>) => void;
   pan: boolean; tool?: PdfTool; marks?: Mark[];
-  assetUrl?: (id: string) => string;
+  assetUrl?: (id: string) => string; p2Changes?: P2Change[];
 }) {
   const start = useRef<{ origin: [number, number]; points: Array<[number, number]> } | null>(null);
   function coords(event: PointerEvent<HTMLDivElement>): [number, number] {
@@ -46,6 +48,7 @@ export function TileOverlay({ number, selected, onRegion, pan, tool = "region", 
         {(mark.type === "note" || mark.type === "signature") &&
           <span>{mark.value || mark.region.note}</span>}
       </div>)}
+    <P2PlacementOverlay changes={p2Changes} page={number}/>
     {selected?.page === number && <div className="tpdf-mark tpdf-mark-region"
       style={{ left: selected.x + "%", top: selected.y + "%",
         width: selected.width + "%", height: selected.height + "%" }} />}

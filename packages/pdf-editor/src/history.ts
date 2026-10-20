@@ -1,11 +1,12 @@
 import type { PdfRegion } from "./types.js";
 import type { P1Mark } from "./p1Types.js";
+import type { P2Change } from "./p2Types.js";
 export type LegacyMark = { type: "region" | "highlight" | "note" | "draw" | "cover" | "signature";
   region: PdfRegion; value?: string; points?: Array<[number, number]>;
   schemaVersion?: never };
 export type Mark = LegacyMark | P1Mark;
 export type PdfChange = { kind: "mark"; mark: Mark } | { kind: "rotate" | "delete" | "insert"; page: number } |
-  { kind: "move"; page: number; to: number } | { kind: "field"; field: string; value: string };
+  { kind: "move"; page: number; to: number } | { kind: "field"; field: string; value: string } | P2Change;
 export type EditHistory = { past: PdfChange[][]; current: PdfChange[]; future: PdfChange[][] };
 export const emptyHistory = (): EditHistory => ({ past: [], current: [], future: [] });
 export function change(history: EditHistory, entry: PdfChange): EditHistory {

@@ -4,6 +4,7 @@ import { PageSurface } from "./PageSurface.js";
 import { TileViewer } from "./TileViewer.js";
 import { TileGrid } from "./TileGrid.js";
 import { AppShell } from "./AppShell.js";
+import { useP2Editor } from "./useP2Editor.js";
 import { buildP1Mark } from "./p1Marks.js";
 import { DEFAULT_P1_STYLE, P1_TOOLS, TEXT_MARKUP, ASSET_TOOL,
   type P1Asset, type P1Point, type P1Quad, type P1Style } from "./p1Types.js";
@@ -73,6 +74,8 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     return () => { alive = false; };
   }, [props.adapter, props.renderMode, props.tilesOnly]);
   const marks: Mark[] = engine.history.current.filter((op) => op.kind === "mark").map((op) => op.mark);
+  const p2Changes = engine.history.current.filter((op) => ["form.create","form.fill",
+    "link","attachment"].includes(op.kind)) as import("./p2Types.js").P2Change[];
   useEffect(() => {
     setScrollNode(scroller.current);
     if (!scroller.current) return;
@@ -108,6 +111,10 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   const canEdit = !props.readOnly && (!useTiles || Boolean(props.adapter.applyChanges));
   const canSave = canEdit && engine.dirty && !engine.busy &&
     Boolean(props.adapter.saveVersion || props.adapter.applyChanges);
+  const p2 = useP2Editor({ tool, adapter: props.adapter, region,
+    changes: engine.history.current, record: engine.record, report: engine.report,
+    versionId: tileMeta?.versionId, pageCount: tileMeta?.pages.length ||
+      engine.pdf?.numPages || 0, readOnly: !canEdit, onPlaced: () => setRegion(null) });
   function selected(value: PdfRegion, points?: Array<[number, number]>) {
     setRegion(value); props.onRegionSelected?.(value);
     if (!canEdit || tool === "region") return;
@@ -141,6 +148,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
         const mark = buildP1Mark({ tool: p1Tool, region: value, style: p1Style,
           path, text: note, quads, assetId: asset?.assetId });
         engine.record({ kind: "mark", mark });
+        setRegion(null);
       } catch (error) { engine.report("p1-mark", error, false); }
     })();
   }
@@ -219,13 +227,13 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
         : <div className="tpdf-page-grid">{Array.from({ length: engine.pdf?.numPages || 0 }, (_, i) =>
             <button type="button" key={i} onClick={() => goto(i + 1)}>{text.pages} {i + 1}</button>)}</div>)
         : useTiles && tileMeta && props.adapter.tiles ? <TileViewer tiles={props.adapter.tiles} meta={tileMeta}
-          zoom={scale} parent={scrollNode} selected={region} onRegion={selected} tool={tool} marks={marks} assetUrl={props.adapter.assetUrl}
+          zoom={scale} parent={scrollNode} selected={region} onRegion={selected} tool={tool} marks={marks} assetUrl={props.adapter.assetUrl} p2Changes={p2Changes}
           onPage={(value) => { if (value !== engine.page) engine.setPage(value); }} />
         : engine.pdf && Array.from({ length: engine.pdf.numPages }, (_, i) =>
           <PageSurface key={i} pdf={engine.pdf!} number={i + 1} scale={scale} parent={scrollNode}
             tool={tool} marks={marks} highlight={region} onRegion={selected}
             readOnly={Boolean(props.readOnly) && tool !== "region"}
-            assetUrl={props.adapter.assetUrl} />)}
+            assetUrl={props.adapter.assetUrl} p2Changes={p2Changes} />)}
     </div>
     {props.children}
   </>;
@@ -243,6 +251,8 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       tools={props.tools || []} onTool={setTool} onNote={setNote}
       canText={Boolean(props.adapter.resolveTextQuads)} canAsset={Boolean(props.adapter.selectAsset)}
       canP1={Boolean(props.adapter.applyChanges) && canEdit}
+      canP2={p2.canP2} canFill={p2.canFill} canAttachment={p2.canAttachment}
+      p2Panel={p2.p2Panel}
       style={p1Style} onStyle={setP1Style}
       onSearchQuery={setQuery} onSearch={() => void engine.search(query).then(setResults)}
       onGoto={goto} onBuiltin={builtIn} onSave={() => void engine.save()}

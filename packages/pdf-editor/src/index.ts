@@ -7,3 +7,8 @@ export type { TpdfPdfAdapter, TpdfPdfEditorHandle, TpdfPdfEditorProps,
 export type { P1Mark, P1Style, P1Point, P1Quad, P1Tool, P1TextMarkup, P1Asset } from "./p1Types.js";
 export { DEFAULT_P1_STYLE, P1_TOOLS } from "./p1Types.js";
 export { buildP1Mark, validStyle } from "./p1Marks.js";
+
+export type { P2Change, P2CreateField, P2FieldType, P2Option, P2FillValue,
+  P2ExistingField, P2FieldInventory, P2FormCapabilities } from "./p2Types.js";
+export { DEFAULT_FORM_CAPABILITIES } from "./p2Types.js";
+export { validateP2Batch, validateP2, validateCreate, formCaps } from "./p2Validation.js";

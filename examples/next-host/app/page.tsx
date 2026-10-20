@@ -14,6 +14,7 @@ export default function PdfOfficePage() {
   const appShell = params.get("shell") === "app";
   const tilesOnly = params.get("tileonly") === "1";
   const p1Mode = params.get("p1") === "1";
+  const p2Mode = params.get("p2") === "1";
   const [saved, setSaved] = useState("");
   const [selected, setSelected] = useState<PdfRegion | null>(null);
   const [error, setError] = useState("");
@@ -33,6 +34,24 @@ export default function PdfOfficePage() {
           return "/api/tiles/" + page + "/" + level + "/" + x + "/" + y + "?v=synthetic-a0-v1";
         },
       } } : {}),
+      ...(p2Mode ? {
+        formCapabilities: {radio:false,multiSelect:false,checkboxExportValue:false},
+        listFormFields: async () => ({
+          versionId:"synthetic-a0-v1", fields: [
+            {name:"existing-text",type:"text",value:"Original",
+              widgets:[{region:{page:1,x:10,y:10,width:20,height:5,note:""}}]},
+            {name:"existing-checkbox",type:"checkbox",value:false,
+              widgets:[{region:{page:1,x:12,y:20,width:5,height:5,note:""},exportValue:"Yes"}]},
+            {name:"existing-dropdown",type:"dropdown",value:"A",
+              options:[{label:"A label",value:"A"},{label:"B label",value:"B"}],
+              widgets:[{region:{page:1,x:10,y:30,width:20,height:5,note:""}}]},
+            {name:"existing-list",type:"listBox",value:["A"],multiSelect:false,
+              options:[{label:"A label",value:"A"},{label:"B label",value:"B"}],
+              widgets:[{region:{page:1,x:10,y:40,width:20,height:5,note:""}}]},
+          ],
+        }),
+        selectAttachment: async () => ({assetId:"host-board-attachment-1",size:2048}),
+      } : {}),
       ...(p1Mode ? {
         resolveTextQuads: async (_page: number, r: { x:number;y:number;width:number;height:number }) => [[
           {x:r.x,y:r.y},{x:r.x+r.width,y:r.y},
@@ -77,7 +96,7 @@ export default function PdfOfficePage() {
         return versions.map(({ versionId, name, createdAt }) => ({ versionId, name, createdAt }));
       },
     };
-  }, [tileMode, appShell, p1Mode]);
+  }, [tileMode, appShell, p1Mode, p2Mode]);
   const hostTools = useMemo(() => [
     { id: "page-numbers", label: "Page numbers", group: "Edit PDF",
       run: (context: { page: number }) => setToolResult("page-numbers page " + context.page) },

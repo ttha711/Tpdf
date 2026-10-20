@@ -14,6 +14,8 @@ function ascii(text: string): string {
 }
 export async function applyChanges(bytes: Uint8Array, changes: PdfChange[]): Promise<Uint8Array> {
   if (!changes.length) return new Uint8Array(bytes);
+  if (changes.some((edit) => ["form.create","form.fill","link","attachment"].includes(edit.kind)))
+    throw Error("P2 changes require host adapter.applyChanges (never silently discard them)");
   const pdf = await import("pdf-lib");
   const doc = await pdf.PDFDocument.load(bytes, { updateMetadata: false });
   const font = await doc.embedFont(pdf.StandardFonts.Helvetica);
