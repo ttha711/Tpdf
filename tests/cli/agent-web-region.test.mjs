@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createRequire } from "node:module";
@@ -11,7 +11,10 @@ test("compile percent geometry and validate parent origin", () => {
   const root = resolve(import.meta.dirname, "../..");
   const dir = mkdtempSync(join(tmpdir(), "tpdf-region-"));
   try {
-    execFileSync("tsc", ["--strict", "--target", "ES2022", "--module", "commonjs", "--skipLibCheck",
+    const localTsc = join(root, "node_modules/typescript/bin/tsc");
+    const executable = existsSync(localTsc) ? process.execPath : "tsc";
+    const prefix = existsSync(localTsc) ? [localTsc] : [];
+    execFileSync(executable, [...prefix, "--strict", "--target", "ES2022", "--module", "commonjs", "--skipLibCheck",
       "--outDir", dir, join(root, "apps/web/src/embed/agentWebRegion.ts")]);
     const { selectedRegion, isValidRegion, trustedParentMessage } = require(join(dir, "agentWebRegion.js"));
     assert.deepEqual(selectedRegion(2, { x: 80, y: 70 }, { x: 20, y: 10 }),
