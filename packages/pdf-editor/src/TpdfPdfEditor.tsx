@@ -259,9 +259,9 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       <select aria-label="Annotation tool" value={tool}
         onChange={(event) => setTool(event.target.value as PdfTool)}>
         {((useTiles && !props.adapter.applyChanges ? ["region"] : ["region", "highlight", "note", "draw", "cover", "signature"]) as PdfTool[])
-          .map((name) => <option key={name} value={name}>{text[name]}</option>)}
+          .map((name) => <option key={name} value={name}>{text[name as keyof typeof text] || name}</option>)}
       </select>
-      {(tool === "note" || tool === "signature") && <input aria-label={text[tool]}
+      {(tool === "note" || tool === "signature") && <input aria-label={text[tool as keyof typeof text] || tool}
         value={note} onChange={(event) => setNote(event.target.value)} maxLength={160} />}
       {canEdit && <>
         <button type="button" onClick={engine.undo} disabled={!engine.history.past.length}>{text.undo}</button>
