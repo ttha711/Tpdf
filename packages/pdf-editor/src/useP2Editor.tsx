@@ -13,7 +13,7 @@ export function useP2Editor(input: {
   tool: PdfTool; adapter: TpdfPdfAdapter; region: PdfRegion | null;
   changes: PdfChange[]; record: (change: PdfChange) => void;
   report: (code:string,error:unknown,retryable?:boolean)=>void;
-  versionId?: string; pageCount: number; readOnly: boolean;
+  versionId?: string; pageCount: number; readOnly: boolean; onPlaced?: () => void;
 }) {
   const { tool, adapter, region, changes, record, report, versionId, pageCount } = input;
   const [inventory, setInventory] = useState<P2FieldInventory | null>(null);
@@ -42,6 +42,7 @@ export function useP2Editor(input: {
       if (change.kind === "form.fill" && fetching) throw Error("Form inventory still loading");
       validateP2Batch([...changes, change], inventory || undefined, caps, pageCount, versionId);
       record(change);
+      if (change.kind !== "form.fill") input.onPlaced?.();
     } catch (error) { report("p2",error,false); }
   };
   const p2Panel = enabled && P2_TOOLS.includes(tool) ? (
