@@ -114,7 +114,7 @@
 .tpdf-p3-redact{border:2px dashed #ae1830;background:#f4475730;color:#870d25;box-sizing:border-box;overflow:hidden;font:11px/1.3 system-ui;white-space:nowrap}
 .tpdf-p3-notes{overflow:auto;max-height:90px;padding:7px 12px;background:#fef1d9;font:12px/1.35 system-ui;color:#713d0f}
 .tpdf-p3-notes p{margin:4px 0}
-.tpdf-p3-destructive-backdrop{position:absolute;z-index:90;inset:0;background:#101a32b8;display:grid;place-items:center;padding:14px}
+.tpdf-p3-destructive-backdrop{position:fixed;z-index:90;inset:0;background:#101a32b8;display:grid;place-items:center;padding:14px}
 .tpdf-p3-destructive{max-width:440px;width:100%;overflow:auto;max-height:80%;padding:18px;background:var(--tpdf-panel,#fff);color:var(--tpdf-fg,#17223a);border-radius:12px;box-shadow:0 8px 28px #0005}
 .tpdf-p3-destructive strong{font-size:17px;color:#b32229}
 .tpdf-editor .tpdf-p3-destructive button{min-height:44px;margin-right:8px;margin-bottom:4px}
