@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { PdfRegion } from "./types.js";
 import type { P2Change, P2ExistingField, P2FormCapabilities,
   P2FieldType } from "./p2Types.js";
@@ -28,6 +28,13 @@ export function P2FormPanel({ tool, region, fields, caps, onRecord, onError }: {
   const [fillSelected, setFillSelected] = useState("");
   const field = fields.find(f=>f.name===fieldName) || fields[0];
   const creating = tool !== "fill";
+  useEffect(() => {
+    if (creating || !field) return;
+    setFillText(typeof field.value === "string" ? field.value : "");
+    setFillChecked(field.value === true);
+    setFillSelected(Array.isArray(field.value) ? field.value[0] || "" :
+      typeof field.value === "string" ? field.value : "");
+  }, [creating, field?.name, JSON.stringify(field?.value)]);
   const type: P2FieldType = tool === "textField" ? "text" : tool === "fill" ?
     (field?.type || "text") : tool;
   const options = optionsFromText(optionsText);
@@ -96,11 +103,13 @@ export function P2FormPanel({ tool, region, fields, caps, onRecord, onError }: {
           <textarea aria-label="Field options" rows={2} value={optionsText}
             onChange={e=>setOptionsText(e.target.value)}/></label>
         <label>Default choice
+          {type === "dropdown" && editable ? <input aria-label="Default choice"
+            value={defaultValue} onChange={e=>setDefaultValue(e.target.value)}/> :
           <select aria-label="Default choice" value={defaultValue}
             onChange={e=>setDefaultValue(e.target.value)}>
             <option value="">None</option>
             {activeOptions.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-          </select></label>
+          </select>}</label>
         {type === "dropdown" && <label><input type="checkbox" checked={editable}
           onChange={e=>setEditable(e.target.checked)} /> Editable</label>}
         {type === "listBox" && <label><input type="checkbox" checked={multiSelect}
@@ -119,6 +128,9 @@ export function P2FormPanel({ tool, region, fields, caps, onRecord, onError }: {
         {field.type === "checkbox" && <label><input type="checkbox"
           checked={fillChecked} onChange={e=>setFillChecked(e.target.checked)} /> Checked</label>}
         {(field.type === "dropdown" || field.type === "listBox") && <label>Value
+          {field.type === "dropdown" && field.editable ?
+            <input aria-label="Fill choice" value={fillSelected}
+              onChange={e=>setFillSelected(e.target.value)} /> :
           <select aria-label="Fill choice" value={fillSelected}
             onChange={e=>setFillSelected(e.target.value)}>
             <option value="">None</option>
