@@ -69,7 +69,7 @@ export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, send
         pages = Array.from({ length: pageCount }, (_, i) => i + 1).filter((n) => !removed.has(n));
       } else {
         pages = body.pages;
-        if (!Array.isArray(pages) || !pages.length || pages.some((n) => !validPage(n))) throw new Error("Invalid pages.");
+        if (!Array.isArray(pages) || !pages.length || pages.length > 300 || pages.some((n) => !validPage(n))) throw new Error("Invalid pages (max 300).");
         if (body.type === "reorder" && (pages.length !== pageCount || new Set(pages).size !== pageCount)) throw new Error("Invalid page order.");
       }
       if (!pages.length) throw new Error("Cannot remove every page.");
