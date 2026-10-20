@@ -70,9 +70,15 @@ export function AppShell(props: Props) {
         onClick={props.onSave}><AppShellIcon name="save" /></button>
     </header>
     <nav className="tpdf-app-tabs" role="tablist" aria-label="PDF tool groups">
-      {SHELL_TABS.map((value) => <button key={value} role="tab" type="button"
-        data-tpdf-mode-tab={value} aria-selected={tab === value}
-        onClick={() => chooseTab(value)}>{words[TAB_TEXT[value]]}</button>)}
+      <div className="tpdf-app-tab-scroll">
+        {SHELL_TABS.filter((value) => value !== "all").map((value) =>
+          <button key={value} role="tab" type="button"
+            data-tpdf-mode-tab={value} aria-selected={tab === value}
+            onClick={() => chooseTab(value)}>{words[TAB_TEXT[value]]}</button>)}
+      </div>
+      <button className="tpdf-app-tab-all" role="tab" type="button"
+        data-tpdf-mode-tab="all" aria-selected={sheet} onClick={() => chooseTab("all")}>
+        {words.allTools}</button>
     </nav>
     <div className="tpdf-app-modebar">
       <button type="button" className="tpdf-app-icon" aria-label={words.pages}
@@ -128,7 +134,8 @@ export function AppShell(props: Props) {
       ] as const).map(([name, icon, action, enabled]) =>
         <button key={name} type="button" className={name === "read" ? "tpdf-app-dock-active" : ""}
           disabled={!enabled} onClick={action} aria-label={words[name]}>
-          <AppShellIcon name={icon} size={23} /><span>{words[name]}</span>
+          <AppShellIcon name={icon} size={23} />
+          <span>{name === "save" ? (locale === "vi" ? "Lưu" : "Save") : words[name]}</span>
         </button>)}
     </nav>
     {sheet && <div className="tpdf-app-sheet-backdrop" onMouseDown={(event) => {
