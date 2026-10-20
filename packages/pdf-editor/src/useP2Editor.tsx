@@ -19,7 +19,10 @@ export function useP2Editor(input: {
   const [inventory, setInventory] = useState<P2FieldInventory | null>(null);
   const [fetching, setFetching] = useState(false);
   const caps = formCaps(adapter.formCapabilities);
-  const enabled = !input.readOnly && !!adapter.applyChanges;
+  // Existing P1 hosts do not advertise P2a; preserve their disabled controls.
+  // The P2a host opts in with a formCapabilities object (all flags may be false).
+  const enabled = !input.readOnly && !!adapter.applyChanges &&
+    adapter.formCapabilities !== undefined;
   useEffect(() => {
     if (tool !== "fill" || !adapter.listFormFields) return;
     let alive = true;
