@@ -29,6 +29,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Build library, type declarations, size budget
         run: npm run build --workspace=@tpdf/pdf-editor
+      - name: Explicit PDF editor TypeScript typecheck
+        run: npm run typecheck --workspace=@tpdf/pdf-editor
       - name: Run deterministic offline package tests
         run: npm test --workspace=@tpdf/pdf-editor
       - name: Record actual externalized JavaScript gzip size
