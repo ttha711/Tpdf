@@ -4,6 +4,9 @@ import { PageSurface } from "./PageSurface.js";
 import { TileViewer } from "./TileViewer.js";
 import { TileGrid } from "./TileGrid.js";
 import { AppShell } from "./AppShell.js";
+import { buildP1Mark } from "./p1Marks.js";
+import { DEFAULT_P1_STYLE, P1_TOOLS, TEXT_MARKUP, ASSET_TOOL,
+  type P1Asset, type P1Point, type P1Quad, type P1Style } from "./p1Types.js";
 import { validMeta, tileLevel } from "./tiles.js";
 import type { PdfTileMeta } from "./types.js";
 import { validRegion, type Mark } from "./history.js";
@@ -38,6 +41,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PdfSearchHit[]>([]);
   const [note, setNote] = useState("");
+  const [p1Style, setP1Style] = useState<P1Style>(DEFAULT_P1_STYLE);
   const [region, setRegion] = useState<PdfRegion | null>(null);
   const [fields, setFields] = useState<string[] | null>(null);
   const [versions, setVersions] = useState<PdfVersion[] | null>(null);
@@ -107,8 +111,34 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   function selected(value: PdfRegion, points?: Array<[number, number]>) {
     setRegion(value); props.onRegionSelected?.(value);
     if (!canEdit || tool === "region") return;
-    engine.record({ kind: "mark", mark: { type: tool, region: value,
-      value: tool === "note" || tool === "signature" ? note : undefined, points } });
+    const legacy: Array<PdfTool> = ["highlight","note","draw","cover","signature"];
+    const useP1 = P1_TOOLS.includes(tool as typeof P1_TOOLS[number]) &&
+      !(tool === "highlight" && !props.adapter.resolveTextQuads) &&
+      !(tool === "signature" && !props.adapter.selectAsset);
+    if (!useP1) {
+      if (!legacy.includes(tool)) return;
+      const oldType = tool as "highlight" | "note" | "draw" | "cover" | "signature";
+      engine.record({ kind: "mark", mark: { type: oldType, region: value,
+        value: tool === "note" || tool === "signature" ? note : undefined, points } });
+      return;
+    }
+    void (async () => {
+      try {
+        const p1Tool = tool as typeof P1_TOOLS[number];
+        const quads: P1Quad[] | undefined =
+          TEXT_MARKUP.includes(p1Tool as typeof TEXT_MARKUP[number])
+            ? await props.adapter.resolveTextQuads?.(value.page, value) : undefined;
+        const asset = ASSET_TOOL.includes(p1Tool as P1Asset)
+          ? await props.adapter.selectAsset?.(p1Tool as P1Asset) : undefined;
+        if (ASSET_TOOL.includes(p1Tool as P1Asset) && !asset) return;
+        const path: P1Point[] = (points || [[value.x, value.y],
+          [value.x + value.width, value.y + value.height]])
+          .map(([x,y]) => ({ x, y }));
+        const mark = buildP1Mark({ tool: p1Tool, region: value, style: p1Style,
+          path, text: note, quads, assetId: asset?.assetId });
+        engine.record({ kind: "mark", mark });
+      } catch (error) { engine.report("p1-mark", error, false); }
+    })();
   }
   function builtIn(id: string) {
     if (id === "pages") { setGrid((value) => !value); return; }
@@ -206,6 +236,8 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       redoEnabled={canEdit && engine.history.future.length > 0} tool={tool}
       query={query} results={results} note={note} selection={region}
       tools={props.tools || []} onTool={setTool} onNote={setNote}
+      canText={Boolean(props.adapter.resolveTextQuads)} canAsset={Boolean(props.adapter.selectAsset)}
+      style={p1Style} onStyle={setP1Style}
       onSearchQuery={setQuery} onSearch={() => void engine.search(query).then(setResults)}
       onGoto={goto} onBuiltin={builtIn} onSave={() => void engine.save()}
       onUndo={engine.undo} onRedo={engine.redo}
