@@ -176,7 +176,7 @@ export function AppShell(props: Props) {
                   <AppShellIcon name={item.tool ? "pen" : "pages"} size={19} />
                   <span>{words[item.label] || item.label}</span>
                   {!enabledBuiltin(item, props.canEdit, props.canForms,
-                    props.canText, props.canAsset) && <small>{words.soon}</small>}
+                    props.canText, props.canAsset, props.canP1) && <small>{words.soon}</small>}
                 </button>)}</div>
             </section> : null;
           })}
