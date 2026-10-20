@@ -39,6 +39,7 @@ export default function PdfOfficePage() {
           {x:r.x+r.width,y:r.y+r.height},{x:r.x,y:r.y+r.height},
         ]],
         selectAsset: async (kind: string) => ({assetId:"host-" + kind + "-fixture"}),
+        assetUrl: (_id: string) => "/api/tiles/0/0.25/0/0?v=synthetic-a0-v1",
       } : {}),
       ...(appShell && tileMode ? {
         searchPages: async (query: string) => [{ page: 35,
