@@ -80,3 +80,11 @@
 .tpdf-tile-skeleton span{padding:8px 12px;background:#f1f3f5cc;border-radius:7px}
 @keyframes tpdf-tile-wait{from{background-position:100% 0}to{background-position:-100% 0}}
 @media(prefers-reduced-motion:reduce){.tpdf-tile-skeleton{animation:none}}
+
+.tpdf-app-p1-style{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:5px 9px;background:var(--tpdf-panel,#fff);border-bottom:1px solid var(--tpdf-border,#ccd6e3)}
+.tpdf-p1-stylebar{display:flex;align-items:center;flex-wrap:wrap;gap:5px;max-width:100%;font-size:12px}
+.tpdf-p1-stylebar label{display:flex;align-items:center;gap:3px;min-height:44px}
+.tpdf-editor .tpdf-p1-stylebar input{min-width:32px;max-width:60px;width:55px;height:44px;padding:3px}
+.tpdf-editor .tpdf-p1-stylebar input[type=range]{width:75px;max-width:75px}
+.tpdf-app-sheet-list .tpdf-app-tool-grid button:disabled{opacity:.72;background:#edf0f4;cursor:not-allowed}
+.tpdf-app-sheet-list .tpdf-app-tool-grid button small{font-size:10px;color:#64748b}
