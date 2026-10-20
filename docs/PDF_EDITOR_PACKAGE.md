@@ -35,7 +35,8 @@ The original authenticated-host adapter example is preserved in
 | Continuous pages, page grid, 25/50/100/200/Fit | Yes | Lazy canvas near viewport |
 | Open via adapter URL (Range) or Uint8Array | Yes | Actual transfer profile unverified |
 | Highlight, note, freehand stroke | Yes | Draws visual overlays on save |
-| Cover/redaction | **Visual cover only** | Original text may remain extractable; **not secure redaction** |
+| Cover (legacy) | **Visual cover only** | Text remains extractable; **not secure redaction** |
+| Redact (P3, host-backed) | Pending selection + confirmation | Real erase requires PyMuPDF and `secureErase:true` |
 | Signatures | Visual typed label | Not cryptographic PDF signature |
 | Text fields | Basic AcroForm text inputs | Other field types not yet supported |
 | Rotate, delete, move, insert pages | Yes | Structural copies may lose active form fields |
@@ -44,7 +45,7 @@ The original authenticated-host adapter example is preserved in
 | Search | Optional indexed adapter or local PDF.js | Local scan can be slow on very large PDFs |
 | Versions | Optional host adapter | No server-side version state in library |
 | Existing PDFium/EmbedPDF full content editor | **Not yet extracted** | Legacy apps/web and desktop remain unchanged |
-| Compare drawings and secure redaction | Not provided by this React package | Implement through 360i adapter/server tooling |
+| Compare drawings and local PDF erasure | Not implemented locally | P3 secure erasure is delegated to 360i PyMuPDF |
 
 No markup in a PDF is trusted or interpreted as a command. Preview text is
 inserted as text nodes, never HTML. No PDF-provided JavaScript is executed by
