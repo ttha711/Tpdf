@@ -1,6 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { usePdfEngine } from "./usePdfEngine.js";
 import { PageSurface } from "./PageSurface.js";
+import { TileViewer } from "./TileViewer.js";
+import { validMeta, tileLevel } from "./tiles.js";
+import type { PdfTileMeta } from "./types.js";
 import { validRegion, type Mark } from "./history.js";
 import type { PdfRegion, PdfSearchHit, PdfTool, PdfVersion, TpdfPdfEditorHandle, TpdfPdfEditorProps } from "./types.js";
 
@@ -26,6 +29,9 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   const [scrollNode, setScrollNode] = useState<HTMLElement | null>(null);
   const [viewWidth, setViewWidth] = useState(800);
   const [grid, setGrid] = useState(false);
+  const [tileMeta, setTileMeta] = useState<PdfTileMeta | null>(null);
+  const [tileError, setTileError] = useState("");
+  const [dpr, setDpr] = useState(1);
   const [tool, setTool] = useState<PdfTool>("region");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PdfSearchHit[]>([]);
@@ -34,7 +40,27 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   const [fields, setFields] = useState<string[] | null>(null);
   const [versions, setVersions] = useState<PdfVersion[] | null>(null);
   const text = { ...words[props.locale || "vi"], ...props.messages };
-  const scale = engine.zoom === "fit" ? Math.max(0.25, Math.min(2, (viewWidth - 42) / 612)) : engine.zoom;
+  const pageWidth = tileMeta?.pages[0]?.width || 612;
+  const scale = engine.zoom === "fit" ? Math.max(0.25,
+    Math.min(16 / dpr, (viewWidth - 42) / pageWidth)) : Math.min(engine.zoom, 16 / dpr);
+  const oversized = tileMeta && tileMeta.pages.some((page) => page.width * page.height * scale * scale * dpr * dpr > 8_000_000);
+  const sourceSize = engine.source && ("size" in engine.source ? engine.source.size :
+    "bytes" in engine.source ? engine.source.bytes.byteLength : undefined);
+  const useTiles = Boolean(props.adapter.tiles && tileMeta &&
+    (props.renderMode === "tiles" || (props.renderMode !== "canvas" &&
+      ((sourceSize || 0) > (props.largeFileBytes ?? 30_000_000) || oversized))));
+  useEffect(() => { setDpr(window.devicePixelRatio || 1); }, []);
+  useEffect(() => {
+    if (!props.adapter.tiles || props.renderMode === "canvas") { setTileMeta(null); return; }
+    let alive = true;
+    props.adapter.tiles.meta().then(validMeta).then((value) => {
+      if (alive) { setTileMeta(value); setTileError(""); }
+    }).catch((error) => {
+      if (alive) { setTileError(String(error)); props.onError?.({
+        code: "tiles", message: String(error), retryable: true }); }
+    });
+    return () => { alive = false; };
+  }, [props.adapter, props.renderMode]);
   const marks: Mark[] = engine.history.current.filter((op) => op.kind === "mark").map((op) => op.mark);
   useEffect(() => {
     setScrollNode(scroller.current);
@@ -44,14 +70,14 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     return () => observer.disconnect();
   }, []);
   function goto(n: number) {
-    if (!engine.pdf || !Number.isInteger(n)) return;
-    const page = Math.max(1, Math.min(engine.pdf.numPages, n));
+    if ((!engine.pdf && !tileMeta) || !Number.isInteger(n)) return;
+    const page = Math.max(1, Math.min(tileMeta?.pages.length || engine.pdf!.numPages, n));
     engine.setPage(page); setGrid(false);
     requestAnimationFrame(() => scroller.current?.querySelector(
       '[data-tpdf-page="' + page + '"]')?.scrollIntoView({ block: "start" }));
   }
   function setZoom(value: number | "fit") {
-    engine.setZoom(value === "fit" ? "fit" : Math.max(0.25, Math.min(2, value)));
+    engine.setZoom(value === "fit" ? "fit" : Math.max(0.25, Math.min(16 / dpr, value)));
   }
   useImperativeHandle(ref, () => ({
     save: engine.save, goToPage: goto, setZoom,
@@ -62,11 +88,14 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   useEffect(() => { props.onPageChange?.(engine.page); }, [engine.page, props.onPageChange]);
   function selected(value: PdfRegion, points?: Array<[number, number]>) {
     setRegion(value); props.onRegionSelected?.(value);
-    if (props.readOnly || tool === "region") return;
+    if (props.readOnly || useTiles || tool === "region") return;
     engine.record({ kind: "mark", mark: { type: tool, region: value,
       value: tool === "note" || tool === "signature" ? note : undefined, points } });
   }
   function keyboard(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (useTiles && ["+", "=","-"].includes(event.key) && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault(); setZoom(scale * (event.key === "-" ? 0.8 : 1.25)); return;
+    }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
       event.preventDefault(); void engine.save();
     } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z" && !props.readOnly) {
@@ -74,7 +103,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     }
   }
   function scroll() {
-    if (!scroller.current || !engine.pdf || grid) return;
+    if (!scroller.current || !engine.pdf || grid || useTiles) return;
     const center = scroller.current.getBoundingClientRect().top + scroller.current.clientHeight / 2;
     let nearest = { index: engine.page, distance: Infinity };
     for (const el of scroller.current.querySelectorAll<HTMLElement>("[data-tpdf-page]")) {
@@ -83,18 +112,35 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     }
     if (nearest.index !== engine.page) engine.setPage(nearest.index);
   }
+  function wheelZoom(event: Event) {
+    const data = (event as CustomEvent<{ next: number; x: number; y: number }>).detail;
+    if (!scroller.current) return;
+    const node = scroller.current, old = scale;
+    const left = node.scrollLeft + data.x, top = node.scrollTop + data.y;
+    setZoom(data.next);
+    requestAnimationFrame(() => {
+      node.scrollLeft = left * data.next / old - data.x;
+      node.scrollTop = top * data.next / old - data.y;
+    });
+  }
+  useEffect(() => {
+    const node = scroller.current;
+    if (!node) return;
+    node.addEventListener("tpdf-tile-zoom", wheelZoom);
+    return () => node.removeEventListener("tpdf-tile-zoom", wheelZoom);
+  });
   return <div ref={root} className={"tpdf-editor " + (props.className || "")}
     data-theme={props.theme || "system"} data-density={props.density || "office"}
     onKeyDown={keyboard} tabIndex={0} role="region" aria-label="TPDF PDF editor">
     <div className="tpdf-toolbar" role="toolbar" aria-label="PDF controls">
       <button type="button" onClick={() => setGrid(!grid)}>{text.pages}</button>
       <button type="button" aria-label="Previous page" onClick={() => goto(engine.page - 1)}>‹</button>
-      <span aria-live="polite">{engine.page}/{engine.pdf?.numPages || "…"}</span>
+      <span aria-live="polite">{engine.page}/{(useTiles ? tileMeta?.pages.length : engine.pdf?.numPages) || "…"}</span>
       <button type="button" aria-label="Next page" onClick={() => goto(engine.page + 1)}>›</button>
       <select aria-label="Zoom" value={String(engine.zoom)}
         onChange={(event) => setZoom(event.target.value === "fit" ? "fit" : Number(event.target.value))}>
         <option value="fit">{text.fit}</option>
-        {[0.25, 0.5, 1, 2].map((n) => <option key={n} value={n}>{n * 100}%</option>)}
+        {[0.25, 0.5, 1, 2, 4, 8].filter((n) => !useTiles || n * dpr <= 16).map((n) => <option key={n} value={n}>{n * 100}%</option>)}
       </select>
       <input aria-label={text.search} value={query} placeholder={text.search}
         onChange={(event) => setQuery(event.target.value)}
@@ -102,12 +148,12 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       <button type="button" onClick={() => void engine.search(query).then(setResults)}>{text.search}</button>
       <select aria-label="Annotation tool" value={tool}
         onChange={(event) => setTool(event.target.value as PdfTool)}>
-        {(["region", "highlight", "note", "draw", "cover", "signature"] as PdfTool[])
+        {((useTiles ? ["region"] : ["region", "highlight", "note", "draw", "cover", "signature"]) as PdfTool[])
           .map((name) => <option key={name} value={name}>{text[name]}</option>)}
       </select>
       {(tool === "note" || tool === "signature") && <input aria-label={text[tool]}
         value={note} onChange={(event) => setNote(event.target.value)} maxLength={160} />}
-      {!props.readOnly && <>
+      {!props.readOnly && !useTiles && <>
         <button type="button" onClick={engine.undo} disabled={!engine.history.past.length}>{text.undo}</button>
         <button type="button" onClick={engine.redo} disabled={!engine.history.future.length}>{text.redo}</button>
         <button type="button" onClick={() => engine.record({ kind: "rotate", page: engine.page })}>{text.rotate}</button>
@@ -122,6 +168,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       {props.adapter.listVersions && <button type="button" onClick={() => void props.adapter.listVersions!().then(setVersions).catch(
         (err) => engine.report("versions", err))}>{text.versions}</button>}
     </div>
+    {tileError && <div className="tpdf-error" role="alert">{tileError}</div>}
     {engine.busy && <div className="tpdf-status" role="status">{text.loading}</div>}
     {engine.error && <div className="tpdf-error" role="alert">{engine.error}</div>}
     {fields && <div className="tpdf-inline-panel">{fields.map((field) =>
@@ -132,8 +179,11 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     {results.length > 0 && <div className="tpdf-inline-panel">{results.map((r) =>
       <button key={r.page} onClick={() => goto(r.page)}>{r.page}: {r.snippet.slice(0, 75)}</button>)}</div>}
     <div ref={scroller} className="tpdf-scroll" onScroll={scroll}>
-      {grid ? <div className="tpdf-page-grid">{Array.from({ length: engine.pdf?.numPages || 0 }, (_, i) =>
+      {grid ? <div className="tpdf-page-grid">{Array.from({ length: (useTiles ? tileMeta?.pages.length : engine.pdf?.numPages) || 0 }, (_, i) =>
         <button type="button" key={i} onClick={() => goto(i + 1)}>{text.pages} {i + 1}</button>)}</div>
+        : useTiles && tileMeta && props.adapter.tiles ? <TileViewer tiles={props.adapter.tiles} meta={tileMeta}
+          zoom={scale} parent={scrollNode} selected={region} onRegion={selected}
+          onPage={(value) => { if (value !== engine.page) engine.setPage(value); }} />
         : engine.pdf && Array.from({ length: engine.pdf.numPages }, (_, i) =>
           <PageSurface key={i} pdf={engine.pdf!} number={i + 1} scale={scale} parent={scrollNode}
             tool={tool} marks={marks} highlight={region} onRegion={selected}
