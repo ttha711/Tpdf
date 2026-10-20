@@ -32,7 +32,7 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
     return () => { disposed = true; };
   }, [props.adapter]);
   useEffect(() => {
-    if (!source) return;
+    if (!source || props.tilesOnly) return;
     if (!props.assets.workerUrl) {
       report("asset", new Error("assets.workerUrl is required for PDF.js rendering."), false);
       return;
@@ -53,7 +53,7 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
       .catch((cause) => { if (!disposed) report("render", cause); })
       .finally(() => { if (!disposed) setBusy(false); });
     return () => { disposed = true; setPdf(null); void task?.destroy(); };
-  }, [source, props.assets.workerUrl]);
+  }, [source, props.assets.workerUrl, props.tilesOnly]);
   function record(edit: PdfChange) {
     if (!props.readOnly && !locked.current) setHistory((before) => change(before, edit));
   }
@@ -65,13 +65,18 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
     if (props.readOnly || locked.current || !source || !dirty) return;
     locked.current = true; setBusy(true);
     try {
-      const bytes = await compose();
-      const saved: PdfSaved = await props.adapter.saveVersion(bytes,
-        { name: source.name, baseVersionId: revision });
+      const info = { name: source.name, baseVersionId: revision };
+      // Host-owned changes never download/re-encode the original PDF.
+      const bytes = props.adapter.applyChanges ? null : await compose();
+      const saved: PdfSaved = props.adapter.applyChanges
+        ? await props.adapter.applyChanges(history.current, info)
+        : props.adapter.saveVersion && bytes
+          ? await props.adapter.saveVersion(bytes, info)
+          : (() => { throw Error("saveVersion or applyChanges adapter is required"); })();
       if (!saved?.versionId || !saved.name) throw Error("Adapter must return a new versionId and name.");
       if (saved.versionId === revision) throw Error("Adapter returned the previous versionId.");
       setRevision(saved.versionId);
-      setSource({ bytes: new Uint8Array(bytes), name: saved.name });
+      if (bytes) setSource({ bytes: new Uint8Array(bytes), name: saved.name });
       setHistory(emptyHistory()); setOcrDirty(false); setError("");
       props.onSaved?.(saved);
     } catch (cause) { report("save", cause); }

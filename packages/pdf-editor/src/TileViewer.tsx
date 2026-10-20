@@ -3,23 +3,30 @@ import { useTileScheduler } from "./useTileScheduler.js";
 import { pageBoxes, tileLevel, wantedTiles, fallbackTile, LEVELS } from "./tiles.js";
 import { TileOverlay } from "./TileOverlay.js";
 import { useTileGestures } from "./useTileGestures.js";
-import type { PdfTileAdapter, PdfTileMeta, PdfTileLevel, PdfRegion } from "./types.js";
+import type { PdfTileAdapter, PdfTileMeta, PdfTileLevel, PdfRegion, PdfTool } from "./types.js";
+import type { Mark } from "./history.js";
 
-export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPage, register }: {
+export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPage,
+  tool = "region", marks = [] }: {
   tiles: PdfTileAdapter; meta: PdfTileMeta; zoom: number; parent: HTMLElement | null;
-  selected: PdfRegion | null; onRegion: (region: PdfRegion) => void; onPage: (page: number) => void;
-  register?: (api: { zoomAt: (next: number, x: number, y: number) => void }) => void;
+  selected: PdfRegion | null; onRegion: (region: PdfRegion, points?: Array<[number, number]>) => void;
+  onPage: (page: number) => void; tool?: PdfTool; marks?: Mark[];
 }) {
   const [view, setView] = useState({ left: 0, top: 0, width: 800, height: 700 });
   const [pan, setPan] = useState(false);
+  const [decoded, setDecoded] = useState<Set<string>>(() => new Set());
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const boxes = useMemo(() => pageBoxes(meta, zoom), [meta, zoom]);
-  const contentWidth = Math.max(...boxes.map((p) => p.width), view.width);
+  const padding = parent ? parent.ownerDocument.defaultView?.getComputedStyle(parent) : null;
+  const insideWidth = Math.max(1, view.width - (padding ?
+    (parseFloat(padding.paddingLeft) || 0) + (parseFloat(padding.paddingRight) || 0) : 0));
+  const contentWidth = Math.max(...boxes.map((p) => p.width), insideWidth);
   const height = boxes.length ? boxes[boxes.length - 1].top + boxes[boxes.length - 1].height : 0;
   const dpr = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
   const level = tileLevel(zoom, dpr);
   useTileGestures(parent, zoom, dpr);
-  const needed = useMemo(() => wantedTiles(tiles, meta, zoom, dpr, view), [tiles, meta, zoom, dpr, view]);
+  const needed = useMemo(() => wantedTiles(tiles, meta, zoom, dpr,
+    { ...view, width: insideWidth }), [tiles, meta, zoom, dpr, view, insideWidth]);
   const { scheduler, revision } = useTileScheduler(tiles, meta.versionId, needed);
   function sync() {
     if (!parent) return;
@@ -93,6 +100,11 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
       data-tpdf-page={i + 1} style={{ position: "absolute", top: box.top,
         left: (contentWidth - box.width) / 2, width: box.width, height: box.height, margin: 0,
         overflow: "hidden" }}>
+      {!needed.some((tile) => tile.page === i && decoded.has(tile.key)) &&
+        <div className="tpdf-tile-skeleton" role="status" aria-label="Đang vẽ trang..."
+          style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+          <span>Đang vẽ trang...</span>
+        </div>}
       {needed.filter((t) => t.page === i).map((tile) => {
         let source = scheduler?.get(tile.key), display = tile;
         if (!source) for (const coarse of [...LEVELS].reverse().filter((n) => n < level)) {
@@ -104,12 +116,19 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
         return <div key={tile.key} style={{ position: "absolute", overflow: "hidden", pointerEvents: "none",
           left: tile.left * zoom, top: tile.top * zoom, width: tile.width * zoom, height: tile.height * zoom }}>
           <img src={source} alt="" draggable={false} data-tpdf-tile={tile.key}
+            onLoad={() => setDecoded((before) => {
+              if (before.has(tile.key)) return before;
+              const next = new Set(before); next.add(tile.key);
+              if (next.size > 128) { const first = next.values().next().value; if (first) next.delete(first); }
+              return next;
+            })}
             style={{ position: "absolute", maxWidth: "none",
               left: (display.left - tile.left) * zoom, top: (display.top - tile.top) * zoom,
               width: display.width * zoom, height: display.height * zoom }} />
         </div>;
       })}
-      <TileOverlay number={i + 1} selected={selected} pan={pan} onRegion={onRegion} />
+      <TileOverlay number={i + 1} selected={selected} pan={pan} onRegion={onRegion}
+        tool={tool} marks={marks} />
     </div>)}
   </div>;
 }

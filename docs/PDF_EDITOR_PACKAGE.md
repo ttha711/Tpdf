@@ -288,3 +288,7 @@ serves **100 generated large pages**, and creates coordinate-labeled PNGs at
 `/api/tiles/:page/:level/:x/:y`. It is a **geometry/performance test
 fixture**, not a production PyMuPDF tile server. It does not simulate 461 MB
 document decode or prove the 360i production service meets latency targets.
+
+## S3 mobile app shell
+
+See [PDF_EDITOR_MOBILE_SHELL.md](./PDF_EDITOR_MOBILE_SHELL.md) for the optional app shell, host tools, tilesOnly, remote applyChanges, examples, and screenshot test instructions.
