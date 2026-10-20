@@ -9,6 +9,7 @@ export function TileOverlay({ number, selected, onRegion, pan, tool = "region", 
   number: number; selected: PdfRegion | null;
   onRegion: (region: PdfRegion, points?: Array<[number, number]>) => void;
   pan: boolean; tool?: PdfTool; marks?: Mark[];
+  assetUrl?: (id: string) => string;
 }) {
   const start = useRef<{ origin: [number, number]; points: Array<[number, number]> } | null>(null);
   function coords(event: PointerEvent<HTMLDivElement>): [number, number] {
@@ -38,7 +39,7 @@ export function TileOverlay({ number, selected, onRegion, pan, tool = "region", 
     }}
     onPointerCancel={() => { start.current = null; }}>
     {marks.filter((mark) => mark.region.page === number).map((mark, index) =>
-      mark.schemaVersion === 1 ? <P1MarkPreview key={index} mark={mark}/> :
+      mark.schemaVersion === 1 ? <P1MarkPreview key={index} mark={mark} assetUrl={assetUrl}/> :
       <div key={index} className={"tpdf-mark tpdf-mark-" + mark.type} style={{
         left: mark.region.x + "%", top: mark.region.y + "%",
         width: mark.region.width + "%", height: mark.region.height + "%" }}>
