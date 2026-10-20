@@ -15,7 +15,7 @@ async function drag(page: import("@playwright/test").Page) {
 async function select(page: import("@playwright/test").Page, name: string) {
   await page.getByRole("button", { name: "Tools", exact: true }).click();
   await page.getByRole("dialog", { name: "All tools" })
-    .getByRole("button", { name, exact: true }).click();
+    .getByRole("button", { name, exact: true }).first().click();
 }
 async function save(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "Save version" }).first().click();
@@ -30,7 +30,9 @@ test("P1 Rectangle uses unified style and saves typed percent-space geometry", a
   await select(page, "Style");
   await expect(page.getByTestId("p1-stylebar")).toBeVisible();
   await page.getByLabel("Stroke color").fill("#00aa88");
-  await page.getByLabel("Opacity").fill("0.5");
+  await page.getByLabel("Opacity").focus();
+  await page.getByLabel("Opacity").press("Home");
+  for (let i = 0; i < 10; i++) await page.getByLabel("Opacity").press("ArrowRight");
   await select(page, "Rectangle");
   await drag(page);
   await expect(page.locator(".tpdf-p1-rectangle")).toHaveCount(1);
