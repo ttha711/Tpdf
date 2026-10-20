@@ -1,9 +1,13 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PdfChange } from "./history.js";
 export function useP3SaveGuard(changes:PdfChange[],save:()=>Promise<void>) {
   const [pending,setPending]=useState(false);
   const waiter=useRef<{promise:Promise<void>;resolve:()=>void;
     reject:(e:Error)=>void}|null>(null);
+  useEffect(()=>()=>{
+    waiter.current?.reject(Error("Editor unmounted while waiting for consent"));
+    waiter.current=null;
+  },[]);
   const redactions=changes.filter(c=>c.kind==="redact");
   function saveSafely():Promise<void> {
     if(waiter.current)return waiter.current.promise;
