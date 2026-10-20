@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { PdfRegion, PdfTool, TpdfPdfAdapter } from "./types.js";
 import type { P3Change, P3LengthUnit, P3PageCalibration, P3Scope, P3MatchCount } from "./p3Types.js";
 import { validateScope } from "./p3Validation.js";
@@ -19,11 +19,13 @@ export function P3Panel(p:Props) {
   const [matches,setMatches]=useState<P3MatchCount|null>(null);
   const [pending,setPending]=useState<P3Change|null>(null);
   const [working,setWorking]=useState(false);
+  const querySequence=useRef(0);
   const caps=p.adapter.p3Capabilities;
   const canScope=(key:P3Scope["kind"])=>!!caps?.replaceText?.[key];
   const actualScope=P3ScopeFor(scope,p.selection,pages);
   async function countMatches() {
     if(!p.adapter.countTextMatches)return;
+    const sequence=++querySequence.current;
     setWorking(true);setMatches(null);setPending(null);
     try {
       if(!search.trim())throw Error("Search must not be empty");
@@ -32,16 +34,17 @@ export function P3Panel(p:Props) {
       if(!Number.isInteger(value.count)||value.count<0||!Array.isArray(value.pages)||
         value.pages.some(x=>!Number.isInteger(x)||x<1||x>p.pageCount))
         throw Error("Invalid host text match count");
-      setMatches(value);
-    }catch(e){p.report("text-matches",e,false);}
-    finally{setWorking(false);}
+      if(sequence===querySequence.current)setMatches(value);
+    }catch(e){if(sequence===querySequence.current)p.report("text-matches",e,false);}
+    finally{if(sequence===querySequence.current)setWorking(false);}
   }
   function proposeReplace(){
     if(!matches||matches.count<1)return;
     setPending({kind:"text.replace",schemaVersion:1,search,replacement,scope:actualScope,
       caseSensitive});
   }
-  const invalidate=()=>{setMatches(null);setPending(null);};
+  const invalidate=()=>{querySequence.current++;setWorking(false);
+    setMatches(null);setPending(null);};
   return <section className="tpdf-p3-panel" data-testid="p3-panel">
     {(p.tool==="redact"||p.tool==="applyRedact") && <>
       <strong>Pending redaction — removes underlying text and image pixels when saved</strong>
