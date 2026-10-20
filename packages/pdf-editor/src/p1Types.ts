@@ -11,7 +11,7 @@ export const DEFAULT_P1_STYLE: P1Style = {
   strokeColor: "#dd3149", fillColor: "#ffdc45", opacity: 0.65,
   strokeWidthPt: 2, fontSizePt: 12,
 };
-export type P1TextMarkup = "underline" | "strikeout" | "squiggly";
+export type P1TextMarkup = "highlight" | "underline" | "strikeout" | "squiggly";
 export type P1TextType = "addText" | "insertText" | "callout";
 export type P1Stroke = "inkHighlight";
 export type P1Shape = "rectangle" | "circle" | "line" | "arrow" | "polygon" | "polyline";
@@ -26,7 +26,7 @@ export type P1Mark =
   | (Base & { type: "line" | "arrow" | "polygon" | "polyline";
     points: P1Point[]; arrowEnd?: "none" | "start" | "end" | "both" })
   | (Base & { type: P1Asset; assetId: string });
-export const TEXT_MARKUP: ReadonlyArray<P1TextMarkup> = ["underline", "strikeout", "squiggly"];
+export const TEXT_MARKUP: ReadonlyArray<P1TextMarkup> = ["highlight", "underline", "strikeout", "squiggly"];
 export const TEXT_TOOL: ReadonlyArray<P1TextType> = ["addText", "insertText", "callout"];
 export const ASSET_TOOL: ReadonlyArray<P1Asset> = ["stamp", "image", "signature"];
 export const P1_TOOLS: ReadonlyArray<P1Tool> = [
