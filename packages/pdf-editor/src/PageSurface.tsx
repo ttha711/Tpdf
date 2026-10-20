@@ -3,6 +3,7 @@ import type { PointerEvent } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { normalizeRegion } from "./history.js";
 import type { Mark } from "./history.js";
+import { P1MarkPreview } from "./P1MarkPreview.js";
 import type { PdfRegion, PdfTool } from "./types.js";
 
 export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight, onRegion, readOnly }: {
@@ -59,7 +60,8 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
     const end = coords(e);
     const region = normalizeRegion(number, ...state.start, ...end);
     if (!region) return;
-    onRegion(region, tool === "draw" ? [...state.points, end] : undefined);
+    onRegion(region, ["draw","inkHighlight","polygon","polyline","line","arrow","callout"].includes(tool)
+      ? [...state.points, end] : undefined);
   }
   return <div ref={element} data-tpdf-page={number} role="group" aria-label={"PDF page " + number}
     className="tpdf-page" style={{ width: size.width * scale, height: size.height * scale }}>
@@ -67,10 +69,13 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
     <div className="tpdf-page-overlay" aria-label={"Select area on page " + number}
       onPointerDown={(e) => { if (readOnly) return; e.currentTarget.setPointerCapture(e.pointerId);
         const start = coords(e); gesture.current = { start, points: [start] }; }}
-      onPointerMove={(e) => { if (gesture.current && tool === "draw") gesture.current.points.push(coords(e)); }}
+      onPointerMove={(e) => { if (gesture.current &&
+        ["draw","inkHighlight","polygon","polyline"].includes(tool))
+        gesture.current.points.push(coords(e)); }}
       onPointerUp={finish} onPointerCancel={() => { gesture.current = null; }}
       style={{ cursor: readOnly ? "default" : "crosshair", touchAction: readOnly ? "auto" : "none" }}>
       {marks.filter((m) => m.region.page === number).map((mark, i) =>
+        mark.schemaVersion === 1 ? <P1MarkPreview key={i} mark={mark}/> :
         <div key={i} className={"tpdf-mark tpdf-mark-" + mark.type}
           style={{ left: mark.region.x + "%", top: mark.region.y + "%",
             width: mark.region.width + "%", height: mark.region.height + "%" }}>
