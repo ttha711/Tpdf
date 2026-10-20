@@ -65,7 +65,7 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
   }
   async function save(): Promise<void> {
     if (props.readOnly || locked.current || !source || !dirty) return;
-    locked.current = true; setBusy(true);
+    locked.current = true; setBusy(true); setSaveNotes([]);
     try {
       const info = { name: source.name, baseVersionId: revision };
       // Host-owned changes never download/re-encode the original PDF.
