@@ -115,6 +115,10 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     const useP1 = P1_TOOLS.includes(tool as typeof P1_TOOLS[number]) &&
       !(tool === "highlight" && !props.adapter.resolveTextQuads) &&
       !(tool === "signature" && !props.adapter.selectAsset);
+    if (useP1 && !props.adapter.applyChanges) {
+      engine.report("p1-mark", Error("P1 marks require host adapter.applyChanges"), false);
+      return;
+    }
     if (!useP1) {
       if (!legacy.includes(tool)) return;
       const oldType = tool as "highlight" | "note" | "draw" | "cover" | "signature";
@@ -238,6 +242,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       query={query} results={results} note={note} selection={region}
       tools={props.tools || []} onTool={setTool} onNote={setNote}
       canText={Boolean(props.adapter.resolveTextQuads)} canAsset={Boolean(props.adapter.selectAsset)}
+      canP1={Boolean(props.adapter.applyChanges) && canEdit}
       style={p1Style} onStyle={setP1Style}
       onSearchQuery={setQuery} onSearch={() => void engine.search(query).then(setResults)}
       onGoto={goto} onBuiltin={builtIn} onSave={() => void engine.save()}
