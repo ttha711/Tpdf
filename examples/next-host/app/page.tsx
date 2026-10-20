@@ -2,7 +2,7 @@
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import type { TpdfPdfAdapter, PdfRegion } from "@tpdf/pdf-editor";
-import { PDFDocument } from "pdf-lib";
+import { PDFArray, PDFDocument } from "pdf-lib";
 
 const Editor = dynamic(() => import("@tpdf/pdf-editor").then((module) => module.TpdfPdfEditor),
   { ssr: false, loading: () => <p>Loading PDF editor…</p> });
@@ -23,7 +23,13 @@ export default function PdfOfficePage() {
         if (pdf.getPageCount() !== 2) throw Error("Expected two PDF pages.");
         const original = new Uint8Array(await (await fetch("/fixture.pdf")).arrayBuffer());
         const changed = bytes.length !== original.length || bytes.some((b, i) => b !== original[i]);
-        if (!changed) throw Error("Editor submitted unchanged PDF.");
+        const beforePdf = await PDFDocument.load(original);
+        const streamCount = (doc: PDFDocument) => {
+          const content = doc.getPage(0).node.Contents();
+          return content instanceof PDFArray ? content.size() : (content ? 1 : 0);
+        };
+        const annotated = streamCount(pdf) > streamCount(beforePdf);
+        if (!changed || !annotated) throw Error("Editor save must add an annotation drawing stream.");
         const versionId = "local-v" + (versions.length + 1);
         versions.push({ versionId, name, createdAt: new Date().toISOString(), bytes: new Uint8Array(bytes) });
         setSaved(versionId + " · " + bytes.length + " bytes · changed=" + changed +
