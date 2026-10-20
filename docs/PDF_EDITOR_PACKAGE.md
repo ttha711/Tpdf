@@ -224,6 +224,11 @@ type P2Change =
      target:{kind:"url";url:string} |
             {kind:"page";page:number;point?:{x:number;y:number}} }
  | { kind:"attachment"; schemaVersion:1; region:PdfRegion; assetId:string };
+type P2ExistingField = { name:string; type:"text"|"checkbox"|"radio"|"dropdown"|"listBox";
+  widgets:Array<{region:PdfRegion;exportValue?:string}>;
+  value:string|boolean|string[]|null; options?:P2Option[]; required?:boolean;
+  readOnly?:boolean; multiSelect?:boolean; editable?:boolean;
+  multiline?:boolean; maxLength?:number; tooltip?:string };
 type P2FieldInventory = { versionId:string; fields:P2ExistingField[] };
 adapter.formCapabilities?: {
   radio:boolean; multiSelect:boolean; checkboxExportValue:boolean;
