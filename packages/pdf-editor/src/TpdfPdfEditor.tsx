@@ -74,6 +74,8 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     return () => { alive = false; };
   }, [props.adapter, props.renderMode, props.tilesOnly]);
   const marks: Mark[] = engine.history.current.filter((op) => op.kind === "mark").map((op) => op.mark);
+  const p2Changes = engine.history.current.filter((op) => ["form.create","form.fill",
+    "link","attachment"].includes(op.kind)) as import("./p2Types.js").P2Change[];
   useEffect(() => {
     setScrollNode(scroller.current);
     if (!scroller.current) return;
@@ -225,13 +227,13 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
         : <div className="tpdf-page-grid">{Array.from({ length: engine.pdf?.numPages || 0 }, (_, i) =>
             <button type="button" key={i} onClick={() => goto(i + 1)}>{text.pages} {i + 1}</button>)}</div>)
         : useTiles && tileMeta && props.adapter.tiles ? <TileViewer tiles={props.adapter.tiles} meta={tileMeta}
-          zoom={scale} parent={scrollNode} selected={region} onRegion={selected} tool={tool} marks={marks} assetUrl={props.adapter.assetUrl}
+          zoom={scale} parent={scrollNode} selected={region} onRegion={selected} tool={tool} marks={marks} assetUrl={props.adapter.assetUrl} p2Changes={p2Changes}
           onPage={(value) => { if (value !== engine.page) engine.setPage(value); }} />
         : engine.pdf && Array.from({ length: engine.pdf.numPages }, (_, i) =>
           <PageSurface key={i} pdf={engine.pdf!} number={i + 1} scale={scale} parent={scrollNode}
             tool={tool} marks={marks} highlight={region} onRegion={selected}
             readOnly={Boolean(props.readOnly) && tool !== "region"}
-            assetUrl={props.adapter.assetUrl} />)}
+            assetUrl={props.adapter.assetUrl} p2Changes={p2Changes} />)}
     </div>
     {props.children}
   </>;
