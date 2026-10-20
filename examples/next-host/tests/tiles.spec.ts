@@ -49,6 +49,16 @@ test("right and bottom edge tiles are clipped precisely", async ({ page }) => {
     el.scrollLeft = el.scrollWidth;
     el.scrollTop = 600;
   });
+  await page.waitForTimeout(1800);
+  const diagnostic = await page.locator(".tpdf-scroll").evaluate((el) => ({
+    scrollLeft: el.scrollLeft, scrollTop: el.scrollTop, width: el.clientWidth,
+    height: el.clientHeight, scrollWidth: el.scrollWidth,
+    level: document.querySelector(".tpdf-tile-document")?.getAttribute("data-tpdf-level"),
+    active: document.querySelector(".tpdf-tile-document")?.getAttribute("data-tpdf-active"),
+    loaded: [...document.querySelectorAll("[data-tpdf-tile]")]
+      .map((item) => item.getAttribute("data-tpdf-tile")).slice(0, 24),
+  }));
+  console.log("EDGE_TILE_DEBUG", diagnostic);
   const corner = page.locator('[data-tpdf-page="1"] [data-tpdf-tile$=":3:2"]');
   await expect(corner).toHaveCount(1, { timeout: 20000 });
   const positions = await corner.evaluate((img) => {
