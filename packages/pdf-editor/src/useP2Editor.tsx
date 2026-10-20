@@ -42,7 +42,8 @@ export function useP2Editor(input: {
   const onRecord = (change: P2Change) => {
     if (!enabled) { report("p2",Error("Host applyChanges required"),false); return; }
     try {
-      if (change.kind === "form.fill" && fetching) throw Error("Form inventory still loading");
+      if ((change.kind === "form.fill" || change.kind === "form.create") && fetching)
+        throw Error("Form inventory still loading");
       validateP2Batch([...changes, change], inventory || undefined, caps, pageCount, versionId);
       record(change);
       if (change.kind !== "form.fill") input.onPlaced?.();
@@ -51,7 +52,7 @@ export function useP2Editor(input: {
   const p2Panel = enabled && P2_TOOLS.includes(tool) ? (
     FORM_TOOLS.includes(tool) ?
       <P2FormPanel key={tool} tool={tool as P2FormTool} region={region}
-        fields={fields} caps={caps} onRecord={onRecord}
+        fields={fields} caps={caps} loading={fetching} onRecord={onRecord}
         onError={error=>report("p2",error,false)}/> :
       <P2ActionPanel key={tool} tool={tool as "link"|"attachment"}
         region={region} totalPages={pageCount} selectAttachment={adapter.selectAttachment}
