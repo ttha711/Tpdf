@@ -15,6 +15,7 @@ export default function PdfOfficePage() {
   const tilesOnly = params.get("tileonly") === "1";
   const p1Mode = params.get("p1") === "1";
   const p2Mode = params.get("p2") === "1";
+  const p3Mode = params.get("p3") === "1";
   const [saved, setSaved] = useState("");
   const [selected, setSelected] = useState<PdfRegion | null>(null);
   const [error, setError] = useState("");
@@ -34,6 +35,19 @@ export default function PdfOfficePage() {
           return "/api/tiles/" + page + "/" + level + "/" + x + "/" + y + "?v=synthetic-a0-v1";
         },
       } } : {}),
+      ...(p3Mode ? {
+        p3Capabilities: {
+          redact:{secureErase:true,regions:true,terms:true},
+          measure:{calibrate:true,distance:true,perimeter:true,area:true},
+          replaceText:{region:true,pages:true,document:true,count:true},
+        },
+        listPageCalibrations: async () => ({
+          versionId:"synthetic-a0-v1",calibrations:[],
+        }),
+        countTextMatches: async ({search}: {search:string}) => ({
+          count:search==="stair"?3:2,pages:[1,2],
+        }),
+      } : {}),
       ...(p2Mode ? {
         formCapabilities: {radio:false,multiSelect:false,checkboxExportValue:false},
         listFormFields: async () => ({
@@ -66,7 +80,9 @@ export default function PdfOfficePage() {
         applyChanges: async (changes: unknown[], info: { name: string }) => {
           setSaved("applied=" + changes.length + " · " + info.name);
           setP1Payload(JSON.stringify(changes));
-          return { versionId: "remote-" + Date.now(), name: info.name };
+          return { versionId: "remote-" + Date.now(), name: info.name,
+            ...(p3Mode ? {notes:["2 rotated text runs were not replaced",
+              "Page 1 measure used its recorded calibration"]} : {}) };
         },
       } : {}),
       async loadDocument() {
@@ -96,7 +112,7 @@ export default function PdfOfficePage() {
         return versions.map(({ versionId, name, createdAt }) => ({ versionId, name, createdAt }));
       },
     };
-  }, [tileMode, appShell, p1Mode, p2Mode]);
+  }, [tileMode, appShell, p1Mode, p2Mode, p3Mode]);
   const hostTools = useMemo(() => [
     { id: "page-numbers", label: "Page numbers", group: "Edit PDF",
       run: (context: { page: number }) => setToolResult("page-numbers page " + context.page) },
