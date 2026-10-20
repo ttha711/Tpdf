@@ -1,10 +1,10 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { assertDocumentId, sanitizeFileName } from "./tpdf-storage.mjs";
-import { createAgentWebText } from "./tpdf-agent-web-text.mjs";
+import { createAgentWebIndex } from "./tpdf-agent-web-index.mjs";
 
 export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, sendJson, sendError, readJsonBody, maxBytes, serveDocument }) {
-  const text = createAgentWebText({ storage });
+  const index = createAgentWebIndex({ tenantRuntime });
   const prefix = "/api/tpdf/agent/v1";
   async function loadDocument(id) {
     const record = await storage.getDocument(assertDocumentId(id));
@@ -115,7 +115,7 @@ export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, send
       const saved = await storeNew(await streamUpload(req), url.searchParams.get("name") || "upload.pdf");
       return sendJson(res, 201, { document: saved });
     }
-    const match = url.pathname.match(/^\/api\/tpdf\/agent\/v1\/documents\/([0-9a-f-]{36})(?:\/(info|text|search|file|operations|ocr))?$/i);
+    const match = url.pathname.match(/^\/api\/tpdf\/agent\/v1\/documents\/([0-9a-f-]{36})(?:\/(info|text|search|index|file|operations|ocr))?$/i);
     if (match) {
       const record = await loadDocument(match[1]);
       const action = match[2] || "info";
@@ -123,10 +123,18 @@ export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, send
         return serveDocument(req, res, record, false);
       }
       if (action === "info" && req.method === "GET") return sendJson(res, 200, { id: record.id, name: record.fileName, size: record.size });
-      if (action === "text" && req.method === "GET") return sendJson(res, 200, await text.extract(record, url.searchParams));
+      if (action === "text" && req.method === "GET") return sendJson(res, 200, await index.pages(record, Number(url.searchParams.get("page") || 1), Number(url.searchParams.get("count") || 1)));
+      if (action === "index" && req.method === "GET") {
+        const state = await index.read(record);
+        return sendJson(res, 200, { documentId: record.id, indexed: Boolean(state), pageCount: state?.pageCount || null });
+      }
+      if (action === "index" && req.method === "POST") {
+        const state = await index.build(record);
+        return sendJson(res, 200, { documentId: record.id, indexed: true, pageCount: state.pageCount, reused: Boolean(state.reused) });
+      }
       if (action === "search" && req.method === "POST") {
         const body = await readJsonBody(req, 16_384);
-        return sendJson(res, 200, await text.search(record, String(body.query || "")));
+        return sendJson(res, 200, await index.search(record, String(body.query || "")));
       }
       if (action === "operations" && req.method === "POST") {
         if (record.size > maxBytes) return sendError(res, 413, "Operation input too large.");
