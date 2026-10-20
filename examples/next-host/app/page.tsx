@@ -90,6 +90,7 @@ export default function PdfOfficePage() {
         style={{ marginLeft: 12 }}>Remount tile viewer</button>}
     </header>}
     <span data-testid="tool-run" style={{ display: "none" }}>{toolResult}</span>
+    <span data-testid="host-saved" style={{ display: "none" }}>{saved}</span>
     <div style={{ flex: 1, minHeight: 0 }}>
       <StrictMode><Editor key={mountId} adapter={adapter} renderMode={tileMode ? "tiles" : "auto"}
         shell={appShell ? "app" : "classic"} tools={appShell ? hostTools : undefined}
