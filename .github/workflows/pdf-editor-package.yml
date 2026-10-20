@@ -74,12 +74,14 @@ jobs:
       - run: |
           corepack enable
           corepack prepare pnpm@9.15.9 --activate
+      - name: Stage Next host outside pnpm workspace
+        run: echo "HOST_DIR=$(node examples/next-host/scripts/stage.mjs)" >> "$GITHUB_ENV"
       - name: Install Next host
         id: next-install
-        working-directory: examples/next-host
         shell: bash
         run: |
           set +e
+          cd "$HOST_DIR"
           pnpm install --no-frozen-lockfile > /tmp/next-pnpm-install.log 2>&1
           result=$?
           issue=$(grep -m1 -E 'ERR_PNPM|Error:|ERROR|error:' /tmp/next-pnpm-install.log | head -c 150 || true)
@@ -87,11 +89,9 @@ jobs:
           cat /tmp/next-pnpm-install.log
           exit $result
       - name: Chromium dependencies
-        working-directory: examples/next-host
-        run: pnpm exec playwright install --with-deps chromium
+        run: cd "$HOST_DIR" && pnpm exec playwright install --with-deps chromium
       - name: Run real editor interaction tests
-        working-directory: examples/next-host
-        run: pnpm exec playwright test --reporter=line
+        run: cd "$HOST_DIR" && pnpm exec playwright test --reporter=line
   legacy-regression:
     name: Existing Tpdf web/core and offline CLI
     runs-on: ubuntu-latest
