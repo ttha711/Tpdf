@@ -10,6 +10,7 @@ export class TileScheduler {
   private listeners = new Set<() => void>();
   private stopped = false;
   readonly limit = 8;
+  start() { this.stopped = false; }
   readonly cacheLimit = 256;
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
