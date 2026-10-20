@@ -5,7 +5,7 @@ import { P1MarkPreview } from "./P1MarkPreview.js";
 import type { PdfTool } from "./types.js";
 import type { PdfRegion } from "./types.js";
 
-export function TileOverlay({ number, selected, onRegion, pan, tool = "region", marks = [] }: {
+export function TileOverlay({ number, selected, onRegion, pan, tool = "region", marks = [], assetUrl }: {
   number: number; selected: PdfRegion | null;
   onRegion: (region: PdfRegion, points?: Array<[number, number]>) => void;
   pan: boolean; tool?: PdfTool; marks?: Mark[];
