@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { TileScheduler } from "./tileScheduler.js";
+import { useTileScheduler } from "./useTileScheduler.js";
 import { pageBoxes, tileLevel, wantedTiles, fallbackTile, LEVELS } from "./tiles.js";
 import { TileOverlay } from "./TileOverlay.js";
 import { useTileGestures } from "./useTileGestures.js";
@@ -10,8 +10,6 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
   selected: PdfRegion | null; onRegion: (region: PdfRegion) => void; onPage: (page: number) => void;
   register?: (api: { zoomAt: (next: number, x: number, y: number) => void }) => void;
 }) {
-  const scheduler = useMemo(() => new TileScheduler(), [tiles, meta.versionId]);
-  const [tick, setTick] = useState(0);
   const [view, setView] = useState({ left: 0, top: 0, width: 800, height: 700 });
   const [pan, setPan] = useState(false);
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
@@ -22,6 +20,7 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
   const level = tileLevel(zoom, dpr);
   useTileGestures(parent, zoom, dpr);
   const needed = useMemo(() => wantedTiles(tiles, meta, zoom, dpr, view), [tiles, meta, zoom, dpr, view]);
+  const { scheduler, revision } = useTileScheduler(tiles, meta.versionId, needed);
   function sync() {
     if (!parent) return;
     const next = { left: parent.scrollLeft, top: parent.scrollTop,
@@ -34,9 +33,6 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
     parent.addEventListener("scroll", sync, { passive: true });
     return () => { observer.disconnect(); parent.removeEventListener("scroll", sync); };
   }, [parent]);
-  useEffect(() => { scheduler.start(); return () => scheduler.dispose(); }, [scheduler]);
-  useEffect(() => scheduler.subscribe(() => setTick((n) => n + 1)), [scheduler]);
-  useEffect(() => { scheduler.setWanted(needed); }, [scheduler, needed]);
   useEffect(() => {
     const mid = view.top + view.height / 2;
     let nearest = 0;
@@ -88,20 +84,20 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
     window.addEventListener("keydown", down); window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
   }, []);
-  void tick;
+  void revision;
   const nearPages = boxes.map((box, i) => ({ box, i })).filter(({ box }) =>
     box.top <= view.top + view.height + 512 && box.top + box.height >= view.top - 512);
-  return <div className="tpdf-tile-document" data-tpdf-level={level} data-tpdf-active={scheduler.active}
-    data-tpdf-cache={scheduler.cacheSize} data-tpdf-wanted={needed.length} style={{ position: "relative", minWidth: contentWidth, height, touchAction: "none" }}>
+  return <div className="tpdf-tile-document" data-tpdf-level={level} data-tpdf-active={scheduler?.active ?? 0}
+    data-tpdf-cache={scheduler?.cacheSize ?? 0} data-tpdf-wanted={needed.length} style={{ position: "relative", minWidth: contentWidth, height, touchAction: "none" }}>
     {nearPages.map(({ box, i }) => <div key={i} className="tpdf-page"
       data-tpdf-page={i + 1} style={{ position: "absolute", top: box.top,
         left: (contentWidth - box.width) / 2, width: box.width, height: box.height, margin: 0,
         overflow: "hidden" }}>
       {needed.filter((t) => t.page === i).map((tile) => {
-        let source = scheduler.get(tile.key), display = tile;
+        let source = scheduler?.get(tile.key), display = tile;
         if (!source) for (const coarse of [...LEVELS].reverse().filter((n) => n < level)) {
           const candidate = fallbackTile(tile, coarse as PdfTileLevel, tiles, meta.versionId);
-          const cached = scheduler.get(candidate.key);
+          const cached = scheduler?.get(candidate.key);
           if (cached) { source = cached; display = candidate; break; }
         }
         if (!source) return null;
