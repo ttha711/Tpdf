@@ -14,6 +14,7 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
 }) {
   const [view, setView] = useState({ left: 0, top: 0, width: 800, height: 700 });
   const [pan, setPan] = useState(false);
+  const [decoded, setDecoded] = useState<Set<string>>(() => new Set());
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const boxes = useMemo(() => pageBoxes(meta, zoom), [meta, zoom]);
   const contentWidth = Math.max(...boxes.map((p) => p.width), view.width);
@@ -95,6 +96,11 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
       data-tpdf-page={i + 1} style={{ position: "absolute", top: box.top,
         left: (contentWidth - box.width) / 2, width: box.width, height: box.height, margin: 0,
         overflow: "hidden" }}>
+      {!needed.some((tile) => tile.page === i && decoded.has(tile.key)) &&
+        <div className="tpdf-tile-skeleton" role="status" aria-label="Đang vẽ trang..."
+          style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+          <span>Đang vẽ trang...</span>
+        </div>}
       {needed.filter((t) => t.page === i).map((tile) => {
         let source = scheduler?.get(tile.key), display = tile;
         if (!source) for (const coarse of [...LEVELS].reverse().filter((n) => n < level)) {
@@ -106,6 +112,12 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
         return <div key={tile.key} style={{ position: "absolute", overflow: "hidden", pointerEvents: "none",
           left: tile.left * zoom, top: tile.top * zoom, width: tile.width * zoom, height: tile.height * zoom }}>
           <img src={source} alt="" draggable={false} data-tpdf-tile={tile.key}
+            onLoad={() => setDecoded((before) => {
+              if (before.has(tile.key)) return before;
+              const next = new Set(before); next.add(tile.key);
+              if (next.size > 128) { const first = next.values().next().value; if (first) next.delete(first); }
+              return next;
+            })}
             style={{ position: "absolute", maxWidth: "none",
               left: (display.left - tile.left) * zoom, top: (display.top - tile.top) * zoom,
               width: display.width * zoom, height: display.height * zoom }} />
