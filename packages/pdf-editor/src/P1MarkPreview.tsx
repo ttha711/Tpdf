@@ -28,13 +28,15 @@ export function P1MarkPreview({ mark }: { mark: P1Mark }) {
     })()}
     {mark.type === "inkHighlight" && mark.paths.map((path, i) =>
       <polyline key={i} points={points(path)} {...common} stroke={s.fillColor} strokeWidth="1.3" />)}
-    {(mark.type === "underline" || mark.type === "strikeout" || mark.type === "squiggly") &&
+    {(mark.type === "highlight" || mark.type === "underline" || mark.type === "strikeout" || mark.type === "squiggly") &&
       mark.quads.map((quad, i) => {
         const [tl, tr, br, bl] = quad;
         const frac = mark.type === "strikeout" ? 0.52 : 0.93;
         const start = { x: tl.x + (bl.x - tl.x) * frac, y: tl.y + (bl.y - tl.y) * frac };
         const end = { x: tr.x + (br.x - tr.x) * frac, y: tr.y + (br.y - tr.y) * frac };
-        return mark.type === "squiggly" ?
+        return mark.type === "highlight" ?
+          <polygon key={i} points={points(quad)} stroke="none" fill={s.fillColor} opacity={s.opacity}/> :
+          mark.type === "squiggly" ?
           <polyline key={i} {...common} points={points(Array.from({ length: 17 }, (_, n) => {
             const t = n / 16; return { x: start.x + (end.x - start.x) * t,
               y: start.y + (end.y - start.y) * t + (n % 2 ? .22 : -.22) };
