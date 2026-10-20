@@ -7,6 +7,7 @@ import { AppShell } from "./AppShell.js";
 import { useP2Editor } from "./useP2Editor.js";
 import { useP3Editor } from "./useP3Editor.js";
 import { useP3SaveGuard } from "./useP3SaveGuard.js";
+import { useCanvasPageGeometry } from "./useCanvasPageGeometry.js";
 import { recordP1Selection } from "./recordP1Selection.js";
 import { DEFAULT_P1_STYLE, type P1Style } from "./p1Types.js";
 import { validMeta, tileLevel } from "./tiles.js";
@@ -118,10 +119,9 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     changes: engine.history.current, record: engine.record, report: engine.report,
     versionId: tileMeta?.versionId, pageCount: tileMeta?.pages.length ||
       engine.pdf?.numPages || 0, readOnly: !canEdit, onPlaced: () => setRegion(null) });
-  const canvasSizes = engine.pdf && Array.from({length:engine.pdf.numPages},
-    (_,i)=>tileMeta?.pages[i]||{width:612,height:792});
+  const canvasGeometry = useCanvasPageGeometry(engine.pdf,engine.page);
   const p3=useP3Editor({adapter:props.adapter,tool,page:engine.page,
-    pages:tileMeta?.pages||canvasSizes||[], versionId:tileMeta?.versionId,
+    pages:tileMeta?.pages||canvasGeometry.sizes, versionId:tileMeta?.versionId,
     changes:engine.history.current,readOnly:!canEdit,
     record:engine.record,report:engine.report,selection:region,
     clearSelection:()=>setRegion(null)});
