@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import type { P1Asset, P1Quad, P1Tool } from "./p1Types.js";
 import type { P2FieldInventory, P2FormCapabilities } from "./p2Types.js";
+import type { P3Capabilities, P3CalibrationInventory, P3MatchCount, P3Scope, P3Tool } from "./p3Types.js";
 export type PdfSource = { url: string; name: string; size?: number } |
   { bytes: Uint8Array; name: string };
 export type PdfSaveInfo = { name: string; baseVersionId?: string };
 export type PdfVersion = { versionId: string; name: string; createdAt: string };
-export type PdfSaved = { versionId: string; name: string };
+export type PdfSaved = { versionId: string; name: string; notes?: string[] };
 export type PdfRegion = { page: number; x: number; y: number; width: number; height: number; note: string };
 export type PdfSearchHit = { page: number; snippet: string; score: number };
 export type PdfEditorError = { code: string; message: string; retryable: boolean };
@@ -29,9 +30,12 @@ export interface TpdfPdfAdapter {
   formCapabilities?: P2FormCapabilities;
   listFormFields?(): Promise<P2FieldInventory>;
   selectAttachment?(): Promise<{ assetId: string; size?: number } | null>;
+  p3Capabilities?: P3Capabilities;
+  listPageCalibrations?(): Promise<P3CalibrationInventory>;
+  countTextMatches?(query: { search:string; caseSensitive?:boolean; scope:P3Scope }): Promise<P3MatchCount>;
 }
 export type PdfTool = "region" | "highlight" | "note" | "draw" | "cover" | "signature" | P1Tool | "textField" | "checkbox" | "radio" | "dropdown" | "listBox" |
-  "fill" | "link" | "attachment";
+  "fill" | "link" | "attachment" | P3Tool;
 export type PdfAssets = { pdfiumWasmUrl?: string; workerUrl: string };
 export type PdfEditorMessages = Partial<Record<
   "save" | "search" | "pages" | "fit" | "undo" | "redo" | "open" | "loading" | "error" |
@@ -40,7 +44,7 @@ export type PdfEditorMessages = Partial<Record<
   "ocr" | "form" | "versions" | "ready" | "readOnly" | "saved" | "unsaved" |
   "view" | "annotate" | "shapes" | "allTools" | "tools" | "read" | "comments" |
   "insertTab" | "formsTab" | "lightweight" | "close" | "page" | "mode" |
-  "redact" | "measure" | "soon" | P1Tool, string>>;
+  "redact" | "measure" | "soon" | P1Tool | P3Tool, string>>;
 export type TpdfPdfEditorProps = {
   adapter: TpdfPdfAdapter;
   assets: PdfAssets;
