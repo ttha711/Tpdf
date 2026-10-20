@@ -98,3 +98,49 @@ test("tile page mutation is sent to host applyChanges without downloading PDF", 
   await expect(page.getByTestId("host-saved")).toContainText("applied=1");
   expect(pdfRequests).toEqual([]);
 });
+
+test("A0 landscape Fit shrinks below 25% without horizontal scroll on 375px", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto(url);
+  const scroller = page.locator(".tpdf-scroll");
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible({ timeout: 30000 });
+  await expect.poll(async () => scroller.evaluate((node) => ({
+    scroll: node.scrollWidth, client: node.clientWidth,
+    zoom: Number(document.querySelector(".tpdf-app-status span:last-child")?.textContent?.replace("%","")),
+  })), { timeout: 15000 }).toMatchObject({ scroll: 375, client: 375 });
+  const metrics = await scroller.evaluate((node) => ({
+    scrollWidth: node.scrollWidth, clientWidth: node.clientWidth,
+    pageWidth: document.querySelector('[data-tpdf-page="1"]')?.getBoundingClientRect().width,
+    zoom: Number(document.querySelector(".tpdf-app-status span:last-child")?.textContent?.replace("%","")),
+    level: document.querySelector(".tpdf-tile-document")?.getAttribute("data-tpdf-level"),
+  }));
+  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth);
+  expect(metrics.zoom).toBeGreaterThanOrEqual(5);
+  expect(metrics.zoom).toBeLessThan(25);
+  expect(metrics.level).toBe("0.25");
+  console.log("S3_FIT_A0", metrics);
+});
+
+test("slow initial host tile displays page-size skeleton and removes it after decode", async ({ page }) => {
+  test.setTimeout(65000);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.route(/\/api\/tiles\/\d+\//, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue().catch(() => {});
+  });
+  await page.goto(url);
+  const skeleton = page.locator('[data-tpdf-page="1"] .tpdf-tile-skeleton');
+  await expect(skeleton).toBeVisible({ timeout: 30000 });
+  const dims = await page.locator('[data-tpdf-page="1"]').evaluate((node) => {
+    const outer = node.getBoundingClientRect();
+    const inner = node.querySelector(".tpdf-tile-skeleton")!.getBoundingClientRect();
+    return { width: outer.width, height: outer.height,
+      equalWidth: Math.abs(outer.width - inner.width) < 1,
+      equalHeight: Math.abs(outer.height - inner.height) < 1 };
+  });
+  expect(dims.equalWidth).toBe(true);
+  expect(dims.equalHeight).toBe(true);
+  await expect(skeleton).toHaveCount(0, { timeout: 30000 });
+  await expect(page.locator("[data-tpdf-tile]").first()).toBeVisible();
+  console.log("S3_SKELETON", dims);
+});
