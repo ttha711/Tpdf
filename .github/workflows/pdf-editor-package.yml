@@ -86,3 +86,18 @@ jobs:
       - name: Run real editor interaction tests
         working-directory: examples/next-host
         run: pnpm exec playwright test --reporter=line
+  legacy-regression:
+    name: Existing Tpdf web/core and offline CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build --workspace=@tpdf/core
+      - run: npm run typecheck --workspace=@tpdf/web
+      - run: npm run build --workspace=@tpdf/web
+      - run: node --test tests/cli/*.test.mjs
