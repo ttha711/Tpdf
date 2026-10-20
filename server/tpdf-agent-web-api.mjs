@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { assertDocumentId, sanitizeFileName } from "./tpdf-storage.mjs";
 import { createAgentWebText } from "./tpdf-agent-web-text.mjs";
 
-export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, sendJson, sendError, readJsonBody, maxBytes }) {
+export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, sendJson, sendError, readJsonBody, maxBytes, serveDocument }) {
   const text = createAgentWebText({ storage });
   const prefix = "/api/tpdf/agent/v1";
   const scoped = (req, url) => tenantRuntime.run(
@@ -124,13 +124,8 @@ export function createAgentWebApi({ auth, tenantRuntime, storage, ocrQueue, send
     if (match) {
       const record = await loadDocument(match[1]);
       const action = match[2] || "info";
-      if (action === "file" && req.method === "GET") {
-        const data = await readFile(record.pdfPath);
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Cache-Control", "no-store");
-        res.setHeader("Content-Length", String(data.length));
-        res.end(data);
-        return;
+      if (action === "file" && (req.method === "GET" || req.method === "HEAD")) {
+        return serveDocument(req, res, record, false);
       }
       if (action === "info" && req.method === "GET") return sendJson(res, 200, { id: record.id, name: record.fileName, size: record.size });
       if (action === "text" && req.method === "GET") return sendJson(res, 200, await text.extract(record, url.searchParams));
