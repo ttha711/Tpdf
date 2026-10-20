@@ -75,3 +75,8 @@
 .tpdf-app-tab-scroll::-webkit-scrollbar{display:none}
 .tpdf-editor .tpdf-app-tabs .tpdf-app-tab-all{flex:0 0 auto;margin:4px 5px 4px 2px;padding:0 12px;min-height:44px;background:var(--tpdf-input,#f3f4f6);border:1px solid var(--tpdf-border,#cdd6e2);border-radius:12px}
 .tpdf-editor .tpdf-app-tabs .tpdf-app-tab-all[aria-selected="true"]{background:#e8effd}
+
+.tpdf-tile-skeleton{display:flex;align-items:center;justify-content:center;background:linear-gradient(115deg,#d9dee6 15%,#e8ecf1 40%,#d9dee6 65%);background-size:220% 100%;animation:tpdf-tile-wait 1.5s ease-in-out infinite;color:#536174;font:600 14px/1.5 system-ui,sans-serif}
+.tpdf-tile-skeleton span{padding:8px 12px;background:#f1f3f5cc;border-radius:7px}
+@keyframes tpdf-tile-wait{from{background-position:100% 0}to{background-position:-100% 0}}
+@media(prefers-reduced-motion:reduce){.tpdf-tile-skeleton{animation:none}}
