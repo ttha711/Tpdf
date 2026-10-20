@@ -28,7 +28,7 @@ export function scaledMeasurement(type:"distance"|"perimeter"|"area",
     const q=points[(i+1)%points.length];
     return sum+(p.x*q.y-q.x*p.y)*width*height/10000;
   },0);
-  return Math.abs(area)*ratio*ratio;
+  return Math.abs(area)*ratio*ratio/2;
 }
 export function measureLabel(value:number,unit:P3LengthUnit,area:boolean) {
   return value.toFixed(2)+" "+unit+(area?"²":"");
