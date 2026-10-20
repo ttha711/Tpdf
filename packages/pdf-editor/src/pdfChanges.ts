@@ -62,6 +62,7 @@ export async function applyChanges(bytes: Uint8Array, changes: PdfChange[]): Pro
 }
 function drawMark(pdf: typeof import("pdf-lib"), page: import("pdf-lib").PDFPage,
   mark: Mark, font: import("pdf-lib").PDFFont) {
+  if (mark.schemaVersion === 1) throw Error("P1 marks require host adapter.applyChanges for PDF annotations");
   const { x, y, width, height, note } = mark.region;
   const size = page.getSize();
   const px = x * size.width / 100, py = (100 - y - height) * size.height / 100;
