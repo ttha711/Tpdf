@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { JSDOM } from "jsdom";
+let JSDOM;
+try { ({ JSDOM } = await import("jsdom")); } catch {}
 
-test("StrictMode effect replay and real unmount/remount both render tiles", async () => {
+test("StrictMode effect replay and real unmount/remount both render tiles",
+  { skip: !JSDOM }, async () => {
   const dom = new JSDOM("<!doctype html><html><body><div id='root'></div></body></html>",
     { url: "https://host.example.test" });
   const previous = { window: globalThis.window, document: globalThis.document,
