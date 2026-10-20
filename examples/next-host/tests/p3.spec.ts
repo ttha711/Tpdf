@@ -90,3 +90,17 @@ test("P3 stays disabled on P2 host without p3Capabilities",async({page})=>{
     await expect(page.getByRole("dialog").getByRole("button",{name,exact:false})).toBeDisabled();
   }
 });
+
+test("host secure-erase verification failure never saves or reports success",async({page})=>{
+  await page.setViewportSize({width:375,height:812});
+  await page.goto(url+"&p3fail=1");
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible({timeout:30000});
+  await openTool(page,"Redact");
+  await draw(page);
+  await save(page);
+  await page.getByTestId("confirm-redaction-save").click();
+  await expect(page.locator(".tpdf-error")).toContainText("matching text remains");
+  await expect(page.getByTestId("host-saved")).toHaveText("");
+  await expect(page.getByTestId("p1-payload")).toHaveText("");
+  await expect(page.getByTestId("shell-save-status")).toContainText("Unsaved");
+});
