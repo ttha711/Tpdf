@@ -79,4 +79,22 @@ test("tilesOnly host applyChanges saves annotation as change list, no PDF bytes"
   await page.getByRole("button", { name: "Save version" }).first().click();
   await expect(page.getByTestId("shell-save-status")).toContainText("Saved");
   await expect(page.locator(".tpdf-mark-highlight")).toHaveCount(0);
+  await expect(page.getByTestId("host-saved")).toContainText("applied=1");
+});
+
+test("tile page mutation is sent to host applyChanges without downloading PDF", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  const pdfRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/fixture.pdf")) pdfRequests.push(request.url());
+  });
+  await page.goto(url);
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible({ timeout: 30000 });
+  await page.getByRole("button", { name: "Tools", exact: true }).click();
+  await page.getByRole("dialog", { name: "All tools" })
+    .getByRole("button", { name: "Rotate" }).click();
+  await expect(page.getByTestId("shell-save-status")).toContainText("Unsaved");
+  await page.getByRole("button", { name: "Save version" }).first().click();
+  await expect(page.getByTestId("host-saved")).toContainText("applied=1");
+  expect(pdfRequests).toEqual([]);
 });
