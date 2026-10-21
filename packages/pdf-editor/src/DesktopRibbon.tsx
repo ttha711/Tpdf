@@ -7,7 +7,7 @@ import type { AppShellProps } from "./AppShell.js";
 
 export function DesktopRibbon(p:AppShellProps & {
   onStylePanel:()=>void;onSearchPanel:()=>void;onComments:()=>void;
-  onToggleSidebar:()=>void;onToggleInspector:()=>void;compact:boolean;
+  onToggleSidebar:()=>void;onShowInspector:()=>void;compact:boolean;
 }) {
   const [tab,setTab]=useState<string>("view");
   const [sheet,setSheet]=useState(false);
@@ -16,7 +16,7 @@ export function DesktopRibbon(p:AppShellProps & {
   const host=p.tools.filter(tool=>tool.group===tab);
   const actions:WebToolCallbacks={showSearch:p.onSearchPanel,
     showPages:p.onToggleSidebar,showComments:p.onComments,
-    showStyle:p.onStylePanel,showInspector:p.onToggleInspector};
+    showStyle:p.onStylePanel,showInspector:p.onShowInspector};
   function invoke(tool:AppShellProps["tools"][number]) {
     void Promise.resolve().then(()=>tool.run({page:p.page,
       selection:p.selection||undefined})).catch(p.onToolError);
