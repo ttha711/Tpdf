@@ -16,6 +16,7 @@ export default function PdfOfficePage() {
   const p1Mode = params.get("p1") === "1";
   const p2Mode = params.get("p2") === "1";
   const p3Mode = params.get("p3") === "1";
+  const tabsMode = params.get("tabs") === "1";
   const purgeHistory = params.get("purgehistory") === "1";
   const p3Fail = params.get("p3fail") === "1";
   const embedWidth = Math.max(0, Math.min(1400, Number(params.get("embedwidth") || 0)));
@@ -25,6 +26,8 @@ export default function PdfOfficePage() {
   const [toolResult, setToolResult] = useState("");
   const [p1Payload, setP1Payload] = useState("");
   const [mountId, setMountId] = useState(0);
+  const [activeTab,setActiveTab]=useState("doc-a");
+  const [tabIds,setTabIds]=useState(["doc-a","doc-b"]);
   const adapter = useMemo<TpdfPdfAdapter>(() => {
     const versions: Array<{ versionId: string; name: string; createdAt: string; bytes: Uint8Array }> = [];
     return {
@@ -95,7 +98,8 @@ export default function PdfOfficePage() {
         {title:"Schedule",page:35}],
       async loadDocument() {
         // Next serves public/fixture.pdf from the host application's own disk.
-        return { url: "/fixture.pdf", name: appShell ? "Nghi-quyet-91-NQ-ban-ve-A0.pdf" : "building-plan.pdf",
+        return { url: "/fixture.pdf", name: tabsMode?(activeTab==="doc-a"?"Floor-A.pdf":activeTab==="doc-b"?"Floor-B.pdf":"New-file.pdf") :
+           appShell ? "Nghi-quyet-91-NQ-ban-ve-A0.pdf" : "building-plan.pdf",
           size: tileMode ? 461_000_000 : undefined };
       },
       async saveVersion(bytes, { name, baseVersionId }) {
@@ -120,7 +124,7 @@ export default function PdfOfficePage() {
         return versions.map(({ versionId, name, createdAt }) => ({ versionId, name, createdAt }));
       },
     };
-  }, [tileMode, appShell, p1Mode, p2Mode, p3Mode, p3Fail, purgeHistory]);
+  }, [tileMode, appShell, p1Mode, p2Mode, p3Mode, p3Fail, purgeHistory, tabsMode,activeTab]);
   const hostTools = useMemo(() => [
     { id: "page-numbers", label: "Page numbers", group: "Pages",
       run: (context: { page: number }) => setToolResult("page-numbers page " + context.page) },
@@ -150,6 +154,16 @@ export default function PdfOfficePage() {
       width: embedWidth || "100%", maxWidth:"100%", alignSelf:"center" }}>
       <StrictMode><Editor key={mountId} adapter={adapter} renderMode={tileMode ? "tiles" : "auto"}
         shell={appShell ? "app" : "classic"} tools={appShell ? hostTools : undefined}
+        openDocuments={tabsMode?tabIds.map(id=>({id,
+          name:id==="doc-a"?"Floor-A.pdf":id==="doc-b"?"Floor-B.pdf":"New-file.pdf",
+          page:id==="doc-a"?1:7,pages:100})):undefined}
+        activeDocumentId={tabsMode?activeTab:undefined}
+        onOpenDocument={tabsMode?setActiveTab:undefined}
+        onCloseDocument={tabsMode?(id)=>{
+          setTabIds(before=>before.filter(tab=>tab!==id));
+          if(id===activeTab)setActiveTab(tabIds.find(tab=>tab!==id)||"doc-a");
+        }:undefined}
+        onOpenFile={tabsMode?()=>{setTabIds(before=>[...before,"doc-c"]);setActiveTab("doc-c");}:undefined}
         tilesOnly={tilesOnly} locale="en" density="office" assets={{
         workerUrl: "/tpdf-assets/pdf.worker.min.mjs",
       }} onRegionSelected={setSelected}
