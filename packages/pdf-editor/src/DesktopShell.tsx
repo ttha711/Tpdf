@@ -112,6 +112,7 @@ export function DesktopShell(p:DesktopShellProps) {
         onComments={()=>{setSidebarOpen(true);setSidebarTab("comments");}}/>}
     </div>
     <footer className="tpdf-desktop-statusbar">
+      <span>Page {p.page} of {p.total||"…"}</span>
       <label>Page <input type="number" aria-label="Go to page" min={1}
         max={p.total||1} value={p.page}
         onChange={event=>p.onGoto(Number(event.target.value))}/></label>
