@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 const url="/office/pdf?tiles=1&tileonly=1&shell=app&p1=1&p2=1&p3=1";
 const sizes=[{width:1280,height:800,layout:"desktop"},
-  {width:1024,height:768,layout:"desktop"},
+  {width:1024,height:768,layout:"tablet"},
   {width:768,height:1024,layout:"tablet"},
   {width:375,height:812,layout:"mobile"}] as const;
 async function ready(page:Page,layout:string){
