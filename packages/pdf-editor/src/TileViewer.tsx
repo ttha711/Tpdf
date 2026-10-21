@@ -9,14 +9,16 @@ import type { P2Change } from "./p2Types.js";
 import type { P3Change } from "./p3Types.js";
 
 export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPage,
-  tool = "region", marks = [], assetUrl, p2Changes = [],p3Changes=[] }: {
+  tool = "region", marks = [], assetUrl, p2Changes = [],p3Changes=[],forcePan=false }: {
   tiles: PdfTileAdapter; meta: PdfTileMeta; zoom: number; parent: HTMLElement | null;
   selected: PdfRegion | null; onRegion: (region: PdfRegion, points?: Array<[number, number]>) => void;
   onPage: (page: number) => void; tool?: PdfTool; marks?: Mark[];
   assetUrl?: (id: string) => string; p2Changes?: P2Change[]; p3Changes?:P3Change[];
+  forcePan?:boolean;
 }) {
   const [view, setView] = useState({ left: 0, top: 0, width: 800, height: 700 });
-  const [pan, setPan] = useState(false);
+  const [pan, setPan] = useState(forcePan);
+  useEffect(()=>setPan(forcePan),[forcePan]);
   const [decoded, setDecoded] = useState<Set<string>>(() => new Set());
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const boxes = useMemo(() => pageBoxes(meta, zoom), [meta, zoom]);
@@ -90,10 +92,10 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
         setPan(true); event.preventDefault();
       }
     };
-    const up = (event: KeyboardEvent) => { if (event.code === "Space") setPan(false); };
+    const up = (event: KeyboardEvent) => { if (event.code === "Space") setPan(forcePan); };
     window.addEventListener("keydown", down); window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
-  }, []);
+  }, [forcePan]);
   void revision;
   const nearPages = boxes.map((box, i) => ({ box, i })).filter(({ box }) =>
     box.top <= view.top + view.height + 512 && box.top + box.height >= view.top - 512);
