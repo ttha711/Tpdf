@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { normalizeRegion } from "./history.js";
 import type { PdfTool } from "./types.js";
 
 export type DraftPoint = [number, number];
@@ -8,7 +9,47 @@ const TRACKED: string[] = ["draw", "inkHighlight", "polygon", "polyline", "perim
 const LINEAR: string[] = ["line", "arrow", "distance", "calibrate", "callout"];
 const CLOSED: string[] = ["polygon", "area"];
 
-export const VERTEX_TOOLS: string[] = ["polygon", "polyline", "perimeter", "area"];
+/** Shapes traced by dragging, like freehand, then cleaned up to a few corner points when released. */
+export const TRACED_SHAPES: string[] = ["polygon", "polyline", "perimeter", "area"];
+export function shapePoints(tool: string, points: DraftPoint[]): DraftPoint[] | null {
+  if (!TRACED_SHAPES.includes(tool)) return points;
+  let simple = simplifyPath(points);
+  const first = simple[0], last = simple[simple.length - 1];
+  if ((tool === "polygon" || tool === "area") && simple.length > 3 && Math.hypot(first[0] - last[0], first[1] - last[1]) < 2) simple = simple.slice(0, -1);
+  return simple.length >= (tool === "polygon" || tool === "area" ? 3 : 2) ? simple : null;
+}
+export const TEXT_MARKUP_TOOLS: string[] = ["highlight", "strikeout", "underline", "squiggly"];
+/** A drag along one line of text is almost flat; give it the height of a text line so it still picks that line. */
+export function textBand(page: number, a: DraftPoint, b: DraftPoint) {
+  const flat = Math.abs(a[1] - b[1]) < 1.2 ? 0.9 : 0;
+  return normalizeRegion(page, a[0], Math.min(a[1], b[1]) - flat, b[0], Math.max(a[1], b[1]) + flat);
+}
+export const VERTEX_TOOLS: string[] = [];
+
+function farthest(points: DraftPoint[], from: number, to: number): [number, number] {
+  const [ax, ay] = points[from], [bx, by] = points[to];
+  const length = Math.hypot(bx - ax, by - ay);
+  let index = from, best = 0;
+  for (let i = from + 1; i < to; i++) {
+    const distance = length < 1e-6 ? Math.hypot(points[i][0] - ax, points[i][1] - ay)
+      : Math.abs((bx - ax) * (ay - points[i][1]) - (ax - points[i][0]) * (by - ay)) / length;
+    if (distance > best) { best = distance; index = i; }
+  }
+  return [index, best];
+}
+
+/** Ramer-Douglas-Peucker: keeps the corners of a traced path (tolerance in page percent). */
+export function simplifyPath(points: DraftPoint[], tolerance = 1.6): DraftPoint[] {
+  if (points.length < 3) return points;
+  const keep = new Set([0, points.length - 1]);
+  const stack: Array<[number, number]> = [[0, points.length - 1]];
+  while (stack.length) {
+    const [from, to] = stack.pop()!;
+    const [index, distance] = farthest(points, from, to);
+    if (distance > tolerance) { keep.add(index); stack.push([from, index], [index, to]); }
+  }
+  return points.filter((_, i) => keep.has(i));
+}
 
 /** Live shape under the pointer while it is held down; one state update per frame, so long strokes stay smooth. */
 export function useLiveDraft(tool?: PdfTool) {

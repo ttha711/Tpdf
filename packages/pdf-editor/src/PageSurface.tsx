@@ -5,9 +5,10 @@ import { normalizeRegion } from "./history.js";
 import type { Mark } from "./history.js";
 import { CommentPins } from "./CommentPins.js";
 import { InlineTextEditor } from "./InlineTextEditor.js";
-import { LiveDraft, VERTEX_TOOLS, VertexDraft, useLiveDraft } from "./LiveDraft.js";
+import { LiveDraft, shapePoints, textBand, TEXT_MARKUP_TOOLS, TRACED_SHAPES, VERTEX_TOOLS, VertexDraft, useLiveDraft } from "./LiveDraft.js";
 import { LegacyMarkPreview } from "./LegacyMarkPreview.js";
 import { P1MarkPreview } from "./P1MarkPreview.js";
+import { SelectionMenu, useDomTextSelect } from "./SelectionMenu.js";
 import { P2PlacementOverlay } from "./P2PlacementOverlay.js";
 import type { P2Change } from "./p2Types.js";
 import type { P3Change } from "./p3Types.js";
@@ -27,6 +28,7 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
   const drag=useRef<{x:number;y:number;left:number;top:number}|null>(null);
   const gesture = useRef<{ start: [number, number]; points: Array<[number, number]> } | null>(null);
   const [near, setNear] = useState(false);
+  const domSelect = useDomTextSelect(textLayer, tool === "region" && !pan);
   const [size, setSize] = useState({ width: 612, height: 792 });
   useEffect(() => {
     if (!element.current || !parent) return;
@@ -101,11 +103,16 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
     if (VERTEX_TOOLS.includes(tool) && Math.hypot(end[0] - state.start[0], end[1] - state.start[1]) < 1.5) { live.tap(end); return; }
     live.resetVertices();
     if (tool === "comment") { onRegion({ page: number, x: end[0], y: end[1], width: 0, height: 0, note: "" }); return; }
-    const region = normalizeRegion(number, ...state.start, x, y);
+    const all = [...state.points, end];
+    const region = TRACED_SHAPES.includes(tool)
+      ? normalizeRegion(number, Math.min(...all.map((p) => p[0])), Math.min(...all.map((p) => p[1])), Math.max(...all.map((p) => p[0])), Math.max(...all.map((p) => p[1])))
+      : TEXT_MARKUP_TOOLS.includes(tool) ? textBand(number, state.start, [x, y])
+      : normalizeRegion(number, ...state.start, x, y);
     if (!region) return;
-    onRegion(region, ["draw","inkHighlight","polygon","polyline","line","arrow","callout",
-      "perimeter","area","distance","calibrate"].includes(tool)
-      ? [...state.points, end] : undefined);
+    const traced = ["draw","inkHighlight","polygon","polyline","line","arrow","callout",
+      "perimeter","area","distance","calibrate"].includes(tool) ? shapePoints(tool, [...state.points, end]) : undefined;
+    if (traced === null) return;
+    onRegion(region, traced);
   }
   return <div ref={element} data-tpdf-page={number} role="group" aria-label={"PDF page " + number}
     className="tpdf-page" style={{ width: size.width * scale, height: size.height * scale }}>
@@ -126,6 +133,7 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
       <VertexDraft tool={tool} vertices={live.vertices} onFinish={finishShape} onCancel={live.resetVertices}/>
       <InlineTextEditor page={number}/>
       <CommentPins page={number}/>
+      {domSelect.picked && <SelectionMenu page={number} picked={domSelect.picked} onDone={domSelect.clear}/>}
       <P2PlacementOverlay changes={p2Changes} page={number}/>
       <P3PendingOverlay changes={p3Changes} page={number} width={size.width} height={size.height}/>
     {highlight?.page === number && <div className="tpdf-mark tpdf-mark-region" style={{

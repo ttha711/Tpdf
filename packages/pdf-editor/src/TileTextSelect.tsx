@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { SelectionMenu } from "./SelectionMenu.js";
 import type { P1Quad } from "./p1Types.js";
 import type { PdfRegion } from "./types.js";
 
@@ -24,9 +25,7 @@ export function useTileTextSelect(page: number, active: boolean) {
   };
 }
 
-export function TileTextSelection({ state }: { state: ReturnType<typeof useTileTextSelect> }) {
-  const [copied, setCopied] = useState(false);
-  useEffect(() => setCopied(false), [state.picked]);
+export function TileTextSelection({ state, page }: { state: ReturnType<typeof useTileTextSelect>; page: number }) {
   const { picked } = state;
   if (!picked) return null;
   return <>
@@ -34,10 +33,6 @@ export function TileTextSelection({ state }: { state: ReturnType<typeof useTileT
       style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
       {picked.quads.map((quad, index) => <polygon key={index} points={quad.map((p) => p.x + "," + p.y).join(" ")} fill="#2167e7" opacity={0.3} />)}
     </svg>
-    <span className="tpdf-vertex-actions" style={{ left: picked.end[0] + "%", top: picked.end[1] + "%" }}
-      onPointerDown={(event) => event.stopPropagation()} onPointerUp={(event) => event.stopPropagation()}>
-      <button type="button" onClick={() => { void navigator.clipboard?.writeText(picked.text).then(() => setCopied(true)).catch(() => undefined); }}>{copied ? "Copied" : "Copy"}</button>
-      <button type="button" aria-label="Clear selection" onClick={state.clear}>×</button>
-    </span>
+    <SelectionMenu page={page} picked={picked} onDone={state.clear} />
   </>;
 }

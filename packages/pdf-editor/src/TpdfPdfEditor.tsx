@@ -20,9 +20,11 @@ import { useCanvasWheelGesture } from "./useCanvasWheelGesture.js";
 import { recordP1Selection } from "./recordP1Selection.js";
 import { DEFAULT_P1_STYLE, type P1Style } from "./p1Types.js";
 import { validMeta, tileLevel } from "./tiles.js";
-import { validRegion, type Mark } from "./history.js";
+import { normalizeRegion, validRegion, type Mark } from "./history.js";
 import type { PdfTileMeta, PdfRegion, PdfSearchHit, PdfTool, PdfVersion, TpdfPdfEditorHandle, TpdfPdfEditorProps } from "./types.js";
 import { words } from "./editorWords.js";
+import { TextMarkupContext, type TextMarkupAction } from "./SelectionMenu.js";
+import { buildP1Mark } from "./p1Marks.js";
 export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>(function TpdfPdfEditor(props, ref) {
   const engine = usePdfEngine(props);
   const root = useRef<HTMLDivElement>(null);
@@ -146,6 +148,14 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       } });
     } catch (error) { engine.report("edit-text", error, false); }
   }
+  const markSelectedText: TextMarkupAction | null = canEdit && props.adapter.applyChanges ? (page, markTool, quads) => {
+    try {
+      const pts = quads.flat(), xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+      const region = normalizeRegion(page, Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys));
+      if (!region) return;
+      engine.record({ kind: "mark", mark: buildP1Mark({ tool: markTool, region, style: p1Style, quads }) });
+    } catch (error) { engine.report("p1-mark", error, false); }
+  } : null;
   function commitSelection(value:PdfRegion,points:Array<[number,number]>|undefined,text:string) {
     void recordP1Selection({tool,region:value,points,adapter:props.adapter,
       note:text,style:p1Style,record:engine.record,report:engine.report,
@@ -282,7 +292,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   const pinsState = { comments: comments.view, selectedId: selectedComment, onPin: (id: string) => { setSelectedComment(id); setCommentsSignal((n) => n + 1); } };
   const commentsPanel = <CommentsPanel c={comments} page={engine.page} selectedId={selectedComment}
     onSelect={(item) => { setSelectedComment(item.id); goto(item.page); }} />;
-  return <TileTextSelectContext.Provider value={props.adapter.resolveTextSelection ?? null}><CommentPinsContext.Provider value={pinsState}><InlineTextContext.Provider value={inlineState}><div ref={root} className={"tpdf-editor " + (props.className || "")}
+  return <TextMarkupContext.Provider value={markSelectedText}><TileTextSelectContext.Provider value={props.adapter.resolveTextSelection ?? null}><CommentPinsContext.Provider value={pinsState}><InlineTextContext.Provider value={inlineState}><div ref={root} className={"tpdf-editor " + (props.className || "")}
     data-theme={props.theme || "system"} data-density={props.density || "office"}
     data-shell={props.shell || "classic"} data-tpdf-layout={layout}
     onKeyDown={keyboard} tabIndex={0} role="region" aria-label="TPDF PDF editor">
@@ -350,5 +360,5 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       {props.adapter.listVersions && <button type="button" onClick={() => void props.adapter.listVersions!().then(setVersions).catch(
         (err) => engine.report("versions", err))}>{text.versions}</button>}
     </div>{viewer}</>}
-  </div></InlineTextContext.Provider></CommentPinsContext.Provider></TileTextSelectContext.Provider>;
+  </div></InlineTextContext.Provider></CommentPinsContext.Provider></TileTextSelectContext.Provider></TextMarkupContext.Provider>;
 });

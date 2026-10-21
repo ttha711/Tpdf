@@ -31,6 +31,8 @@ export async function recordP1Selection(input: {
     const p1Tool=tool as typeof P1_TOOLS[number];
     const quads:P1Quad[]|undefined=TEXT_MARKUP.includes(p1Tool as typeof TEXT_MARKUP[number])
       ?await adapter.resolveTextQuads?.(region.page,region):undefined;
+    if(TEXT_MARKUP.includes(p1Tool as typeof TEXT_MARKUP[number])&&!quads?.length)
+      throw Error("No text found there. Drag across the text you want to mark.");
     const asset=ASSET_TOOL.includes(p1Tool as P1Asset)
       ?await adapter.selectAsset?.(p1Tool as P1Asset):undefined;
     if(ASSET_TOOL.includes(p1Tool as P1Asset)&&!asset)return;

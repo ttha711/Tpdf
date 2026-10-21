@@ -22,6 +22,11 @@ export function usePdfEngine(props: TpdfPdfEditorProps) {
     setError(message);
     props.onError?.({ code, message, retryable });
   };
+  useEffect(() => {
+    if (!error) return;
+    const timer = window.setTimeout(() => setError(""), 6000);
+    return () => window.clearTimeout(timer);
+  }, [error]);
   useEffect(() => { props.onDirtyChange?.(dirty); }, [dirty, props.onDirtyChange]);
   useEffect(() => {
     let disposed = false;

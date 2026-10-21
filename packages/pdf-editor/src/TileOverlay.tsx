@@ -4,7 +4,7 @@ import { normalizeRegion, type Mark } from "./history.js";
 import { CommentPins } from "./CommentPins.js";
 import { InlineTextEditor } from "./InlineTextEditor.js";
 import { TileTextSelection, useTileTextSelect } from "./TileTextSelect.js";
-import { LiveDraft, VERTEX_TOOLS, VertexDraft, useLiveDraft } from "./LiveDraft.js";
+import { LiveDraft, shapePoints, textBand, TEXT_MARKUP_TOOLS, TRACED_SHAPES, VERTEX_TOOLS, VertexDraft, useLiveDraft } from "./LiveDraft.js";
 import { LegacyMarkPreview } from "./LegacyMarkPreview.js";
 import { P1MarkPreview } from "./P1MarkPreview.js";
 import { P2PlacementOverlay } from "./P2PlacementOverlay.js";
@@ -60,14 +60,17 @@ export function TileOverlay({ number, selected, onRegion, pan, tool = "region", 
       if (VERTEX_TOOLS.includes(tool) && Math.hypot(last[0] - origin[0], last[1] - origin[1]) < 1.5) { start.current = null; live.tap(last); return; }
       live.resetVertices();
       if (tool === "comment") { start.current = null; onRegion({ page: number, x: last[0], y: last[1], width: 0, height: 0, note: "" }); return; }
-      const region = normalizeRegion(number, ...origin, x, y);
       const points = start.current.points;
+      const all = [...points, last];
+      const region = TRACED_SHAPES.includes(tool)
+        ? normalizeRegion(number, Math.min(...all.map((p) => p[0])), Math.min(...all.map((p) => p[1])), Math.max(...all.map((p) => p[0])), Math.max(...all.map((p) => p[1])))
+        : TEXT_MARKUP_TOOLS.includes(tool) ? textBand(number, origin, [x, y])
+      : normalizeRegion(number, ...origin, x, y);
       start.current = null;
       if (tool === "region" && textSelect.enabled) { if (region) void textSelect.pick(region, last); return; }
-      if (region) onRegion(region,
-        ["draw","inkHighlight","polygon","polyline","line","arrow","callout",
-          "perimeter","area","distance","calibrate"].includes(tool)
-          ? [...points, last] : undefined);
+      const traced = ["draw","inkHighlight","polygon","polyline","line","arrow","callout",
+        "perimeter","area","distance","calibrate"].includes(tool) ? shapePoints(tool, [...points, last]) : undefined;
+      if (region && traced !== null) onRegion(region, traced);
     }}
     onPointerCancel={() => { start.current = null; live.clear(); }}>
     {marks.filter((mark) => mark.region.page === number).map((mark, index) =>
@@ -77,7 +80,7 @@ export function TileOverlay({ number, selected, onRegion, pan, tool = "region", 
     <VertexDraft tool={tool} vertices={live.vertices} onFinish={finishShape} onCancel={live.resetVertices}/>
     <InlineTextEditor page={number}/>
     <CommentPins page={number}/>
-    <TileTextSelection state={textSelect}/>
+    <TileTextSelection page={number} state={textSelect}/>
     <P2PlacementOverlay changes={p2Changes} page={number}/>
     {pageSize && <P3PendingOverlay changes={p3Changes} page={number}
       width={pageSize.width} height={pageSize.height}/>}

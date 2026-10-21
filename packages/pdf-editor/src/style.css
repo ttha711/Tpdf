@@ -365,3 +365,10 @@
 .tpdf-editor .tpdf-p2-panel input[type=checkbox]{min-height:0;min-width:0;padding:0}
 .tpdf-p3-replaced{position:absolute;container-type:size;overflow:hidden;display:flex;align-items:center;box-sizing:border-box;background:#fffffff2;color:#111;white-space:nowrap;outline:1px dashed #e57d18}
 .tpdf-p3-replaced>span{font-family:system-ui,sans-serif;line-height:1;padding:0 2px}
+
+.tpdf-selection-menu{position:absolute;z-index:8;display:flex;gap:4px;padding:4px;border-radius:10px;background:#fff;border:1px solid #cbd5e1;box-shadow:0 4px 14px rgba(15,23,42,.22);pointer-events:auto;white-space:nowrap}
+.tpdf-selection-menu button{min-width:34px;min-height:34px;padding:4px 8px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#1e293b;font:600 13px system-ui}
+.tpdf-selection-highlight{background:#fde68a!important}
+.tpdf-selection-underline{text-decoration:underline}
+.tpdf-selection-strikeout{text-decoration:line-through}
+.tpdf-selection-squiggly{text-decoration:underline wavy #dc2626}
