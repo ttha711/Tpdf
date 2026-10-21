@@ -372,3 +372,4 @@
 .tpdf-selection-underline{text-decoration:underline}
 .tpdf-selection-strikeout{text-decoration:line-through}
 .tpdf-selection-squiggly{text-decoration:underline wavy #dc2626}
+.tpdf-p2-radio-choice{display:grid;grid-template-columns:1fr minmax(0,1.2fr) auto;gap:6px;align-items:center}

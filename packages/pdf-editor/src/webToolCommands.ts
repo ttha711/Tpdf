@@ -18,7 +18,7 @@ const actions: Record<string,string> = {
 };
 export type WebToolAction = {type:"tool"|"builtin"|"panel"|"disabled";id:string};
 export function webToolAction(tool: MobilePdfTool):WebToolAction {
-  if(tool.id==="rotate-left" || tool.id==="radio")
+  if(tool.id==="rotate-left")
     return {type:"disabled",id:tool.id};
   if(styles.has(tool.id))return {type:"panel",id:"style"};
   if(tool.id in actions)return {type:"builtin",id:actions[tool.id]};

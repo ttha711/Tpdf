@@ -56,7 +56,7 @@ export function P1MarkPreview({ mark, assetUrl }: {
         {mark.text.slice(0, 60)}</text>}
     {isAsset && assetUrl && <image x={r.x} y={r.y} width={r.width} height={r.height}
       href={assetUrl(mark.assetId)} preserveAspectRatio="xMidYMid meet" opacity={s.opacity}/>}
-    {isAsset && <><rect x={r.x} y={r.y} width={r.width} height={r.height}
+    {isAsset && !assetUrl && <><rect x={r.x} y={r.y} width={r.width} height={r.height}
       {...common} strokeDasharray="1 .5"/>
       <text x={r.x + 1} y={r.y + 3} fontSize="2.3" fill={s.strokeColor}>
         {mark.type + ": " + mark.assetId.slice(0, 12)}</text></>}

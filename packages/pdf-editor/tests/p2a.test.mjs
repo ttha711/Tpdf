@@ -81,7 +81,7 @@ test("P2a viewer tools map to real tools, P2b/P3 stay disabled",()=>{
     assert.equal(enabledBuiltin(item,true,false,false,false,true,true,true,true),true,id);
     assert.equal(enabledBuiltin(item,true,false,false,false,true,false,true,true),false,id);
   }
-  for(const id of ["radio","distance","replaceText"]){
+  for(const id of ["distance","replaceText"]){
     const item=SHELL_BUILTINS.find(x=>x.id===id);
     assert.equal(enabledBuiltin(item,true,true,true,true,true,true,true,true),false,id);
   }

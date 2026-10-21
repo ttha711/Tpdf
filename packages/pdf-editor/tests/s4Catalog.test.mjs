@@ -25,7 +25,7 @@ test("S4 exact apps/web/mobilePdfTools group ordering, labels and icons",()=>{
   assert.deepEqual([...DOCUMENT_TOOL_LABELS],["Edit PDF text","Find a tool",
     "Document info","AI assistant","Find document tools","Save PDF"]);
 });
-test("S4 comment is on only when the host enables comments; radio stays disabled",()=>{
+test("S4 comment is on only when the host enables comments; radio is a form tool",()=>{
   const all=MOBILE_PDF_GROUPS.flatMap(g=>g.tools);
   const get=id=>all.find(t=>t.id===id);
   for(const [key,type,id]of [
@@ -34,7 +34,7 @@ test("S4 comment is on only when the host enables comments; radio stays disabled
     ["zoom-in","builtin","zoomIn"],["ink","tool","draw"],
     ["ink-highlight","tool","inkHighlight"],["textfield","tool","textField"],
     ["select","tool","dropdown"],["redaction-panel","builtin","redactionPanel"],
-    ["note","tool","comment"],["radio","disabled","radio"]]){
+    ["note","tool","comment"],["radio","tool","radio"]]){
     assert.deepEqual(webToolAction(get(key)),{type,id});
   }
   const app={canEdit:true,canP1:true,canP2:true,canText:true,canAsset:true,
@@ -46,7 +46,7 @@ test("S4 comment is on only when the host enables comments; radio stays disabled
     tools:[],style:{},onStyle:()=>{}};
   assert.equal(webToolEnabled(get("note"),app),false);
   assert.equal(webToolEnabled(get("note"),{...app,canComment:true}),true);
-  assert.equal(webToolEnabled(get("radio"),app),false);
+  assert.equal(webToolEnabled(get("radio"),app),true);
   assert.equal(webToolEnabled(get("comments"),app),false);
   assert.equal(webToolEnabled(get("highlight"),app),true);
   assert.equal(webToolEnabled(get("calibrate"),app),true);

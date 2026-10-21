@@ -13,7 +13,7 @@ export type ShellBuiltin = { id: string; group: ShellTab; label: string; tool?: 
   stage?: "p2" | "p3" };
 const command = (id: string, group: ShellTab, label = id,
   stage?: "p2" | "p3"): ShellBuiltin => ({ id, group, label, stage,
-    ...(!stage || ((stage === "p2" && id !== "radio" && id !== "comment") ||
+    ...(!stage || ((stage === "p2" && id !== "comment") ||
       (stage === "p3" && id !== "applyRedact")) ?
       { tool: id as PdfTool } : {}) });
 export const SHELL_BUILTINS: ShellBuiltin[] = [
@@ -52,10 +52,10 @@ export function enabledBuiltin(item: ShellBuiltin, canEdit: boolean, canForms: b
     (!["distance","perimeter","area"].includes(item.id) || p3.calibrated);
   if (item.stage === "p2") {
     if (!canP2) return false;
-    if (item.id === "radio" || item.id === "comment") return false;
+    if (item.id === "comment") return false;
     if (item.id === "fill") return canFill;
     if (item.id === "attachment") return canAttachment;
-    return ["textField","checkbox","dropdown","listBox","link"].includes(item.id);
+    return ["textField","checkbox","radio","dropdown","listBox","link"].includes(item.id);
   }
   if (item.id === "comment") return false;
   if (item.id === "pages" || item.id === "fit" || item.id === "region" ||
