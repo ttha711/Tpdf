@@ -6,7 +6,7 @@ import { handleDesktopKeys } from "../dist/desktopKeys.js";
 test("S4 breakpoints belong to editor container, not viewport",()=>{
   for(const [width,layout] of [[375,"mobile"],[639,"mobile"],
     [640,"tablet"],[768,"tablet"],[1023,"tablet"],
-    [1024,"desktop"],[1280,"desktop"]]){
+    [1024,"tablet"],[1199,"tablet"],[1200,"desktop"],[1280,"desktop"]]){
     assert.equal(layoutForWidth(width),layout);
   }
 });
