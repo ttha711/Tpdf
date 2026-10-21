@@ -200,3 +200,25 @@ test("compactTopBar puts host start/end, menus, file name, search and comments i
   expect(rows).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
 });
+
+test("compact phone: tool tabs and tools sit at the bottom, bars hide on scroll down and return on scroll up",async({page})=>{
+  await page.setViewportSize({width:375,height:812});
+  await page.goto(base+"&compact=1");
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible({timeout:30000});
+  await expect(page.locator(".tpdf-app-dock")).toHaveCount(0);
+  const tabs=page.getByRole("tablist",{name:"PDF tool groups"});
+  const viewer=page.locator(".tpdf-app-viewer");
+  const [vb,tb]=[await viewer.boundingBox(),await tabs.boundingBox()];
+  expect(tb!.y).toBeGreaterThan(vb!.y+vb!.height-1);
+  expect(tb!.y+tb!.height).toBeGreaterThan(780);
+  for(const name of ["Undo","Redo","Save"])await expect(tabs.getByRole("button",{name})).toBeVisible();
+  const scroll=page.locator(".tpdf-scroll"),header=page.getByTestId("mobile-app-header");
+  await scroll.evaluate(node=>node.scrollTop=300);
+  await scroll.evaluate(node=>node.scrollTop=700);
+  await expect.poll(async()=>(await header.boundingBox())?.height??0).toBeLessThan(2);
+  await expect.poll(async()=>(await tabs.boundingBox())?.height??0).toBeLessThan(2);
+  await scroll.evaluate(node=>node.scrollTop=600);
+  await expect.poll(async()=>(await header.boundingBox())?.height??0).toBeGreaterThan(30);
+  await expect(tabs).toBeVisible();
+  await expect(page.getByRole("toolbar",{name:"View tools"})).toBeVisible();
+});

@@ -45,20 +45,28 @@ export function AppShell(p:AppShellProps){
   const [sheet,setSheet]=useState(false),[quick,setQuick]=useState<"file"|"view"|null>(null),[search,setSearch]=useState(false);
   const [pages,setPages]=useState(false),[navigation,setNavigation]=useState(false);
   const [styleOpen,setStyleOpen]=useState(false),[commentNotice,setCommentNotice]=useState(false);
-  const [statusVisible,setStatusVisible]=useState(false);
+  const [statusVisible,setStatusVisible]=useState(false),[barsHidden,setBarsHidden]=useState(false);
+  const lastTop=useRef(0);
   const root=useRef<HTMLDivElement>(null),idle=useRef<ReturnType<typeof setTimeout>|null>(null);
   const words:Record<string,string>={...APP_WORDS[p.locale],...p.text};
   useEffect(()=>{
     const scroll=(event:Event)=>{
       if(!(event.target instanceof Element)||!event.target.closest(".tpdf-scroll"))return;
       setStatusVisible(true);
+      if(p.compactTopBar){
+        const top=event.target.scrollTop,delta=top-lastTop.current;
+        if(top<=40)setBarsHidden(false);
+        else if(delta>10)setBarsHidden(true);
+        else if(delta<-6)setBarsHidden(false);
+        if(Math.abs(delta)>6||top<=40)lastTop.current=top;
+      }
       if(idle.current)clearTimeout(idle.current);
       idle.current=setTimeout(()=>setStatusVisible(false),3000);
     };
     const node=root.current;node?.addEventListener("scroll",scroll,true);
     return()=>{node?.removeEventListener("scroll",scroll,true);
       if(idle.current)clearTimeout(idle.current);};
-  },[]);
+  },[p.compactTopBar]);
   useEffect(()=>{
     const group=MOBILE_PDF_GROUPS.find(g=>g.tools.some(t=>
       webToolAction(t).type==="tool"&&webToolAction(t).id===p.tool));
@@ -93,7 +101,8 @@ export function AppShell(p:AppShellProps){
         <button type="button" aria-label="Comments" onClick={showComments}>
           <AppShellIcon name="comments"/></button>
       </div>;
-  return <div className="tpdf-app-shell" ref={root} data-tpdf-shell="app">
+  return <div className="tpdf-app-shell" ref={root} data-tpdf-shell="app"
+    data-compact={p.compactTopBar?"true":undefined} data-chrome={barsHidden?"hidden":"shown"}>
     <MobileAppHeader name={p.name} page={p.page} total={p.total}
       busy={p.busy} dirty={p.dirty} documents={p.openDocuments}
       currentId={p.activeDocumentId} tiles={p.adapter?.tiles} meta={p.meta}
@@ -105,7 +114,8 @@ export function AppShell(p:AppShellProps){
     {!p.compactTopBar&&<div className="tpdf-mobile-chrome-actions" role="toolbar"
       aria-label="PDF navigation actions">{chromeLeft}{chromeRight}</div>}
     <MobileToolStrip mode={mode} setMode={setMode} shell={p}
-      actions={actions} openTools={()=>setSheet(true)}/>
+      actions={actions} openTools={()=>setSheet(true)}
+      extra={p.compactTopBar?<>{([["Undo","undo",p.onUndo,p.undoEnabled],["Redo","redo",p.onRedo,p.redoEnabled],["Save","save",p.onSave,p.canSave&&!p.busy]] as const).map(([label,icon,run,enabled])=><button type="button" key={label} aria-label={label} title={label} disabled={!enabled} onClick={run}><AppShellIcon name={icon} size={20}/></button>)}</>:undefined}/>
     {search&&<div className="tpdf-app-search" data-testid="shell-search">
       <input aria-label={words.search} value={p.query} placeholder={words.search}
         onChange={e=>p.onSearchQuery(e.target.value)}
@@ -131,7 +141,7 @@ export function AppShell(p:AppShellProps){
     <div className="tpdf-app-viewer">{p.children}
       {p.tile&&<span className="tpdf-app-viewer-badge">{words.lightweight}</span>}
     </div>
-    <nav className="tpdf-app-dock" aria-label="PDF bottom tools">
+    {!p.compactTopBar&&<nav className="tpdf-app-dock" aria-label="PDF bottom tools">
       {([
         ["select","pointer",()=>{p.onTool("region");setMode("view");},true],
         ["undo","undo",p.onUndo,p.undoEnabled],
@@ -145,7 +155,7 @@ export function AppShell(p:AppShellProps){
           <AppShellIcon name={icon} size={23}/>
           <span>{id==="select"?"Select":id==="save"?"Save":id[0].toUpperCase()+id.slice(1)}</span>
         </button>)}
-    </nav>
+    </nav>}
     {statusVisible&&<div className="tpdf-mobile-dock-status" role="status">
       <button type="button" aria-label="Choose page" onClick={showPages}>
         Page {p.page} / {p.total||"…"}</button>
