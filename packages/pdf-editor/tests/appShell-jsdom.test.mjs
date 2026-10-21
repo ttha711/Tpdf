@@ -39,12 +39,15 @@ test("React app shell tabs and host tool context work without apps/web", { skip:
     await React.act(async () => root.render(React.createElement(React.StrictMode, null,
       React.createElement(AppShell, props))));
     assert.ok(dom.window.document.querySelector(".tpdf-app-dock"));
-    assert.equal(dom.window.document.querySelectorAll('[data-tpdf-mode-tab]').length, 6);
+    assert.equal(dom.window.document.querySelectorAll('[data-tpdf-mode-tab]').length, 8);
     assert.equal(dom.window.document.querySelector("[data-testid=shell-save-status]").textContent,
       "Unsaved");
     await React.act(async () =>
       dom.window.document.querySelector('[data-tpdf-mode-tab=annotate]').click());
-    assert.equal(selectedTools.at(-1), "highlight");
+    assert.equal(selectedTools.length, 0); // switching group never arms a tool implicitly
+    await React.act(async () => dom.window.document.querySelector(
+      '[data-tpdf-group-toolbar=annotate] [data-tpdf-mobile-tool=highlight]').click());
+    assert.equal(selectedTools.at(-1),"highlight");
     await React.act(async () =>
       dom.window.document.querySelector(".tpdf-app-dock [aria-label=Tools]").click());
     assert.ok(dom.window.document.querySelector('[role=dialog]'));
