@@ -86,16 +86,21 @@ export function AppShell(p:AppShellProps){
         onPages:showPages,onTools:()=>setSheet(true),onSave:p.onSave}}/>
     <div className="tpdf-mobile-chrome-actions" role="toolbar"
       aria-label="PDF navigation actions">
-      <button type="button" aria-label="PDF menu" onClick={()=>setSheet(true)}>
-        <AppShellIcon name="tools"/></button>
-      <button type="button" aria-label="Pages and outline" onClick={()=>setNavigation(true)}>
-        <AppShellIcon name="pages"/></button>
-      <button type="button" aria-label="More PDF tools" onClick={()=>setSheet(true)}>
-        <AppShellIcon name="more"/></button>
-      <button type="button" aria-label="Search" onClick={showSearch}>
-        <AppShellIcon name="search"/></button>
-      <button type="button" aria-label="Comments" onClick={showComments}>
-        <AppShellIcon name="comments"/></button>
+      <div className="tpdf-chrome-group">
+        <button type="button" aria-label="PDF menu" onClick={()=>setSheet(true)}>
+          <AppShellIcon name="menu"/></button>
+        <span className="tpdf-chrome-divider" aria-hidden="true"/>
+        <button type="button" aria-label="Pages and outline" onClick={()=>setNavigation(true)}>
+          <AppShellIcon name="sidebar"/></button>
+        <button type="button" aria-label="More PDF tools" onClick={()=>setSheet(true)}>
+          <AppShellIcon name="more"/></button>
+      </div>
+      <div className="tpdf-chrome-group">
+        <button type="button" aria-label="Search" onClick={showSearch}>
+          <AppShellIcon name="search"/></button>
+        <button type="button" aria-label="Comments" onClick={showComments}>
+          <AppShellIcon name="comments"/></button>
+      </div>
     </div>
     <MobileToolStrip mode={mode} setMode={setMode} shell={p}
       actions={actions} openTools={()=>setSheet(true)}/>
@@ -126,10 +131,10 @@ export function AppShell(p:AppShellProps){
     </div>
     <nav className="tpdf-app-dock" aria-label="PDF bottom tools">
       {([
-        ["select","pen",()=>{p.onTool("region");setMode("view");},true],
+        ["select","pointer",()=>{p.onTool("region");setMode("view");},true],
         ["undo","undo",p.onUndo,p.undoEnabled],
         ["redo","redo",p.onRedo,p.redoEnabled],
-        ["tools","tools",()=>setSheet(true),true],
+        ["tools","wrench",()=>setSheet(true),true],
         ["save","save",p.onSave,p.canSave&&!p.busy]
       ] as const).map(([id,icon,run,enabled])=>
         <button type="button" key={id} disabled={!enabled}
