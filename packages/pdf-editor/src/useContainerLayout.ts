@@ -1,7 +1,7 @@
 import { useLayoutEffect, useState, type RefObject } from "react";
 export type ShellLayout = "mobile" | "tablet" | "desktop";
 export const layoutForWidth = (width: number): ShellLayout =>
-  width < 640 ? "mobile" : width < 1024 ? "tablet" : "desktop";
+  width < 640 ? "mobile" : width < 1200 ? "tablet" : "desktop";
 export function useContainerLayout(ref: RefObject<HTMLElement | null>): ShellLayout {
   const [layout, setLayout] = useState<ShellLayout>("mobile");
   useLayoutEffect(() => {
