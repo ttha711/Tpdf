@@ -20,7 +20,7 @@ export function MobileToolsSheet(p:{
     p.onClose();
   };
   const docActions:Record<string,(()=>void)|undefined>={
-    "Find a tool":p.actions.showSearch,
+    "Find a tool":undefined, // command palette is host-owned, not PDF text search
     "Document info":undefined,
     "AI assistant":p.shell.tools.find(x=>/ai/i.test(x.group))?
       ()=>hostRun(p.shell.tools.find(x=>/ai/i.test(x.group))!):undefined,
