@@ -55,9 +55,9 @@ test("Tpdf group actions select tools directly and unavailable P4/P2b buttons st
   await open(page);
   await page.getByRole("tab",{name:"Annotate"}).click();
   await page.getByRole("toolbar",{name:"Annotate tools"})
-    .getByRole("button",{name:"Highlight"}).click();
+    .getByRole("button",{name:"Highlight",exact:true}).click();
   await expect(page.getByRole("toolbar",{name:"Annotate tools"})
-    .getByRole("button",{name:"Highlight"})).toHaveAttribute("aria-pressed","true");
+    .getByRole("button",{name:"Highlight",exact:true})).toHaveAttribute("aria-pressed","true");
   await expect(page.getByRole("toolbar",{name:"Annotate tools"})
     .getByRole("button",{name:"Comment"})).toBeDisabled();
   await page.getByRole("tab",{name:"Form"}).click();
@@ -66,7 +66,7 @@ test("Tpdf group actions select tools directly and unavailable P4/P2b buttons st
   await page.getByRole("toolbar",{name:"Form tools"}).getByRole("button",{name:"Text field"}).click();
   await expect(page.locator(".tpdf-p2-panel")).toBeVisible();
   await page.getByRole("tab",{name:"Redact"}).click();
-  await page.getByRole("toolbar",{name:"Redact tools"}).getByRole("button",{name:"Redact"}).click();
+  await page.getByRole("toolbar",{name:"Redact tools"}).getByRole("button",{name:"Redact",exact:true}).click();
   await expect(page.getByTestId("p3-panel")).toBeVisible();
   await page.getByRole("tab",{name:"View"}).click();
   const view=page.getByRole("toolbar",{name:"View tools"});

@@ -207,17 +207,17 @@
 .tpdf-mobile-app-header .tpdf-app-file strong{font-size:15px}
 .tpdf-mobile-menu-popover{position:absolute;top:52px;left:10px;z-index:60;min-width:170px;background:var(--tpdf-panel,#fff);padding:7px;display:flex;flex-direction:column;box-shadow:0 8px 25px #0003;border:1px solid var(--tpdf-border,#ccd6e3);border-radius:10px}
 .tpdf-editor .tpdf-mobile-menu-popover button{display:block;text-align:left;min-height:44px;background:transparent}
-.tpdf-mobile-tab-switcher{position:absolute;z-index:70;inset:0;display:flex;flex-direction:column;min-height:0;background:var(--tpdf-bg,#f0f3f8);padding:12px}
+.tpdf-mobile-tab-switcher{position:fixed;z-index:70;inset:0;display:flex;flex-direction:column;min-height:0;background:var(--tpdf-bg,#f0f3f8);padding:12px}
 .tpdf-mobile-tab-switcher>header,.tpdf-mobile-tab-switcher>footer{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:52px}
 .tpdf-mobile-tab-switcher>header strong{font-size:17px}
-.tpdf-mobile-tab-grid{overflow:auto;display:grid;gap:10px;align-content:start;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))}
+.tpdf-mobile-tab-grid{flex:1 1 auto;min-height:0;overflow:auto;display:grid;gap:10px;align-content:start;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))}
 .tpdf-mobile-tab-grid article{display:flex;gap:2px;border-radius:12px;padding:7px;background:var(--tpdf-panel,#fff);border:1px solid var(--tpdf-border,#ccd6e3)}
 .tpdf-mobile-tab-grid article>button:first-child{display:flex;gap:10px;min-width:0;flex:1 1 auto;text-align:left;align-items:center;background:transparent;border:none}
 .tpdf-mobile-tab-grid article>button:first-child>span:last-child{display:flex;flex-direction:column;min-width:0;gap:3px}
 .tpdf-mobile-tab-grid article strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:155px}
 .tpdf-mobile-tab-grid article small,.tpdf-mobile-tab-grid article em{display:block;font-size:11px}
 .tpdf-mobile-tab-sheet{display:grid;place-items:center;flex:0 0 75px;width:75px;height:100px;background:#e6ebf2;overflow:hidden;border-radius:4px}
-.tpdf-mobile-tab-thumbnail{width:75px;height:100px;overflow:hidden}
+.tpdf-mobile-tab-thumbnail{width:75px;height:100px;overflow:hidden;pointer-events:none}
 .tpdf-mobile-tab-thumbnail .tpdf-page-grid{display:flex;min-width:75px}
 .tpdf-mobile-tab-thumbnail .tpdf-page-grid button{width:75px;min-width:75px;padding:2px!important}
 .tpdf-mobile-tab-thumbnail .tpdf-page-grid canvas{width:66px!important}

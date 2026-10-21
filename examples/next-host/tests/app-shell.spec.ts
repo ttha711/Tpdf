@@ -33,7 +33,7 @@ for (const viewport of screens) {
     await expect(page.getByRole("tab", { name: "Annotate" })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("toolbar",{name:"Annotate tools"})).toBeVisible();
     await page.getByRole("toolbar",{name:"Annotate tools"})
-      .getByRole("button",{name:"Highlight"}).click();
+      .getByRole("button",{name:"Highlight",exact:true}).click();
     await page.screenshot({ path: `test-results/screenshots/s3-${viewport.width}-annotate.png` });
     await page.getByRole("button", { name: "Tools", exact: true }).click();
     await expect(page.getByRole("dialog", { name: "All tools" })).toBeVisible();
@@ -56,7 +56,7 @@ test("tilesOnly searchPages results navigate via metadata with no PDF.js source 
   await expect(page.locator(".tpdf-tile-document")).toBeVisible({ timeout: 30000 });
   await page.getByRole("button", { name: "Search", exact:true }).first().click();
   await page.getByTestId("shell-search").locator("input").fill("stair");
-  await page.getByTestId("shell-search").getByRole("button", { name: "Search" }).click();
+  await page.getByTestId("shell-search").getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("button", { name: /Page 35:/ }).click();
   await expect(page.locator(".tpdf-mobile-dock-status")).toContainText("Page 35 / 100");
   expect(pdfRequests).toEqual([]);
@@ -67,7 +67,7 @@ test("tilesOnly host applyChanges saves annotation as change list, no PDF bytes"
   await page.goto(url);
   await expect(page.locator(".tpdf-tile-document")).toBeVisible({ timeout: 30000 });
   await page.getByRole("tab", { name: "Annotate" }).click();
-  await page.getByRole("toolbar",{name:"Annotate tools"}).getByRole("button",{name:"Highlight"}).click();
+  await page.getByRole("toolbar",{name:"Annotate tools"}).getByRole("button",{name:"Highlight",exact:true}).click();
   const overlay = page.locator('[data-tpdf-page="1"] .tpdf-page-overlay');
   await expect(overlay).toBeVisible();
   const rect = await overlay.boundingBox();

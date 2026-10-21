@@ -73,7 +73,7 @@ function MiniTileThumb({tiles,meta,page}:{
 }) {
   const [node,setNode]=useState<HTMLDivElement|null>(null);
   if(page<1||page>meta.pages.length)return <AppShellIcon name="file" size={30}/>;
-  return <div className="tpdf-mobile-tab-thumbnail" ref={setNode}>
+  return <div className="tpdf-mobile-tab-thumbnail" ref={setNode} aria-hidden="true" {...{inert:""}}>
     <TileGrid adapter={tiles} meta={meta} parent={node}
       pageNumbers={[page]} currentPage={page} onGoto={()=>{}}/>
   </div>;
