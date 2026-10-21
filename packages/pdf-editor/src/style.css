@@ -266,3 +266,7 @@
 .tpdf-desktop-shell .tpdf-app-sheet-backdrop{align-items:center;padding:16px}
 .tpdf-desktop-shell .tpdf-app-sheet{max-width:min(930px,96%);max-height:min(90%,720px);border-radius:15px}
 .tpdf-desktop-statusbar{gap:12px}
+
+/* Port the white/neutral idle chip treatment from apps/web/styles/mobile-ergonomics.css. */
+.tpdf-mobile-dock-status{min-height:34px;gap:4px;padding:2px 7px;border:1px solid var(--tpdf-border,#ccd6e3);border-radius:10px;background:var(--tpdf-panel,#fff);color:var(--tpdf-fg,#16233c);font-size:11px;box-shadow:0 2px 10px #0003}
+.tpdf-editor .tpdf-mobile-dock-status button{min-height:28px;padding:4px 6px;color:var(--tpdf-fg,#16233c);background:transparent;border:none;font-weight:600}
