@@ -106,3 +106,23 @@ cd "$HOST_DIR"
 pnpm install --no-frozen-lockfile
 pnpm exec playwright test
 ```
+
+## Optional side-by-side original Vite comparison
+
+Run the original `apps/web` Vite site yourself with the **same PDF** opened
+and keep it accessible at a URL. The Next-host Playwright test
+`s4-vite-visual.spec.ts` is opt-in and is **skipped in CI** unless
+`TPDF_VITE_BASE_URL` is supplied. It captures the original and the
+embedded package at all four target viewports, outputs paired PNGs and
+computes diagnostic mean RGB pixel difference:
+
+```sh
+TPDF_VITE_BASE_URL=http://localhost:5173 pnpm exec playwright test s4-vite-visual.spec.ts
+```
+
+The image diagnostic is not a parity pass/fail threshold: the two viewers
+must show the **same PDF/page and font environment** for a valid visual
+comparison, and even then EmbedPDF chrome and tile/PDF.js renderer
+differences may remain. Review the paired screenshots and concrete
+layout differences; do not claim that synthetic Next host CI compared
+itself against the user's original eight-page Vite session.
