@@ -9,7 +9,7 @@ export function MobileAppHeader(p:{
   name:string;page:number;total:number;busy:boolean;dirty:boolean;
   currentId?:string;documents?:PdfOpenDocument[];
   tiles?:PdfTileAdapter;meta?:PdfTileMeta|null;actions:Actions;
-  /** One-row mode for hosts with their own header: slots at both ends, the chrome buttons inline, no Home/app menu, tab count only with several documents. */
+  /** One-row mode for hosts with their own header: slots at both ends, the chrome buttons inline, no Home/app menu. */
   compact?:{start?:ReactNode;end?:ReactNode;left:ReactNode;right:ReactNode};
 }) {
   const [overview,setOverview]=useState(false),[menu,setMenu]=useState(false);
@@ -30,7 +30,7 @@ export function MobileAppHeader(p:{
     </div>;
   return <header className={"tpdf-mobile-app-header"+(p.compact?" tpdf-mobile-top-compact":"")}
     data-testid="mobile-app-header">
-    {p.compact?<>{p.compact.start}{p.compact.left}{docs.length>1&&count}{file}{p.compact.right}{p.compact.end}</>:<>
+    {p.compact?<>{p.compact.start}{p.compact.left}{count}{file}{p.compact.right}{p.compact.end}</>:<>
     {p.actions.showHome&&<button type="button" aria-label="Go to Home"
       disabled={!p.actions.home} onClick={p.actions.home}>
       <AppShellIcon name="file"/></button>}

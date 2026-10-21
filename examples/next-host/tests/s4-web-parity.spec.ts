@@ -191,12 +191,12 @@ test("compactTopBar puts host start/end, menus, file name, search and comments i
   await expect(page.locator(".tpdf-tile-document")).toBeVisible({timeout:30000});
   const header=page.getByTestId("mobile-app-header");
   const order=await header.locator("button").evaluateAll(nodes=>nodes.map(node=>node.getAttribute("aria-label")));
-  expect(order).toEqual(["Back to host","PDF menu","Pages and outline","View menu","Search","Comments","Open on canvas"]);
+  expect(order).toEqual(["Back to host","PDF menu","Pages and outline","View menu","Open tabs overview (1 tabs)","Search","Comments","Open on canvas"]);
   await expect(header.getByTestId("shell-save-status")).toContainText("Saved");
   await expect(page.getByRole("toolbar",{name:"PDF navigation actions"})).toHaveCount(0);
   const box=await header.boundingBox();
   expect(box!.height).toBeLessThanOrEqual(48);
-  const rows=await header.locator("button").evaluateAll(nodes=>new Set(nodes.map(node=>Math.round(node.getBoundingClientRect().top))).size);
+  const rows=await header.locator("button").evaluateAll(nodes=>new Set(nodes.map(node=>{const r=node.getBoundingClientRect();return Math.round((r.top+r.height/2)/6);})).size);
   expect(rows).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
 });
@@ -221,4 +221,18 @@ test("compact phone: tool tabs and tools sit at the bottom, bars hide on scroll 
   await expect.poll(async()=>(await header.boundingBox())?.height??0).toBeGreaterThan(30);
   await expect(tabs).toBeVisible();
   await expect(page.getByRole("toolbar",{name:"View tools"})).toBeVisible();
+});
+
+test("compact phone: Navigation sheet covers the bottom bars and shows one set of thumbnails",async({page})=>{
+  await page.setViewportSize({width:375,height:812});
+  await page.goto(base+"&compact=1");
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible({timeout:30000});
+  await page.getByRole("button",{name:"Pages and outline"}).click();
+  const nav=page.getByRole("dialog",{name:"PDF navigation"});
+  await expect(nav).toBeVisible();
+  const box=await nav.boundingBox();
+  expect(box!.y+box!.height).toBeGreaterThan(805);
+  await expect(nav.getByRole("button",{name:"Close page previews"})).toBeHidden();
+  await expect(nav.getByText("Pages",{exact:true})).toBeHidden();
+  await expect(nav.getByRole("button",{name:"Close navigation"})).toBeVisible();
 });

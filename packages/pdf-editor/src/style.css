@@ -311,3 +311,7 @@
 .tpdf-editor .tpdf-app-tabs .tpdf-app-tabs-extra button{min-width:34px;padding:0 5px;border-radius:8px}
 .tpdf-app-shell[data-compact]>.tpdf-mobile-app-header,.tpdf-app-shell[data-compact]>.tpdf-app-group-tools,.tpdf-app-shell[data-compact]>.tpdf-app-tabs{transition:max-height .2s ease,opacity .2s ease}
 .tpdf-app-shell[data-compact][data-chrome=hidden]>.tpdf-mobile-app-header,.tpdf-app-shell[data-compact][data-chrome=hidden]>.tpdf-app-group-tools,.tpdf-app-shell[data-compact][data-chrome=hidden]>.tpdf-app-tabs{flex-basis:0!important;min-height:0!important;height:0!important;max-height:0;padding-top:0!important;padding-bottom:0!important;border-width:0!important;opacity:0;overflow:hidden;pointer-events:none}
+/* Sheets cover the whole bottom edge when there is no dock, and the thumbnails inside Navigation do not repeat a title and a close button */
+.tpdf-app-shell[data-compact] .tpdf-mobile-nav-sheet,.tpdf-app-shell[data-compact]>.tpdf-mobile-filmstrip{bottom:0;padding-bottom:env(safe-area-inset-bottom,0px);z-index:45}
+.tpdf-mobile-nav-sheet .tpdf-mobile-filmstrip-header strong,.tpdf-mobile-nav-sheet .tpdf-mobile-filmstrip-header button[aria-label="Close page previews"]{display:none}
+.tpdf-mobile-nav-sheet .tpdf-mobile-filmstrip-header{justify-content:flex-end}
