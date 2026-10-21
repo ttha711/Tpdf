@@ -14,6 +14,7 @@ export type PdfTileLevel = 0.25 | 0.5 | 1 | 2 | 4 | 8 | 16;
 export type PdfTileMeta = { versionId: string; pages: Array<{ width: number; height: number }> };
 export type PdfTileAdapter = { meta(): Promise<PdfTileMeta>; tileUrl(page: number, level: PdfTileLevel, x: number, y: number): string };
 export type PdfChangeRequest = import("./history.js").PdfChange;
+export type PdfOpenDocument = { id:string;name:string;page:number;pages:number };
 export type PdfHostTool = { id: string; label: string; group: string;
   icon?: ReactNode; run(context: { page: number; selection?: PdfRegion }): void | Promise<void> };
 export interface TpdfPdfAdapter {
@@ -53,6 +54,9 @@ export type TpdfPdfEditorProps = {
   readOnly?: boolean;
   shell?: "classic" | "app";
   tools?: PdfHostTool[];
+  openDocuments?:PdfOpenDocument[];activeDocumentId?:string;
+  onOpenDocument?:(id:string)=>void;onCloseDocument?:(id:string)=>void;
+  onOpenFile?:()=>void;onHome?:()=>void;showHomeButton?:boolean;
   tilesOnly?: boolean;
   renderMode?: "auto" | "canvas" | "tiles";
   largeFileBytes?: number;
