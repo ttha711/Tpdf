@@ -56,7 +56,7 @@ test("tilesOnly searchPages results navigate via metadata with no PDF.js source 
   await expect(page.locator(".tpdf-tile-document")).toBeVisible({ timeout: 30000 });
   await page.getByRole("button", { name: "Search", exact:true }).first().click();
   await page.getByTestId("shell-search").locator("input").fill("stair");
-  await page.getByTestId("shell-search").getByRole("button", { name: "Find" }).click();
+  await page.getByTestId("shell-search").getByRole("button", { name: "Search" }).click();
   await page.getByRole("button", { name: /Page 35:/ }).click();
   await expect(page.locator(".tpdf-mobile-dock-status")).toContainText("Page 35 / 100");
   expect(pdfRequests).toEqual([]);
