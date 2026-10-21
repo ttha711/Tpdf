@@ -13,7 +13,7 @@ import { MOBILE_PDF_GROUPS, type MobilePdfMode } from "./mobilePdfToolCatalog.js
 import { webToolAction } from "./webToolCommands.js";
 import type { WebToolCallbacks } from "./WebToolButton.js";
 import type { P1Style } from "./p1Types.js";
-import type { PdfHostTool, PdfOpenDocument, PdfRegion, PdfSearchHit,
+import type { TpdfPdfAdapter, PdfHostTool, PdfOpenDocument, PdfRegion, PdfSearchHit,
   PdfTileAdapter, PdfTileMeta, PdfTool } from "./types.js";
 import type { P3Availability } from "./appShellModel.js";
 
@@ -27,8 +27,7 @@ export type AppShellProps = {
   style?:P1Style;onStyle?:(value:P1Style)=>void;
   p2Panel?:ReactNode;p3Panel?:ReactNode;p3?:P3Availability;
   saveNotes?:string[];canP2?:boolean;canFill?:boolean;canAttachment?:boolean;
-  adapter?:{tiles?:PdfTileAdapter;listBookmarks?:()=>Promise<Array<{title:string;page:number}>>};
-  meta?:PdfTileMeta|null;pdf?:PDFDocumentProxy|null;
+  adapter:TpdfPdfAdapter; meta:PdfTileMeta|null; pdf:PDFDocumentProxy|null;
   openDocuments?:PdfOpenDocument[];activeDocumentId?:string;
   onOpenDocument?:(id:string)=>void;onCloseDocument?:(id:string)=>void;
   onOpenFile?:()=>void;onHome?:()=>void;showHomeButton?:boolean;
