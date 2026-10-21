@@ -26,5 +26,6 @@ test("S4 desktop shortcuts support find, redo, page steps but preserve typing",(
   assert.equal(handleDesktopKeys(event("PageUp"),"desktop",options),true);
   assert.equal(handleDesktopKeys(event("PageDown",false,"INPUT"),"desktop",options),false);
   assert.equal(handleDesktopKeys(event("f",true),"mobile",options),false);
+  assert.equal(handleDesktopKeys(event("y",true,"INPUT"),"desktop",options),false);
   assert.deepEqual(actions.filter(x=>x!=="prevent"),["find","redo",7,5]);
 });
