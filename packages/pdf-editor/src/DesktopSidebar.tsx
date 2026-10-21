@@ -16,7 +16,7 @@ export function DesktopSidebar(p: {
   const comments=p.tools.filter(tool=>tool.group.toLowerCase().includes("comment"));
   return <aside className="tpdf-desktop-sidebar" data-testid="desktop-sidebar">
     <nav className="tpdf-desktop-side-tabs" aria-label="Navigation panels">
-      {(["pages","bookmarks","search","comments"] as const).map(tab=>
+      {(["pages","bookmarks"] as const).map(tab=>
         <button type="button" key={tab} aria-label={tab+" panel"}
           aria-pressed={p.tab===tab} onClick={()=>p.onTab(tab)}>
           {tab==="pages"?"Pages":tab==="bookmarks"?"Bookmarks":
