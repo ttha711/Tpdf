@@ -251,7 +251,7 @@ type P3Change =
  | {kind:"text.replace";schemaVersion:1;search:string;replacement:string;
     scope:P3Scope;caseSensitive?:boolean};
 type P3Capabilities = {
-  redact?:{secureErase?:boolean;regions?:boolean;terms?:boolean};
+  redact?:{secureErase?:boolean;regions?:boolean;terms?:boolean;purgesHistory?:boolean};
   measure?:{calibrate?:boolean;distance?:boolean;perimeter?:boolean;area?:boolean};
   replaceText?:{region?:boolean;pages?:boolean;document?:boolean;count?:boolean};
 };
@@ -270,8 +270,9 @@ require a **separate destructive confirmation before any Save** (including
 keyboard and imperative save). Host removes underlying text and image pixels.
 CAD vector strokes are removed only when entirely within the redacted area;
 crossing strokes may remain. Host verifies text/terms are gone, else rejects
-the operation **without creating a version**. Prior versions retain originals
-and are governed separately by 360i, not the package.
+the operation **without creating a version**. When `purgesHistory === true`,
+warn that older versions will also be deleted; otherwise warn originals may
+remain in history. Deletion of history is host-owned, never client-side.
 
 **Measure:** two different calibration points and positive real length;
 exactly one active calibration per page, replaced by newest. Host stores

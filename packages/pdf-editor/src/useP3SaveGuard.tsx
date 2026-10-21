@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { PdfChange } from "./history.js";
-export function useP3SaveGuard(changes:PdfChange[],save:()=>Promise<void>) {
+import { redactHistoryWarning, summarizeRedactions } from "./p3RedactionSummary.js";
+export function useP3SaveGuard(changes:PdfChange[],save:()=>Promise<void>,
+  purgesHistory?: boolean) {
   const [pending,setPending]=useState(false);
   const waiter=useRef<{promise:Promise<void>;resolve:()=>void;
     reject:(e:Error)=>void}|null>(null);
@@ -28,19 +30,16 @@ export function useP3SaveGuard(changes:PdfChange[],save:()=>Promise<void>) {
     catch(e) {wait?.reject(e instanceof Error?e:Error(String(e)));}
     finally {waiter.current=null;}
   }
-  const regions=redactions.reduce((n,c)=>n+("regions" in c?c.regions.length:0),0);
-  const terms=redactions.flatMap(c=>c.kind==="redact"?c.terms||[]:[]);
-  const pages=new Set(redactions.flatMap(c=>c.kind==="redact"?
-    [...c.regions.map(r=>r.page),...(c.pages||[])]:[]));
+  const summary = summarizeRedactions(changes);
   const dialog=pending?<div className="tpdf-p3-destructive-backdrop">
     <section className="tpdf-p3-destructive" role="alertdialog" aria-modal="true"
       aria-label="Confirm permanent redaction">
       <strong>Permanent redaction — irreversible</strong>
       <p>Save will permanently erase matching text and underlying image pixels
-        from the new PDF. Earlier versions may still contain the originals.</p>
-      <p>{regions} regions; {terms.length} literal terms; pages:
-        {" "+[...pages].sort((a,b)=>a-b).join(", ")}</p>
-      {!!terms.length&&<p>Terms: {terms.join(", ")}</p>}
+        from the new PDF. {redactHistoryWarning(purgesHistory)}</p>
+      <p>{summary.regions} regions; {summary.terms.length} literal terms; pages:
+        {" "+summary.pages.join(", ")}</p>
+      {!!summary.terms.length&&<p>Terms: {summary.terms.join(", ")}</p>}
       <p>CAD vector strokes crossing the redaction area may remain.
         The server will verify erased text and reject failures.</p>
       <button type="button" onClick={cancel}>Cancel</button>

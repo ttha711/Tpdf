@@ -14,7 +14,7 @@ export type P3Change =
   | { kind:"text.replace"; schemaVersion:1; search:string; replacement:string;
     scope:P3Scope; caseSensitive?:boolean };
 export type P3Capabilities = {
-  redact?: {secureErase?:boolean; regions?:boolean; terms?:boolean};
+  redact?: {secureErase?:boolean; regions?:boolean; terms?:boolean; purgesHistory?:boolean};
   measure?: {calibrate?:boolean; distance?:boolean; perimeter?:boolean; area?:boolean};
   replaceText?: {region?:boolean; pages?:boolean; document?:boolean; count?:boolean};
 };

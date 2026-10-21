@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { PdfRegion, PdfTool, TpdfPdfAdapter } from "./types.js";
 import type { P3Change, P3LengthUnit, P3PageCalibration, P3Scope, P3MatchCount } from "./p3Types.js";
 import { validateScope } from "./p3Validation.js";
+import { redactHistoryWarning, type PendingRedaction } from "./p3RedactionSummary.js";
 
 type Props = {tool:PdfTool;adapter:TpdfPdfAdapter;selection:PdfRegion|null;
   page:number;pageCount:number;calibration?:P3PageCalibration;
@@ -9,8 +10,11 @@ type Props = {tool:PdfTool;adapter:TpdfPdfAdapter;selection:PdfRegion|null;
   redactTerms:string;setRedactTerms:(v:string)=>void;termPages:string;
   setTermPages:(v:string)=>void;addTerms:()=>void;
   addReplace:(v:P3Change)=>void;
-  report:(code:string,error:unknown,retryable?:boolean)=>void};
+  report:(code:string,error:unknown,retryable?:boolean)=>void;
+  pendingRedactions: PendingRedaction; purgesHistory?:boolean;
+  locale?:"vi"|"en"};
 export function P3Panel(p:Props) {
+  const [expanded,setExpanded]=useState(true);
   const [search,setSearch]=useState("");
   const [replacement,setReplacement]=useState("");
   const [scope,setScope]=useState<P3Scope["kind"]>("region");
@@ -45,8 +49,29 @@ export function P3Panel(p:Props) {
   }
   const invalidate=()=>{querySequence.current++;setWorking(false);
     setMatches(null);setPending(null);};
-  return <section className="tpdf-p3-panel" data-testid="p3-panel">
-    {(p.tool==="redact"||p.tool==="applyRedact") && <>
+  const isRedact=p.tool==="redact"||p.tool==="applyRedact";
+  const staged=p.pendingRedactions;
+  const count=staged.terms.length+staged.regions;
+  return <section className="tpdf-p3-panel" data-testid="p3-panel"
+    data-collapsed={!expanded}>
+    <header className="tpdf-p3-panel-header">
+      <strong>{isRedact?"Redact":p.tool==="replaceText"?"Replace text":
+        p.tool==="calibrate"?"Calibrate":"Measure: "+p.tool}</strong>
+      <button type="button" aria-controls="tpdf-p3-panel-fields"
+        aria-expanded={expanded} aria-label={expanded?"Hide P3 panel":"Show P3 panel"}
+        onClick={()=>setExpanded(value=>!value)}>
+        {expanded?"Hide panel −":"Show panel +"}
+      </button>
+    </header>
+    {isRedact && count>0 && <div className="tpdf-p3-pending-summary" role="status"
+      data-testid="p3-redact-pending">
+      {p.locale==="vi"?"Đang chờ xóa: ":"Pending redactions: "}
+      {staged.terms.length} {p.locale==="vi"?"cụm":"terms"}, {staged.regions}
+      {" "}{p.locale==="vi"?"vùng":"regions"}; {p.locale==="vi"?"trang":"pages"}:
+      {" "+staged.pages.join(", ")}
+    </div>}
+    <div id="tpdf-p3-panel-fields" className="tpdf-p3-panel-body" hidden={!expanded}>
+    {isRedact && <>
       <strong>Pending redaction — removes underlying text and image pixels when saved</strong>
       {caps?.redact?.regions && <span>Drag over PDF to stage a redaction area.</span>}
       {caps?.redact?.terms && <>
@@ -56,7 +81,9 @@ export function P3Panel(p:Props) {
           placeholder="1,2" onChange={e=>p.setTermPages(e.target.value)}/></label>
         <button type="button" onClick={p.addTerms}>Stage text redaction</button>
       </>}
-      <small>Secure removal requires separate confirmation before Save. Earlier versions may retain original data.</small>
+      {staged.terms.length>0 && <ul className="tpdf-p3-staged-terms"
+        aria-label="Staged redaction terms">{staged.terms.map((term,i)=><li key={i}>{term}</li>)}</ul>}
+      <small>Secure removal requires separate confirmation before Save. {redactHistoryWarning(p.purgesHistory)}</small>
     </>}
     {p.tool==="calibrate" && <>
       <strong>Calibrate page {p.page}</strong>
@@ -113,6 +140,7 @@ export function P3Panel(p:Props) {
         }}>Confirm replacement</button>
       </div>}
     </>}
+    </div>
   </section>;
 }
 function P3ScopeFor(kind:P3Scope["kind"],selected:PdfRegion|null,pages:string):P3Scope {

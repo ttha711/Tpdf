@@ -5,6 +5,7 @@ import type { P3PageCalibration, P3Change, P3Point, P3LengthUnit } from "./p3Typ
 import { validateP3, allowedP3 } from "./p3Validation.js";
 import { checkCalibration } from "./p3Geometry.js";
 import { P3Panel } from "./P3Panel.js";
+import { summarizeRedactions } from "./p3RedactionSummary.js";
 
 const TOOLS = ["redact","applyRedact","calibrate","distance","perimeter","area","replaceText"];
 export function useP3Editor(input: {
@@ -12,6 +13,7 @@ export function useP3Editor(input: {
   versionId?:string; changes:PdfChange[]; readOnly:boolean;
   record:(c:PdfChange)=>void; report:(code:string,error:unknown,retryable?:boolean)=>void;
   clearSelection:()=>void; selection:PdfRegion|null;
+  locale?:"vi"|"en";
 }) {
   const {adapter,tool,changes,record,report,pages,versionId}=input;
   const [stored,setStored]=useState<P3PageCalibration[]>([]);
@@ -85,6 +87,8 @@ export function useP3Editor(input: {
     }catch(e){report("p3",e,false);}
   };
   const panel=canTool(tool)? <P3Panel key={tool} tool={tool}
+    locale={input.locale} purgesHistory={adapter.p3Capabilities?.redact?.purgesHistory}
+    pendingRedactions={summarizeRedactions(changes)}
     adapter={adapter} selection={input.selection} page={input.page}
     pageCount={pages.length} calibration={active} length={length} unit={unit}
     setLength={setLength} setUnit={setUnit} redactTerms={redactTerms}
