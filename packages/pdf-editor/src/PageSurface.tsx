@@ -10,14 +10,15 @@ import type { P3Change } from "./p3Types.js";
 import { P3PendingOverlay } from "./P3PendingOverlay.js";
 import type { PdfRegion, PdfTool } from "./types.js";
 
-export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight, onRegion, readOnly, assetUrl, p2Changes = [], p3Changes=[] }: {
+export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight, onRegion, readOnly, assetUrl, p2Changes = [], p3Changes=[],pan=false }: {
   pdf: PDFDocumentProxy; number: number; scale: number; parent: HTMLElement | null; tool: PdfTool;
   marks: Mark[]; highlight: PdfRegion | null;
   onRegion: (value: PdfRegion, points?: Array<[number, number]>) => void; readOnly: boolean;
-  assetUrl?: (id: string) => string; p2Changes?: P2Change[]; p3Changes?:P3Change[];
+  assetUrl?: (id: string) => string; p2Changes?: P2Change[]; p3Changes?:P3Change[]; pan?:boolean;
 }) {
   const element = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const drag=useRef<{x:number;y:number;left:number;top:number}|null>(null);
   const gesture = useRef<{ start: [number, number]; points: Array<[number, number]> } | null>(null);
   const [near, setNear] = useState(false);
   const [size, setSize] = useState({ width: 612, height: 792 });
@@ -78,13 +79,13 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
     className="tpdf-page" style={{ width: size.width * scale, height: size.height * scale }}>
     {near && <canvas ref={canvas} className="tpdf-page-canvas" aria-hidden="true" />}
     <div className="tpdf-page-overlay" aria-label={"Select area on page " + number}
-      onPointerDown={(e) => { if (readOnly) return; e.currentTarget.setPointerCapture(e.pointerId);
+      onPointerDown={(e) => {if(pan&&parent){drag.current={x:e.clientX,y:e.clientY,left:parent.scrollLeft,top:parent.scrollTop};e.currentTarget.setPointerCapture(e.pointerId);return;} if (readOnly) return; e.currentTarget.setPointerCapture(e.pointerId);
         const start = coords(e); gesture.current = { start, points: [start] }; }}
-      onPointerMove={(e) => { if (gesture.current &&
+      onPointerMove={(e) => { if(pan&&parent&&drag.current){parent.scrollLeft=drag.current.left-(e.clientX-drag.current.x);parent.scrollTop=drag.current.top-(e.clientY-drag.current.y);return;} if (gesture.current &&
         ["draw","inkHighlight","polygon","polyline","perimeter","area"].includes(tool))
         gesture.current.points.push(coords(e)); }}
-      onPointerUp={finish} onPointerCancel={() => { gesture.current = null; }}
-      style={{ cursor: readOnly ? "default" : "crosshair", touchAction: readOnly ? "auto" : "none" }}>
+      onPointerUp={e=>{if(drag.current){drag.current=null;return;}finish(e);}} onPointerCancel={() => { gesture.current = null;drag.current=null; }}
+      style={{ cursor:pan?"grab":readOnly?"default":"crosshair", touchAction: readOnly ? "auto" : "none" }}>
       {marks.filter((m) => m.region.page === number).map((mark, i) =>
         mark.schemaVersion === 1 ? <P1MarkPreview key={i} mark={mark} assetUrl={assetUrl}/> :
         <div key={i} className={"tpdf-mark tpdf-mark-" + mark.type}
