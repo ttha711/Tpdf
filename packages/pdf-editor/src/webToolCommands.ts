@@ -7,7 +7,7 @@ const names: Record<string,string> = {
   ink:"draw", "ink-highlight":"inkHighlight", text:"addText",
   "insert-text":"insertText", "replace-text":"replaceText",
   textfield:"textField", select:"dropdown", listbox:"listBox",
-  "fill-mode":"fill",
+  "fill-mode":"fill", note:"comment",
 };
 const styles = new Set(["annotation-style","shape-style","insert-style","form-style"]);
 const actions: Record<string,string> = {
@@ -18,7 +18,7 @@ const actions: Record<string,string> = {
 };
 export type WebToolAction = {type:"tool"|"builtin"|"panel"|"disabled";id:string};
 export function webToolAction(tool: MobilePdfTool):WebToolAction {
-  if(tool.id==="note" || tool.id==="rotate-left" || tool.id==="radio")
+  if(tool.id==="rotate-left" || tool.id==="radio")
     return {type:"disabled",id:tool.id};
   if(styles.has(tool.id))return {type:"panel",id:"style"};
   if(tool.id in actions)return {type:"builtin",id:actions[tool.id]};
@@ -27,7 +27,8 @@ export function webToolAction(tool: MobilePdfTool):WebToolAction {
 export function webToolEnabled(tool:MobilePdfTool,p:AppShellProps):boolean {
   const command=webToolAction(tool);
   if(command.type==="disabled")return false;
-  if(command.id==="comments")return p.tools.some(x=>x.group.toLowerCase()==="comments");
+  if(command.id==="comments")return Boolean(p.commentsPanel)||p.tools.some(x=>x.group.toLowerCase()==="comments");
+  if(command.id==="comment")return !!p.canEdit&&!!p.canComment;
   if(command.id==="search")return true;
   if(command.id==="pan"||command.id==="select"||command.id==="pages"||
      command.id==="fit"||command.id==="fitPage"||

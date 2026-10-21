@@ -19,7 +19,7 @@ const command = (id: string, group: ShellTab, label = id,
 export const SHELL_BUILTINS: ShellBuiltin[] = [
   command("region", "shapes"), command("highlight", "annotate"),
   command("note", "annotate"), command("draw", "annotate"), command("cover", "annotate"),
-  command("comment","annotate","comment","p2"),
+  command("comment","annotate"),
   command("link","annotate","link","p2"),
   ...["underline","strikeout","squiggly","inkHighlight","addText","insertText","callout"]
     .map((id) => command(id, "annotate")),
@@ -57,6 +57,7 @@ export function enabledBuiltin(item: ShellBuiltin, canEdit: boolean, canForms: b
     if (item.id === "attachment") return canAttachment;
     return ["textField","checkbox","dropdown","listBox","link"].includes(item.id);
   }
+  if (item.id === "comment") return false;
   if (item.id === "pages" || item.id === "fit" || item.id === "region" ||
       item.id.startsWith("zoom")) return true;
   if (item.id === "form") return canForms;

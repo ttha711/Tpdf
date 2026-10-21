@@ -1,6 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { usePdfEngine } from "./usePdfEngine.js";
 import { InlineTextContext } from "./InlineTextEditor.js";
+import { CommentPinsContext } from "./CommentPins.js";
+import { CommentsPanel } from "./CommentsPanel.js";
+import { useP4Comments } from "./useP4Comments.js";
 import { PageSurface } from "./PageSurface.js";
 import { TileViewer } from "./TileViewer.js";
 import { TileGrid } from "./TileGrid.js";
@@ -115,6 +118,9 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     clearSelection:()=>setRegion(null)});
   const saveGuard=useP3SaveGuard(engine.history.current,engine.save,
     props.adapter.p3Capabilities?.redact?.purgesHistory);
+  const comments = useP4Comments({ adapter: props.adapter, changes: engine.history.current, canEdit, record: engine.record, report: engine.report });
+  const [selectedComment, setSelectedComment] = useState<string | null>(null);
+  const [commentsSignal, setCommentsSignal] = useState(0);
   const [inlineText, setInlineText] = useState<{ region: PdfRegion; points?: Array<[number, number]> } | null>(null);
   function commitSelection(value:PdfRegion,points:Array<[number,number]>|undefined,text:string) {
     void recordP1Selection({tool,region:value,points,adapter:props.adapter,
@@ -124,6 +130,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   function selected(value:PdfRegion,points?:Array<[number,number]>) {
     setRegion(value);props.onRegionSelected?.(value);
     if(!canEdit||tool==="region")return;
+    if(tool==="comment"){if(comments.canAnnotate)setInlineText({region:value});return;}
     if(p3.onRegion(value,points))return;
     if(["addText","insertText","callout"].includes(tool)&&props.adapter.applyChanges){
       setInlineText({region:value,points});return;
@@ -132,7 +139,11 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   }
   const inlineState = inlineText && {
     region: inlineText.region,
-    commit: (text: string) => { commitSelection(inlineText.region, inlineText.points, text); setInlineText(null); },
+    commit: (text: string) => {
+      if (tool === "comment") { const id = comments.add(inlineText.region.page, { x: inlineText.region.x, y: inlineText.region.y }, text); setSelectedComment(id); setRegion(null); }
+      else commitSelection(inlineText.region, inlineText.points, text);
+      setInlineText(null);
+    },
     cancel: () => { setInlineText(null); setRegion(null); },
   };
   function builtIn(id: string) {
@@ -234,7 +245,10 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     </div>
     {props.children}
   </>;
-  return <InlineTextContext.Provider value={inlineState}><div ref={root} className={"tpdf-editor " + (props.className || "")}
+  const pinsState = { comments: comments.view, selectedId: selectedComment, onPin: (id: string) => { setSelectedComment(id); setCommentsSignal((n) => n + 1); } };
+  const commentsPanel = <CommentsPanel c={comments} page={engine.page} selectedId={selectedComment}
+    onSelect={(item) => { setSelectedComment(item.id); goto(item.page); }} />;
+  return <CommentPinsContext.Provider value={pinsState}><InlineTextContext.Provider value={inlineState}><div ref={root} className={"tpdf-editor " + (props.className || "")}
     data-theme={props.theme || "system"} data-density={props.density || "office"}
     data-shell={props.shell || "classic"} data-tpdf-layout={layout}
     onKeyDown={keyboard} tabIndex={0} role="region" aria-label="TPDF PDF editor">
@@ -255,6 +269,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       tools={props.tools || []} onTool={next=>{setPanMode(false);setInlineText(null);setTool(next);}} onNote={setNote}
       canText={Boolean(props.adapter.resolveTextQuads)} canAsset={Boolean(props.adapter.selectAsset)}
       canP1={Boolean(props.adapter.applyChanges) && canEdit}
+      canComment={comments.canAnnotate} commentsPanel={commentsPanel} commentsSignal={commentsSignal}
       canP2={p2.canP2} canFill={p2.canFill} canAttachment={p2.canAttachment}
       p2Panel={p2.p2Panel} p3Panel={p3.panel}
       p3={{ caps:props.adapter.p3Capabilities,enabled:canEdit,
@@ -301,5 +316,5 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       {props.adapter.listVersions && <button type="button" onClick={() => void props.adapter.listVersions!().then(setVersions).catch(
         (err) => engine.report("versions", err))}>{text.versions}</button>}
     </div>{viewer}</>}
-  </div></InlineTextContext.Provider>;
+  </div></InlineTextContext.Provider></CommentPinsContext.Provider>;
 });

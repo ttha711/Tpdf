@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import type { PointerEvent } from "react";
 import { normalizeRegion, type Mark } from "./history.js";
+import { CommentPins } from "./CommentPins.js";
 import { InlineTextEditor } from "./InlineTextEditor.js";
 import { LiveDraft, useLiveDraft } from "./LiveDraft.js";
 import { LegacyMarkPreview } from "./LegacyMarkPreview.js";
@@ -46,6 +47,7 @@ export function TileOverlay({ number, selected, onRegion, pan, tool = "region", 
         (last[0] < 99.7 ? last[0] + 0.3 : last[0] - 0.3) : last[0];
       const y = linear && Math.abs(origin[1] - last[1]) < 0.2 ?
         (last[1] < 99.7 ? last[1] + 0.3 : last[1] - 0.3) : last[1];
+      if (tool === "comment") { start.current = null; onRegion({ page: number, x: last[0], y: last[1], width: 0, height: 0, note: "" }); return; }
       const region = normalizeRegion(number, ...origin, x, y);
       const points = start.current.points;
       start.current = null;
@@ -60,6 +62,7 @@ export function TileOverlay({ number, selected, onRegion, pan, tool = "region", 
       <LegacyMarkPreview key={index} mark={mark}/>)}
     <LiveDraft draft={live.draft}/>
     <InlineTextEditor page={number}/>
+    <CommentPins page={number}/>
     <P2PlacementOverlay changes={p2Changes} page={number}/>
     {pageSize && <P3PendingOverlay changes={p3Changes} page={number}
       width={pageSize.width} height={pageSize.height}/>}

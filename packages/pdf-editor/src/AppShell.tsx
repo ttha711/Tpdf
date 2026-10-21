@@ -27,7 +27,7 @@ export type AppShellProps = {
   tools:PdfHostTool[];canText?:boolean;canAsset?:boolean;canP1?:boolean;
   style?:P1Style;onStyle?:(value:P1Style)=>void;
   p2Panel?:ReactNode;p3Panel?:ReactNode;p3?:P3Availability;
-  saveNotes?:string[];canP2?:boolean;canFill?:boolean;canAttachment?:boolean;
+  saveNotes?:string[];canComment?:boolean;commentsPanel?:ReactNode;commentsSignal?:number;canP2?:boolean;canFill?:boolean;canAttachment?:boolean;
   adapter:TpdfPdfAdapter; meta:PdfTileMeta|null; pdf:PDFDocumentProxy|null;
   openDocuments?:PdfOpenDocument[];activeDocumentId?:string;
   onOpenDocument?:(id:string)=>void;onCloseDocument?:(id:string)=>void;
@@ -44,7 +44,7 @@ export function AppShell(p:AppShellProps){
   const [mode,setMode]=useState<MobilePdfMode>("view");
   const [sheet,setSheet]=useState(false),[quick,setQuick]=useState<"file"|"view"|null>(null),[search,setSearch]=useState(false);
   const [pages,setPages]=useState(false),[navigation,setNavigation]=useState(false);
-  const [styleOpen,setStyleOpen]=useState(false),[commentNotice,setCommentNotice]=useState(false);
+  const [styleOpen,setStyleOpen]=useState(false),[commentNotice,setCommentNotice]=useState(false),[commentsOpen,setCommentsOpen]=useState(false);
   const [statusVisible,setStatusVisible]=useState(false),[barsHidden,setBarsHidden]=useState(false);
   const lastTop=useRef(0);
   const root=useRef<HTMLDivElement>(null),idle=useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -78,7 +78,9 @@ export function AppShell(p:AppShellProps){
   },[search]);
   const showSearch=()=>{setSearch(true);setCommentNotice(false);};
   const showPages=()=>setPages(true);
+  useEffect(()=>{if(p.commentsSignal)setCommentsOpen(true);},[p.commentsSignal]);
   const showComments=()=>{
+    if(p.commentsPanel){setCommentsOpen(value=>!value);return;}
     const tool=p.tools.find(item=>item.group.toLowerCase()==="comments");
     if(tool)void Promise.resolve().then(()=>tool.run({page:p.page,
       selection:p.selection||undefined})).catch(p.onToolError);
@@ -128,6 +130,11 @@ export function AppShell(p:AppShellProps){
           Page {hit.page}: {hit.snippet.slice(0,100)}</button>)}
       </div>}
     </div>}
+    {commentsOpen&&p.commentsPanel&&<div className="tpdf-app-sheet-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setCommentsOpen(false);}}>
+      <section className="tpdf-app-sheet" role="dialog" aria-modal="true" aria-label="Comments">
+        <header className="tpdf-app-sheet-title"><div><strong>Comments</strong></div>
+          <button type="button" aria-label="Close comments" onClick={()=>setCommentsOpen(false)}>×</button></header>
+        <div className="tpdf-app-sheet-list">{p.commentsPanel}</div></section></div>}
     {commentNotice&&<div className="tpdf-app-notice" role="status">
       Comments: Coming soon — host has not enabled P4.</div>}
     {styleOpen&&p.style&&p.onStyle&&<div className="tpdf-app-p1-style">

@@ -337,3 +337,19 @@
 .tpdf-editor .tpdf-p3-panel-body{flex:1 1 auto;min-height:0;overflow:auto}
 .tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p3-panel-body{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch}
 .tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p3-panel-body>*{flex:0 0 auto}
+.tpdf-comment-pin{position:absolute;z-index:5;transform:translate(-50%,-100%);width:26px;height:26px;border-radius:13px 13px 13px 2px;border:2px solid #fff;background:#f59e0b;color:#1f1300;font:700 12px/1 system-ui;display:grid;place-items:center;padding:0;box-shadow:0 1px 4px #0006;pointer-events:auto;cursor:pointer}
+.tpdf-comment-pin.is-resolved{background:#94a3b8;color:#fff}.tpdf-comment-pin.is-unsaved{border-style:dashed}.tpdf-comment-pin.is-selected{outline:3px solid #2563eb}
+.tpdf-comments{display:flex;flex-direction:column;gap:10px;font:13px/1.4 system-ui}
+.tpdf-comments-filters{display:flex;gap:6px;flex-wrap:wrap}.tpdf-comments-filters select,.tpdf-comments-filters button{min-height:36px}
+.tpdf-comments-empty,.tpdf-comments-note{margin:4px 0;color:var(--tpdf-muted,#596473)}.tpdf-comments-error{color:#b32229;margin:4px 0}
+.tpdf-comment{border:1px solid var(--tpdf-border,#d9dde5);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.tpdf-comment.is-selected{border-color:#2563eb;box-shadow:0 0 0 2px #2563eb33}.tpdf-comment.is-resolved{opacity:.75}
+.tpdf-comment-head{display:flex;align-items:center;gap:8px;border:0;background:none;padding:0;text-align:left;font-weight:600;color:inherit;min-height:32px}
+.tpdf-comment-badge{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:11px;background:#f59e0b;color:#1f1300;font-size:12px}
+.tpdf-comment-head em{font-style:normal;color:#64748b;font-weight:400}
+.tpdf-comment-meta{display:flex;gap:8px;flex-wrap:wrap;color:var(--tpdf-muted,#596473)}.tpdf-comment-meta strong{color:inherit}
+.tpdf-comment-text{margin:2px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.tpdf-comment-reply{margin-left:14px;border-left:2px solid var(--tpdf-border,#d9dde5);padding-left:8px}
+.tpdf-comment-actions,.tpdf-comment-foot{display:flex;gap:6px;flex-wrap:wrap}.tpdf-comment-foot form{display:flex;gap:6px;flex:1 1 180px}.tpdf-comment-foot input{flex:1;min-width:0;min-height:36px}
+.tpdf-comment-edit{display:flex;gap:6px;flex-wrap:wrap}.tpdf-comment-edit textarea{flex:1 1 100%;min-height:60px}
+.tpdf-comments button{min-height:34px}

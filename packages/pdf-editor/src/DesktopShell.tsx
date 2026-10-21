@@ -21,6 +21,7 @@ export function DesktopShell(p:DesktopShellProps) {
   const [inspectorOpen,setInspectorOpen]=useState(p.layout==="desktop");
   const [sidebarTab,setSidebarTab]=useState<SidebarTab>("pages");
   const [sidebarWidth,setSidebarWidth]=useState(220);
+  useEffect(()=>{if(p.commentsSignal){setSidebarOpen(true);setSidebarTab("comments");}},[p.commentsSignal]);
   const [ribbonCompact,setRibbonCompact]=useState(p.layout==="tablet");
   const resizing=useRef(false);
   const shell=useRef<HTMLDivElement>(null);
@@ -71,7 +72,7 @@ export function DesktopShell(p:DesktopShellProps) {
             tiles={p.adapter.tiles} meta={p.meta} pdf={p.pdf}
             bookmarks={bookmarks} results={p.results} query={p.query}
             onQuery={p.onSearchQuery} onSearch={p.onSearch}
-            tools={p.tools} onToolError={p.onToolError}/>
+            commentsPanel={p.commentsPanel} tools={p.tools} onToolError={p.onToolError}/>
         </div>
         <div className="tpdf-desktop-resizer" role="separator"
           tabIndex={0} aria-orientation="vertical" aria-label="Resize sidebar"

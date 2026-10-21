@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { TileGrid } from "./TileGrid.js";
 import type { PdfTileMeta, PdfTileAdapter, PdfSearchHit, PdfHostTool } from "./types.js";
@@ -10,7 +10,7 @@ export function DesktopSidebar(p: {
   onGoto:(page:number)=>void; tiles?:PdfTileAdapter; meta?:PdfTileMeta|null;
   pdf?:PDFDocumentProxy|null; bookmarks:PdfBookmark[];
   results:PdfSearchHit[]; query:string; onQuery:(value:string)=>void;
-  onSearch:()=>void; tools:PdfHostTool[]; onToolError:(error:unknown)=>void;
+  onSearch:()=>void; commentsPanel?:ReactNode; tools:PdfHostTool[]; onToolError:(error:unknown)=>void;
 }) {
   const [node,setNode]=useState<HTMLDivElement|null>(null);
   const comments=p.tools.filter(tool=>tool.group.toLowerCase().includes("comment"));
@@ -53,7 +53,8 @@ export function DesktopSidebar(p: {
             <strong>Page {hit.page}</strong> {hit.snippet}</button>)}
         </div>
       </div>}
-      {p.tab==="comments" && (comments.length ? comments.map(item=>
+      {p.tab==="comments" && p.commentsPanel}
+      {p.tab==="comments" && !p.commentsPanel && (comments.length ? comments.map(item=>
         <button key={item.id} className="tpdf-desktop-nav-result"
           type="button" onClick={()=>Promise.resolve(
             item.run({page:p.current})).catch(p.onToolError)}>{item.label}</button>)

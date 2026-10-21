@@ -3,6 +3,7 @@ import type { PointerEvent } from "react";
 import { TextLayer, type PDFDocumentProxy } from "pdfjs-dist";
 import { normalizeRegion } from "./history.js";
 import type { Mark } from "./history.js";
+import { CommentPins } from "./CommentPins.js";
 import { InlineTextEditor } from "./InlineTextEditor.js";
 import { LiveDraft, useLiveDraft } from "./LiveDraft.js";
 import { LegacyMarkPreview } from "./LegacyMarkPreview.js";
@@ -90,6 +91,7 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
       (end[0] < 99.7 ? end[0] + 0.3 : end[0] - 0.3) : end[0];
     const y = linear && Math.abs(state.start[1] - end[1]) < 0.2 ?
       (end[1] < 99.7 ? end[1] + 0.3 : end[1] - 0.3) : end[1];
+    if (tool === "comment") { onRegion({ page: number, x: end[0], y: end[1], width: 0, height: 0, note: "" }); return; }
     const region = normalizeRegion(number, ...state.start, x, y);
     if (!region) return;
     onRegion(region, ["draw","inkHighlight","polygon","polyline","line","arrow","callout",
@@ -113,6 +115,7 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
         <LegacyMarkPreview key={i} mark={mark}/>)}
       <LiveDraft draft={live.draft}/>
       <InlineTextEditor page={number}/>
+      <CommentPins page={number}/>
       <P2PlacementOverlay changes={p2Changes} page={number}/>
       <P3PendingOverlay changes={p3Changes} page={number} width={size.width} height={size.height}/>
     {highlight?.page === number && <div className="tpdf-mark tpdf-mark-region" style={{

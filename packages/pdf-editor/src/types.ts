@@ -1,3 +1,4 @@
+import type { CommentCapabilities, PdfComment } from "./p4Types.js";
 import type { ReactNode } from "react";
 import type { P1Asset, P1Quad, P1Tool } from "./p1Types.js";
 import type { P2FieldInventory, P2FormCapabilities } from "./p2Types.js";
@@ -32,13 +33,16 @@ export interface TpdfPdfAdapter {
   listFormFields?(): Promise<P2FieldInventory>;
   selectAttachment?(): Promise<{ assetId: string; size?: number } | null>;
   p3Capabilities?: P3Capabilities;
+  /** Comments stored as PDF note annotations; without listComments the Comments panel says the host must support them. */
+  listComments?(): Promise<{ versionId: string; comments: PdfComment[] }>;
+  commentCapabilities?: CommentCapabilities;
   listPageCalibrations?(): Promise<P3CalibrationInventory>;
   countTextMatches?(query: { search:string; caseSensitive?:boolean; scope:P3Scope }): Promise<P3MatchCount>;
   /** Optional host bookmarks for tilesOnly (never loads PDF.js in that mode). */
   listBookmarks?(): Promise<Array<{ title:string; page:number }>>;
 }
 export type PdfTool = "region" | "highlight" | "note" | "draw" | "cover" | "signature" | P1Tool | "textField" | "checkbox" | "radio" | "dropdown" | "listBox" |
-  "fill" | "link" | "attachment" | P3Tool;
+  "fill" | "link" | "attachment" | "comment" | P3Tool;
 export type PdfAssets = { pdfiumWasmUrl?: string; workerUrl: string };
 export type PdfEditorMessages = Partial<Record<
   "save" | "search" | "pages" | "fit" | "undo" | "redo" | "open" | "loading" | "error" |
