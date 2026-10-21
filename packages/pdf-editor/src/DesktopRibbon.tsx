@@ -23,24 +23,27 @@ export function DesktopRibbon(p:AppShellProps & {
   }
   return <div className="tpdf-desktop-ribbon" data-testid="desktop-ribbon">
     <div className="tpdf-desktop-quickbar" role="toolbar" aria-label="PDF view controls">
-      <button type="button" aria-label="Toggle sidebar" onClick={p.onToggleSidebar}>
-        <AppShellIcon name="pages" size={18}/><span>Sidebar</span></button>
-      <span className="tpdf-desktop-zoom-badge">{Math.round(p.zoom*100)}%</span>
-      <button type="button" onClick={()=>p.onBuiltin("pan")} aria-label="Pan">
-        <AppShellIcon name="eye" size={18}/> Pan</button>
-      <button type="button" onClick={()=>p.onTool("region")} aria-label="Select">
-        <AppShellIcon name="pen" size={18}/> Select</button>
-      <button type="button" aria-label="Search" onClick={p.onSearchPanel}>
-        <AppShellIcon name="search" size={18}/> Search</button>
-      <button type="button" aria-label="Comments" onClick={p.onComments}>
-        <AppShellIcon name="comments" size={18}/> Comments</button>
+      <button type="button" aria-label="Toggle sidebar" title="Sidebar" onClick={p.onToggleSidebar}>
+        <AppShellIcon name="sidebar" size={19}/></button>
+      <span className="tpdf-desktop-zoom-badge" title="Zoom">{Math.round(p.zoom*100)}%</span>
+      <span className="tpdf-desktop-quick-divider" aria-hidden="true"/>
+      <button type="button" onClick={()=>p.onBuiltin("pan")} aria-label="Pan" title="Pan">
+        <AppShellIcon name="pan" size={19}/></button>
+      <button type="button" onClick={()=>p.onTool("region")} aria-label="Select" title="Select">
+        <AppShellIcon name="pointer" size={19}/></button>
+      <span className="tpdf-desktop-quick-divider" aria-hidden="true"/>
+      <button type="button" aria-label="Search" title="Search" onClick={p.onSearchPanel}>
+        <AppShellIcon name="search" size={19}/></button>
+      <button type="button" aria-label="Comments" title="Comments" onClick={p.onComments}>
+        <AppShellIcon name="comments" size={19}/></button>
       <span className="tpdf-desktop-toolbar-spacer"/>
-      <button type="button" disabled={!p.undoEnabled} onClick={p.onUndo}>
-        <AppShellIcon name="undo" size={16}/> Undo</button>
-      <button type="button" disabled={!p.redoEnabled} onClick={p.onRedo}>
-        <AppShellIcon name="redo" size={16}/> Redo</button>
-      <button type="button" aria-label="Save version" disabled={!p.canSave||p.busy}
-        onClick={p.onSave}><AppShellIcon name="save" size={16}/> Save</button>
+      <button type="button" aria-label="Undo" title="Undo" disabled={!p.undoEnabled} onClick={p.onUndo}>
+        <AppShellIcon name="undo" size={19}/></button>
+      <button type="button" aria-label="Redo" title="Redo" disabled={!p.redoEnabled} onClick={p.onRedo}>
+        <AppShellIcon name="redo" size={19}/></button>
+      <button type="button" aria-label="Save version" title="Save" className="tpdf-desktop-quick-save"
+        disabled={!p.canSave||p.busy} onClick={p.onSave}>
+        <AppShellIcon name="save" size={19}/><span>Save</span></button>
     </div>
     <nav className="tpdf-desktop-ribbon-tabs" role="tablist" aria-label="PDF ribbon">
       {MOBILE_PDF_GROUPS.map(group=><button role="tab" type="button"

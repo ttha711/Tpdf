@@ -315,3 +315,11 @@
 .tpdf-app-shell[data-compact] .tpdf-mobile-nav-sheet,.tpdf-app-shell[data-compact]>.tpdf-mobile-filmstrip{bottom:0;padding-bottom:env(safe-area-inset-bottom,0px);z-index:45}
 .tpdf-mobile-nav-sheet .tpdf-mobile-filmstrip-header strong,.tpdf-mobile-nav-sheet .tpdf-mobile-filmstrip-header button[aria-label="Close page previews"]{display:none}
 .tpdf-mobile-nav-sheet .tpdf-mobile-filmstrip-header{justify-content:flex-end}
+/* Desktop command bar: quiet icon buttons like the web app, no bordered text buttons */
+.tpdf-desktop-quickbar{gap:2px;min-height:40px;padding:3px 10px}
+.tpdf-editor .tpdf-desktop-quickbar button{width:34px;height:34px;min-height:34px;padding:0;justify-content:center;border:0;border-radius:8px;color:var(--tpdf-fg,#16233c)}
+.tpdf-editor .tpdf-desktop-quickbar button:hover:not(:disabled){background:var(--tpdf-input,#eef2f8)}
+.tpdf-editor .tpdf-desktop-quickbar button:disabled{opacity:.4}
+.tpdf-desktop-zoom-badge{border:0!important;min-width:44px;font-size:13px!important;font-weight:600;color:var(--tpdf-muted,#596473)}
+.tpdf-desktop-quick-divider{flex:0 0 1px;height:20px;margin:0 6px;background:var(--tpdf-border,#ccd6e3)}
+.tpdf-editor .tpdf-desktop-quickbar .tpdf-desktop-quick-save{width:auto;padding:0 12px;gap:6px;font-weight:600;font-size:13px;background:var(--tpdf-input,#eef2f8)}
