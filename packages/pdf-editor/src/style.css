@@ -353,3 +353,13 @@
 .tpdf-comment-actions,.tpdf-comment-foot{display:flex;gap:6px;flex-wrap:wrap}.tpdf-comment-foot form{display:flex;gap:6px;flex:1 1 180px}.tpdf-comment-foot input{flex:1;min-width:0;min-height:36px}
 .tpdf-comment-edit{display:flex;gap:6px;flex-wrap:wrap}.tpdf-comment-edit textarea{flex:1 1 100%;min-height:60px}
 .tpdf-comments button{min-height:34px}
+.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p2-panel{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:6px}
+.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p2-panel>*{flex:0 0 auto;min-width:0;max-width:100%;white-space:normal}
+.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p2-panel label{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center;gap:8px;min-height:0}
+.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p2-panel label input:not([type=checkbox]),.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p2-panel label select,.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p2-panel textarea{width:100%;max-width:none}
+.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p2-panel label:has(>input[type=checkbox]:first-child){grid-template-columns:20px minmax(0,1fr)}
+.tpdf-vertex-dot{position:absolute;z-index:4;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:5px;background:#fff;border:2px solid #1d4ed8;pointer-events:none}
+.tpdf-vertex-actions{position:absolute;z-index:7;display:flex;gap:4px;transform:translate(10px,10px);pointer-events:auto}
+.tpdf-vertex-actions button{min-height:34px;padding:4px 10px;border-radius:8px;border:1px solid #1d4ed8;background:#fff;color:#1d4ed8;font:600 13px system-ui}
+.tpdf-vertex-actions button:disabled{opacity:.5}
+.tpdf-editor .tpdf-p2-panel input[type=checkbox]{min-height:0;min-width:0;padding:0}

@@ -5,7 +5,7 @@ import { normalizeRegion } from "./history.js";
 import type { Mark } from "./history.js";
 import { CommentPins } from "./CommentPins.js";
 import { InlineTextEditor } from "./InlineTextEditor.js";
-import { LiveDraft, useLiveDraft } from "./LiveDraft.js";
+import { LiveDraft, VERTEX_TOOLS, VertexDraft, useLiveDraft } from "./LiveDraft.js";
 import { LegacyMarkPreview } from "./LegacyMarkPreview.js";
 import { P1MarkPreview } from "./P1MarkPreview.js";
 import { P2PlacementOverlay } from "./P2PlacementOverlay.js";
@@ -20,7 +20,7 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
   onRegion: (value: PdfRegion, points?: Array<[number, number]>) => void; readOnly: boolean;
   assetUrl?: (id: string) => string; p2Changes?: P2Change[]; p3Changes?:P3Change[]; pan?:boolean;
 }) {
-  const live = useLiveDraft();
+  const live = useLiveDraft(tool);
   const element = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const textLayer = useRef<HTMLDivElement>(null);
@@ -80,6 +80,13 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
       Math.max(0, Math.min(100, (e.clientY - rect.top) * 100 / rect.height)),
     ];
   }
+  const finishShape = () => {
+    const points = live.vertices;
+    const xs = points.map((p) => p[0]), ys = points.map((p) => p[1]);
+    const region = normalizeRegion(number, Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys));
+    live.resetVertices();
+    if (region) onRegion(region, points);
+  };
   function finish(e: PointerEvent<HTMLDivElement>) {
     const state = gesture.current;
     gesture.current = null;
@@ -91,6 +98,8 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
       (end[0] < 99.7 ? end[0] + 0.3 : end[0] - 0.3) : end[0];
     const y = linear && Math.abs(state.start[1] - end[1]) < 0.2 ?
       (end[1] < 99.7 ? end[1] + 0.3 : end[1] - 0.3) : end[1];
+    if (VERTEX_TOOLS.includes(tool) && Math.hypot(end[0] - state.start[0], end[1] - state.start[1]) < 1.5) { live.tap(end); return; }
+    live.resetVertices();
     if (tool === "comment") { onRegion({ page: number, x: end[0], y: end[1], width: 0, height: 0, note: "" }); return; }
     const region = normalizeRegion(number, ...state.start, x, y);
     if (!region) return;
@@ -114,6 +123,7 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
         mark.schemaVersion === 1 ? <P1MarkPreview key={i} mark={mark} assetUrl={assetUrl}/> :
         <LegacyMarkPreview key={i} mark={mark}/>)}
       <LiveDraft draft={live.draft}/>
+      <VertexDraft tool={tool} vertices={live.vertices} onFinish={finishShape} onCancel={live.resetVertices}/>
       <InlineTextEditor page={number}/>
       <CommentPins page={number}/>
       <P2PlacementOverlay changes={p2Changes} page={number}/>
