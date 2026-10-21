@@ -272,3 +272,22 @@
 /* Port the white/neutral idle chip treatment from apps/web/styles/mobile-ergonomics.css. */
 .tpdf-mobile-dock-status{min-height:34px;gap:4px;padding:2px 7px;border:1px solid var(--tpdf-border,#ccd6e3);border-radius:10px;background:var(--tpdf-panel,#fff);color:var(--tpdf-fg,#16233c);font-size:11px;box-shadow:0 2px 10px #0003}
 .tpdf-editor .tpdf-mobile-dock-status button{min-height:28px;padding:4px 6px;color:var(--tpdf-fg,#16233c);background:transparent;border:none;font-weight:600}
+/* Phone shell: as compact as the Tpdf web app (about 146px of chrome above the page, 56px dock) */
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-mobile-app-header{flex-basis:46px;height:46px;padding:2px 6px}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-mobile-app-header>button{min-width:40px;min-height:40px}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-mobile-app-header>.tpdf-mobile-tab-count{min-width:32px;width:32px;height:32px;min-height:32px;font-size:14px}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-app-file strong{font-size:14px;line-height:19px}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-app-file small{font-size:11px;line-height:14px}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-mobile-chrome-actions{flex-basis:40px;min-height:40px}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-mobile-chrome-actions button{min-height:40px;min-width:40px}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-app-tabs{flex-basis:42px}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-app-tabs button{min-height:36px;font-size:13px}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-app-tabs .tpdf-app-tab-all{min-height:34px;margin:3px 5px 3px 2px}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-app-group-tools{flex-basis:50px;min-height:50px;padding:2px 6px;gap:2px;scrollbar-width:none}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-app-group-tools .tpdf-web-tool{min-height:44px;min-width:58px;gap:1px;padding:2px 5px;font-size:10px}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-app-dock{height:50px;padding:2px 4px max(2px,env(safe-area-inset-bottom))}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-app-dock button{height:48px;min-height:44px;gap:1px;font-size:11px;padding:2px 1px}
+.tpdf-app-quick-list{display:flex;flex-direction:column}
+.tpdf-editor .tpdf-app-quick-list button{display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:0 6px;border:0;border-bottom:1px solid var(--tpdf-border,#e3e8ef);background:transparent;font-size:15px;text-align:left}
+.tpdf-editor .tpdf-app-quick-list button:disabled{opacity:.6}
+.tpdf-app-quick-list small{font-size:11px;color:#64748b}

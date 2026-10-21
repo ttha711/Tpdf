@@ -46,7 +46,7 @@ export function TileViewer({ tiles, meta, zoom, parent, selected, onRegion, onPa
     return () => { observer.disconnect(); parent.removeEventListener("scroll", sync); };
   }, [parent]);
   useEffect(() => {
-    const mid = view.top + view.height / 2;
+    const mid = view.top + Math.min(view.height / 2, 120);
     let nearest = 0;
     let min = Infinity;
     boxes.forEach((box, i) => {

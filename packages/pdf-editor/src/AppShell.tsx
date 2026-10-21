@@ -7,6 +7,7 @@ import { P3SaveToast } from "./P3SaveToast.js";
 import { MobileAppHeader } from "./MobileAppHeader.js";
 import { MobileToolStrip } from "./MobileToolStrip.js";
 import { MobileToolsSheet } from "./MobileToolsSheet.js";
+import { MobileQuickSheet } from "./MobileQuickSheets.js";
 import { MobilePageFilmstrip } from "./MobilePageFilmstrip.js";
 import { MobileNavigationSheet } from "./MobileNavigationSheet.js";
 import { MOBILE_PDF_GROUPS, type MobilePdfMode } from "./mobilePdfToolCatalog.js";
@@ -40,7 +41,7 @@ export type AppShellProps = {
 };
 export function AppShell(p:AppShellProps){
   const [mode,setMode]=useState<MobilePdfMode>("view");
-  const [sheet,setSheet]=useState(false),[search,setSearch]=useState(false);
+  const [sheet,setSheet]=useState(false),[quick,setQuick]=useState<"file"|"view"|null>(null),[search,setSearch]=useState(false);
   const [pages,setPages]=useState(false),[navigation,setNavigation]=useState(false);
   const [styleOpen,setStyleOpen]=useState(false),[commentNotice,setCommentNotice]=useState(false);
   const [statusVisible,setStatusVisible]=useState(false);
@@ -87,12 +88,12 @@ export function AppShell(p:AppShellProps){
     <div className="tpdf-mobile-chrome-actions" role="toolbar"
       aria-label="PDF navigation actions">
       <div className="tpdf-chrome-group">
-        <button type="button" aria-label="PDF menu" onClick={()=>setSheet(true)}>
+        <button type="button" aria-label="PDF menu" onClick={()=>setQuick("file")}>
           <AppShellIcon name="menu"/></button>
         <span className="tpdf-chrome-divider" aria-hidden="true"/>
         <button type="button" aria-label="Pages and outline" onClick={()=>setNavigation(true)}>
           <AppShellIcon name="sidebar"/></button>
-        <button type="button" aria-label="More PDF tools" onClick={()=>setSheet(true)}>
+        <button type="button" aria-label="View menu" onClick={()=>setQuick("view")}>
           <AppShellIcon name="more"/></button>
       </div>
       <div className="tpdf-chrome-group">
@@ -157,6 +158,7 @@ export function AppShell(p:AppShellProps){
       onGoto={p.onGoto} onClose={()=>setNavigation(false)}
       tiles={p.adapter?.tiles} meta={p.meta} pdf={p.pdf}
       listBookmarks={p.adapter?.listBookmarks}/>}
+    {quick&&<MobileQuickSheet kind={quick} shell={p} actions={actions} onClose={()=>setQuick(null)}/>}
     {sheet&&<MobileToolsSheet shell={p} actions={actions}
       onMode={setMode} onClose={()=>setSheet(false)}/>}
     <P3SaveToast notes={p.saveNotes||[]}/>

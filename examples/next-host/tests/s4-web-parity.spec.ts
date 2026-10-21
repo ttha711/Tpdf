@@ -166,3 +166,21 @@ test("Tpdf desktop ribbons preserve seven source tool groups and host-only group
   await expect(page.getByRole("toolbar",{name:"annotate commands"})
     .getByRole("button",{name:"Underline"})).toHaveAttribute("aria-pressed","true");
 });
+
+test("Tpdf chrome row: menu is the File menu, three dots is the View menu, neither opens All tools",async({page})=>{
+  await open(page);
+  const row=page.getByRole("toolbar",{name:"PDF navigation actions"});
+  const order=await row.locator("button").evaluateAll(nodes=>nodes.map(node=>node.getAttribute("aria-label")));
+  expect(order).toEqual(["PDF menu","Pages and outline","View menu","Search","Comments"]);
+  await row.getByRole("button",{name:"PDF menu"}).click();
+  const file=page.getByRole("dialog",{name:"File menu"});
+  await expect(file.locator("button span")).toHaveText(["Open","Close","Print","Security","Screenshot","Export","Save PDF","Fullscreen"]);
+  await expect(page.getByRole("dialog",{name:"All tools"})).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await row.getByRole("button",{name:"View menu"}).click();
+  const view=page.getByRole("dialog",{name:"View menu"});
+  await expect(view.getByRole("button",{name:"Fit width"})).toBeVisible();
+  await expect(view.getByRole("button",{name:"Zoom in"})).toBeVisible();
+  await view.getByRole("button",{name:"Zoom in"}).click();
+  await expect(view).toHaveCount(0);
+});
