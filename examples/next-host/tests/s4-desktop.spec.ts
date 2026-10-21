@@ -121,3 +121,21 @@ test("S4 sidebar resize via keyboard and toolbar keys do not scroll host page",a
   await page.keyboard.press("PageDown");
   await expect(page.getByRole("spinbutton",{name:"Go to page"})).toHaveValue("2");
 });
+
+test("S4 ResizeObserver switches desktop → mobile → tablet → desktop without losing tiles",async({page})=>{
+  await page.setViewportSize({width:1280,height:800});
+  await page.goto(url);
+  await ready(page,"desktop");
+  const container=page.getByTestId("editor-container");
+  await container.evaluate(node=>(node as HTMLElement).style.width="600px");
+  await ready(page,"mobile");
+  await expect(page.locator(".tpdf-app-dock")).toBeVisible();
+  await container.evaluate(node=>(node as HTMLElement).style.width="780px");
+  await ready(page,"tablet");
+  await expect(page.getByTestId("desktop-ribbon")).toBeVisible();
+  await container.evaluate(node=>(node as HTMLElement).style.width="1100px");
+  await ready(page,"desktop");
+  await expect(page.getByTestId("desktop-sidebar")).toBeVisible();
+  const width=await page.locator(".tpdf-editor").evaluate(node=>node.getBoundingClientRect().width);
+  expect(width).toBeGreaterThanOrEqual(1024);
+});
