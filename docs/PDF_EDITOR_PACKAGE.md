@@ -60,6 +60,10 @@ for the complete historical commands, packaging, verification and limitations.
 
 See [PDF_EDITOR_TILE_VIEWER.md](./PDF_EDITOR_TILE_VIEWER.md) for the tile geometry and cache contract.
 
+## P4 Comments — docs only
+
+See [P4 Comments contract](./PDF_EDITOR_P4_COMMENTS_CONTRACT.md) for schema, permissions and capabilities.
+
 ## S3 mobile app shell
 
 See [PDF_EDITOR_MOBILE_SHELL.md](./PDF_EDITOR_MOBILE_SHELL.md) for the optional app shell, host tools, tilesOnly, remote applyChanges, examples, and screenshot test instructions.
@@ -130,15 +134,10 @@ outside WinAnsi (such as “ễ”, “ạ”) are rendered with DejaVu into the
 page content **instead of** `/FreeText`. Both use the same P1 text payload;
 callers must not assume that every text mark remains an editable annotation.
 
-**S3/P1 UI follow-ups, not part of this documentation-only change:**
-after `resolveTextQuads` completes and Underline/Strikeout/Squiggly renders,
-clear the transient red region-selection rectangle. When a tool is picked from
-the Tools sheet, synchronize the mode selector/tab to that tool's group
-(Underline → Annotate; do not leave “Shapes” selected).
+**P1 viewer:** selected tool and group stay synchronized; transient
+selection clears after the resulting mark appears.
 
-P2 Form/Link/Attachment and P3 Measure/Redact/Replace text are
-**displayed but disabled** with “Sắp có” / “Coming soon”. A proposed
-P2 format follows below; P3 does not have a wire contract yet.
+P1, P2a and P3 contracts follow; P4 UI is not implemented.
 
 ## P2a accepted — Form Create / Fill / Link / Attachment (schemaVersion 1)
 
