@@ -144,3 +144,25 @@ test("360i optional openDocuments supports opening and closing distinct host fil
   await overview.getByRole("button",{name:"Open Floor-B.pdf"}).click();
   await expect(header.getByRole("button",{name:"Open tabs overview (1 tabs)"})).toBeVisible();
 });
+
+test("Tpdf desktop ribbons preserve seven source tool groups and host-only groups",async({page})=>{
+  await page.setViewportSize({width:1280,height:800});
+  await page.goto(base);
+  await expect(page.getByTestId("desktop-ribbon")).toBeVisible({timeout:30000});
+  const tabs=await page.getByRole("tablist",{name:"PDF ribbon"}).getByRole("tab")
+    .evaluateAll(nodes=>nodes.map(node=>node.textContent?.trim()));
+  expect(tabs).toEqual(["View","Annotate","Shapes","Insert","Form","Redact",
+    "Measure","Pages","Mark up","Protect","Convert","All tools"]);
+  for(const [group,labels] of Object.entries(catalog)){
+    await page.getByRole("tab",{name:group,exact:true}).click();
+    const toolbar=page.getByRole("toolbar",{name:group.toLowerCase()+" commands"});
+    const names=await toolbar.locator("button").evaluateAll(nodes=>
+      nodes.map(node=>node.getAttribute("aria-label")||node.textContent?.trim()));
+    expect(names).toEqual(labels);
+  }
+  await page.getByRole("tab",{name:"Annotate"}).click();
+  await page.getByRole("toolbar",{name:"annotate commands"})
+    .getByRole("button",{name:"Underline"}).click();
+  await expect(page.getByRole("toolbar",{name:"annotate commands"})
+    .getByRole("button",{name:"Underline"})).toHaveAttribute("aria-pressed","true");
+});
