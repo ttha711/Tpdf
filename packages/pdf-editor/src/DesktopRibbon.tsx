@@ -27,7 +27,7 @@ export function DesktopRibbon(p:AppShellProps & {
     <header className="tpdf-desktop-ribbon-head">
       <div className="tpdf-desktop-title" title={p.name}>
         <strong>{p.name}</strong>
-        <span data-testid="shell-save-status">{p.busy?words.loading:
+        <span data-testid="shell-save-status">{p.busy?"Saving…":
           p.dirty?words.unsaved:words.saved}</span></div>
       <div className="tpdf-desktop-quick">
         <button type="button" aria-label="Undo" disabled={!p.undoEnabled}
