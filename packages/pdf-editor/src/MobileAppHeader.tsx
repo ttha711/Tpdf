@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AppShellIcon } from "./AppShellIcon.js";
 import { TileGrid } from "./TileGrid.js";
 import type { PdfOpenDocument, PdfTileAdapter, PdfTileMeta } from "./types.js";
@@ -9,6 +9,8 @@ export function MobileAppHeader(p:{
   name:string;page:number;total:number;busy:boolean;dirty:boolean;
   currentId?:string;documents?:PdfOpenDocument[];
   tiles?:PdfTileAdapter;meta?:PdfTileMeta|null;actions:Actions;
+  /** One-row mode for hosts with their own header: slots at both ends, the chrome buttons inline, no Home/app menu, tab count only with several documents. */
+  compact?:{start?:ReactNode;end?:ReactNode;left:ReactNode;right:ReactNode};
 }) {
   const [overview,setOverview]=useState(false),[menu,setMenu]=useState(false);
   const docs=p.documents??[{id:"current",name:p.name,
@@ -20,18 +22,21 @@ export function MobileAppHeader(p:{
     window.addEventListener("keydown",close);
     return()=>window.removeEventListener("keydown",close);
   },[overview,menu]);
-  return <header className="tpdf-mobile-app-header" data-testid="mobile-app-header">
+  const count=<button type="button" aria-label={`Open tabs overview (${docs.length} tabs)`}
+      className="tpdf-mobile-tab-count" onClick={()=>setOverview(true)}>{docs.length}</button>;
+  const file=<div className="tpdf-app-file" title={p.name}>
+      <strong>{p.name}</strong>
+      <small data-testid="shell-save-status">{p.busy?"Saving…":p.dirty?"Unsaved":"Saved"}</small>
+    </div>;
+  return <header className={"tpdf-mobile-app-header"+(p.compact?" tpdf-mobile-top-compact":"")}
+    data-testid="mobile-app-header">
+    {p.compact?<>{p.compact.start}{p.compact.left}{docs.length>1&&count}{file}{p.compact.right}{p.compact.end}</>:<>
     {p.actions.showHome&&<button type="button" aria-label="Go to Home"
       disabled={!p.actions.home} onClick={p.actions.home}>
       <AppShellIcon name="file"/></button>}
     <button type="button" aria-label="Application menu" aria-expanded={menu}
       onClick={()=>setMenu(value=>!value)}><AppShellIcon name="more"/></button>
-    <button type="button" aria-label={`Open tabs overview (${docs.length} tabs)`}
-      className="tpdf-mobile-tab-count" onClick={()=>setOverview(true)}>{docs.length}</button>
-    <div className="tpdf-app-file" title={p.name}>
-      <strong>{p.name}</strong>
-      <small data-testid="shell-save-status">{p.busy?"Saving…":p.dirty?"Unsaved":"Saved"}</small>
-    </div>
+    {count}{file}</>}
     {menu&&<div className="tpdf-mobile-menu-popover" role="menu">
       {([["Find",p.actions.onSearch],["Pages",p.actions.onPages],
         ["All PDF tools",p.actions.onTools],["Save PDF",p.actions.onSave]] as const)

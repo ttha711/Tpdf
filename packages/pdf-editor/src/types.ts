@@ -57,6 +57,8 @@ export type TpdfPdfEditorProps = {
   openDocuments?:PdfOpenDocument[];activeDocumentId?:string;
   onOpenDocument?:(id:string)=>void;onCloseDocument?:(id:string)=>void;
   onOpenFile?:()=>void;onHome?:()=>void;showHomeButton?:boolean;
+  /** Phones: put file name, menus, search and comments in one row; the host fills both ends of it (e.g. back and open-on-canvas). */
+  compactTopBar?:boolean;topBarStart?:ReactNode;topBarEnd?:ReactNode;
   tilesOnly?: boolean;
   renderMode?: "auto" | "canvas" | "tiles";
   largeFileBytes?: number;

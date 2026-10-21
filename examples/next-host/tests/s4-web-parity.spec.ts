@@ -184,3 +184,19 @@ test("Tpdf chrome row: menu is the File menu, three dots is the View menu, neith
   await view.getByRole("button",{name:"Zoom in"}).click();
   await expect(view).toHaveCount(0);
 });
+
+test("compactTopBar puts host start/end, menus, file name, search and comments in one row",async({page})=>{
+  await page.setViewportSize({width:375,height:812});
+  await page.goto(base+"&compact=1");
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible({timeout:30000});
+  const header=page.getByTestId("mobile-app-header");
+  const order=await header.locator("button").evaluateAll(nodes=>nodes.map(node=>node.getAttribute("aria-label")));
+  expect(order).toEqual(["Back to host","PDF menu","Pages and outline","View menu","Search","Comments","Open on canvas"]);
+  await expect(header.getByTestId("shell-save-status")).toContainText("Saved");
+  await expect(page.getByRole("toolbar",{name:"PDF navigation actions"})).toHaveCount(0);
+  const box=await header.boundingBox();
+  expect(box!.height).toBeLessThanOrEqual(48);
+  const rows=await header.locator("button").evaluateAll(nodes=>new Set(nodes.map(node=>Math.round(node.getBoundingClientRect().top))).size);
+  expect(rows).toBe(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+});

@@ -230,6 +230,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       openDocuments={props.openDocuments} activeDocumentId={props.activeDocumentId}
       onOpenDocument={props.onOpenDocument} onCloseDocument={props.onCloseDocument}
       onOpenFile={props.onOpenFile} onHome={props.onHome} showHomeButton={props.showHomeButton}
+      compactTopBar={props.compactTopBar} topBarStart={props.topBarStart} topBarEnd={props.topBarEnd}
       onZoom={(value)=>setZoom(value)} onFitWidth={()=>setZoom("fit")} onFitPage={fitPage}
       locale={props.locale || "vi"} text={text}
       name={engine.source?.name || "Document.pdf"} dirty={engine.dirty} busy={engine.busy}

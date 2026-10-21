@@ -32,6 +32,7 @@ export type AppShellProps = {
   openDocuments?:PdfOpenDocument[];activeDocumentId?:string;
   onOpenDocument?:(id:string)=>void;onCloseDocument?:(id:string)=>void;
   onOpenFile?:()=>void;onHome?:()=>void;showHomeButton?:boolean;
+  compactTopBar?:boolean;topBarStart?:ReactNode;topBarEnd?:ReactNode;
   onFitPage:()=>void;
   onTool:(tool:PdfTool)=>void;onNote:(value:string)=>void;
   onSearchQuery:(value:string)=>void;onSearch:()=>void;
@@ -77,17 +78,7 @@ export function AppShell(p:AppShellProps){
   };
   const actions:WebToolCallbacks={showSearch,showPages,showComments,
     showStyle:()=>setStyleOpen(true)};
-  return <div className="tpdf-app-shell" ref={root} data-tpdf-shell="app">
-    <MobileAppHeader name={p.name} page={p.page} total={p.total}
-      busy={p.busy} dirty={p.dirty} documents={p.openDocuments}
-      currentId={p.activeDocumentId} tiles={p.adapter?.tiles} meta={p.meta}
-      actions={{showHome:p.showHomeButton!==false&&Boolean(p.onHome),home:p.onHome,
-        openFile:p.onOpenFile,onOpenDocument:p.onOpenDocument,
-        onCloseDocument:p.onCloseDocument,onSearch:showSearch,
-        onPages:showPages,onTools:()=>setSheet(true),onSave:p.onSave}}/>
-    <div className="tpdf-mobile-chrome-actions" role="toolbar"
-      aria-label="PDF navigation actions">
-      <div className="tpdf-chrome-group">
+  const chromeLeft=<div className="tpdf-chrome-group">
         <button type="button" aria-label="PDF menu" onClick={()=>setQuick("file")}>
           <AppShellIcon name="menu"/></button>
         <span className="tpdf-chrome-divider" aria-hidden="true"/>
@@ -95,14 +86,24 @@ export function AppShell(p:AppShellProps){
           <AppShellIcon name="sidebar"/></button>
         <button type="button" aria-label="View menu" onClick={()=>setQuick("view")}>
           <AppShellIcon name="more"/></button>
-      </div>
-      <div className="tpdf-chrome-group">
+      </div>;
+  const chromeRight=<div className="tpdf-chrome-group">
         <button type="button" aria-label="Search" onClick={showSearch}>
           <AppShellIcon name="search"/></button>
         <button type="button" aria-label="Comments" onClick={showComments}>
           <AppShellIcon name="comments"/></button>
-      </div>
-    </div>
+      </div>;
+  return <div className="tpdf-app-shell" ref={root} data-tpdf-shell="app">
+    <MobileAppHeader name={p.name} page={p.page} total={p.total}
+      busy={p.busy} dirty={p.dirty} documents={p.openDocuments}
+      currentId={p.activeDocumentId} tiles={p.adapter?.tiles} meta={p.meta}
+      compact={p.compactTopBar?{start:p.topBarStart,end:p.topBarEnd,left:chromeLeft,right:chromeRight}:undefined}
+      actions={{showHome:p.showHomeButton!==false&&Boolean(p.onHome),home:p.onHome,
+        openFile:p.onOpenFile,onOpenDocument:p.onOpenDocument,
+        onCloseDocument:p.onCloseDocument,onSearch:showSearch,
+        onPages:showPages,onTools:()=>setSheet(true),onSave:p.onSave}}/>
+    {!p.compactTopBar&&<div className="tpdf-mobile-chrome-actions" role="toolbar"
+      aria-label="PDF navigation actions">{chromeLeft}{chromeRight}</div>}
     <MobileToolStrip mode={mode} setMode={setMode} shell={p}
       actions={actions} openTools={()=>setSheet(true)}/>
     {search&&<div className="tpdf-app-search" data-testid="shell-search">

@@ -296,3 +296,9 @@
 .tpdf-editor[data-tpdf-layout=mobile] .tpdf-mobile-app-header .tpdf-app-file{margin:0 0 0 2px}
 .tpdf-editor[data-tpdf-layout=mobile] .tpdf-mobile-chrome-actions{padding:0 8px;gap:6px}
 .tpdf-editor[data-tpdf-layout=mobile] .tpdf-mobile-app-header>button,.tpdf-editor[data-tpdf-layout=mobile] .tpdf-mobile-chrome-actions button{color:var(--tpdf-fg,#16233c)}
+.tpdf-mobile-top-compact{gap:2px!important;padding:2px 6px!important}
+.tpdf-mobile-top-compact .tpdf-chrome-group{display:flex;align-items:center;gap:0}
+.tpdf-editor .tpdf-mobile-top-compact button{min-width:36px;min-height:40px;display:grid;place-items:center;border:0;background:transparent;padding:2px;color:var(--tpdf-fg,#16233c)}
+.tpdf-editor .tpdf-mobile-top-compact .tpdf-mobile-tab-count{min-width:30px;width:30px;min-height:30px;height:30px;border:1px solid var(--tpdf-border,#ccd6e3)}
+.tpdf-mobile-top-compact .tpdf-chrome-divider{margin:0 2px}
+.tpdf-mobile-top-compact .tpdf-app-file{flex:1 1 auto;margin:0 2px}

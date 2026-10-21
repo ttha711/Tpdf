@@ -17,6 +17,7 @@ export default function PdfOfficePage() {
   const p2Mode = params.get("p2") === "1";
   const p3Mode = params.get("p3") === "1";
   const tabsMode = params.get("tabs") === "1";
+  const compactMode = params.get("compact") === "1";
   const purgeHistory = params.get("purgehistory") === "1";
   const p3Fail = params.get("p3fail") === "1";
   const embedWidth = Math.max(0, Math.min(1400, Number(params.get("embedwidth") || 0)));
@@ -158,6 +159,9 @@ export default function PdfOfficePage() {
           name:id==="doc-a"?"Floor-A.pdf":id==="doc-b"?"Floor-B.pdf":"New-file.pdf",
           page:id==="doc-a"?1:7,pages:100})):undefined}
         activeDocumentId={tabsMode?activeTab:undefined}
+        compactTopBar={compactMode}
+        topBarStart={compactMode?<button type="button" aria-label="Back to host">←</button>:undefined}
+        topBarEnd={compactMode?<button type="button" aria-label="Open on canvas">▦</button>:undefined}
         onOpenDocument={tabsMode?setActiveTab:undefined}
         onCloseDocument={tabsMode?(id)=>{
           setTabIds(before=>before.filter(tab=>tab!==id));
