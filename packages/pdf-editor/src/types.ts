@@ -33,6 +33,8 @@ export interface TpdfPdfAdapter {
   p3Capabilities?: P3Capabilities;
   listPageCalibrations?(): Promise<P3CalibrationInventory>;
   countTextMatches?(query: { search:string; caseSensitive?:boolean; scope:P3Scope }): Promise<P3MatchCount>;
+  /** Optional host bookmarks for tilesOnly (never loads PDF.js in that mode). */
+  listBookmarks?(): Promise<Array<{ title:string; page:number }>>;
 }
 export type PdfTool = "region" | "highlight" | "note" | "draw" | "cover" | "signature" | P1Tool | "textField" | "checkbox" | "radio" | "dropdown" | "listBox" |
   "fill" | "link" | "attachment" | P3Tool;
