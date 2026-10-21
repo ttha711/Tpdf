@@ -250,3 +250,19 @@
 .tpdf-mobile-nav-outline{overflow:auto;flex:1 1 auto;padding:8px 12px}
 .tpdf-mobile-nav-outline button{display:block;width:100%;text-align:left;min-height:44px}
 .tpdf-mobile-nav-outline small{float:right}
+
+/* S4 web desktop toolbar parity: compact document controls above ribbon tabs. */
+.tpdf-desktop-quickbar{display:flex;align-items:center;gap:3px;padding:3px 10px;min-width:0;min-height:39px;background:var(--tpdf-panel,#fff);border-bottom:1px solid var(--tpdf-border,#ccd6e3);overflow-x:auto}
+.tpdf-editor .tpdf-desktop-quickbar button{display:inline-flex;gap:5px;align-items:center;flex:0 0 auto;min-height:32px;padding:4px 8px;white-space:nowrap;font-size:12px;background:transparent}
+.tpdf-desktop-zoom-badge{flex:0 0 auto;min-width:49px;font-size:12px;padding:4px 6px;text-align:center;border:1px solid var(--tpdf-border,#ccd6e3);border-radius:5px}
+.tpdf-desktop-toolbar-spacer{flex:1 1 auto;min-width:3px}
+.tpdf-desktop-ribbon-commands .tpdf-web-tool-strip{min-height:52px;max-width:128px;min-width:68px;flex-direction:column;padding:3px 8px;align-items:center}
+.tpdf-desktop-inspector .tpdf-desktop-quicktools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.tpdf-desktop-quicktools .tpdf-web-tool-grid{width:100%;min-width:0;max-width:none;min-height:57px}
+.tpdf-desktop-info-grid{display:grid;grid-template-columns:46px minmax(0,1fr);gap:6px;font-size:12px;margin:0}
+.tpdf-desktop-info-grid dt{font-weight:600;color:var(--tpdf-muted,#57657a)}
+.tpdf-desktop-info-grid dd{margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tpdf-desktop-inspector-section p,.tpdf-desktop-inspector-section small{font-size:12px;line-height:1.5;color:var(--tpdf-muted,#57657a)}
+.tpdf-desktop-shell .tpdf-app-sheet-backdrop{align-items:center;padding:16px}
+.tpdf-desktop-shell .tpdf-app-sheet{max-width:min(930px,96%);max-height:min(90%,720px);border-radius:15px}
+.tpdf-desktop-statusbar{gap:12px}
