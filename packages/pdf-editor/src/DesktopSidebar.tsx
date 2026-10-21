@@ -61,7 +61,7 @@ export function DesktopSidebar(p: {
     </div>
   </aside>;
 }
-function CanvasThumb({pdf,page,root}: {
+export function CanvasThumb({pdf,page,root}: {
   pdf:PDFDocumentProxy; page:number; root:HTMLElement|null;
 }) {
   const canvas=useRef<HTMLCanvasElement>(null);
