@@ -81,7 +81,7 @@ test("S4 inspector uses existing P3 without editing adapter contracts",async({pa
   const inspector=page.getByTestId("desktop-inspector");
   await expect(inspector).toBeVisible();
   await expect(inspector.getByTestId("p3-panel")).toBeVisible();
-  await page.getByRole("button",{name:"Close inspector"}).click();
+  await inspector.getByRole("button",{name:"Close inspector"}).click();
   await expect(inspector).toHaveCount(0);
   await page.getByRole("button",{name:"Open inspector"}).click();
   await expect(inspector).toBeVisible();
