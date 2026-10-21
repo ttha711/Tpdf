@@ -9,7 +9,7 @@ export function MobilePageFilmstrip(p:{
 }) {
   const [jump,setJump]=useState(String(p.page));
   const [node,setNode]=useState<HTMLDivElement|null>(null);
-  const container=useRef<HTMLDivElement>(null);
+  const container=useRef<HTMLDivElement|null>(null);
   const range=p.total<=200?Array.from({length:p.total},(_,i)=>i+1):
     Array.from({length:Math.min(p.total,21)},(_,i)=>
       Math.max(1,Math.min(p.page-10,p.total-20))+i);
