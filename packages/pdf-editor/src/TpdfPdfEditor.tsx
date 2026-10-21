@@ -51,13 +51,13 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   const scale = engine.zoom === "fit" ? Math.max(0.05,
     Math.min(16 / dpr, layout === "mobile" ? 16 : 1.25,
       (viewWidth - (props.shell === "app" ? 24 : 42)) / pageWidth)) : Math.min(engine.zoom, 16 / dpr);
-  useCanvasWheelGesture(scroller,layout!=="mobile"&&!props.tilesOnly&&!(props.adapter.tiles&&tileMeta&&props.renderMode!=="canvas"),scale,dpr);
   const oversized = tileMeta && tileMeta.pages.some((page) => page.width * page.height * scale * scale * dpr * dpr > 8_000_000);
   const sourceSize = engine.source && ("size" in engine.source ? engine.source.size :
     "bytes" in engine.source ? engine.source.bytes.byteLength : undefined);
   const useTiles = Boolean(props.adapter.tiles && tileMeta &&
     (props.tilesOnly || props.renderMode === "tiles" || (props.renderMode !== "canvas" &&
       ((sourceSize || 0) > (props.largeFileBytes ?? 30_000_000) || oversized))));
+  useCanvasWheelGesture(scroller,layout!=="mobile"&&!useTiles,scale,dpr);
   useEffect(() => { setDpr(window.devicePixelRatio || 1); }, []);
   useEffect(() => {
     if (!props.adapter.tiles || (props.renderMode === "canvas" && !props.tilesOnly)) {
