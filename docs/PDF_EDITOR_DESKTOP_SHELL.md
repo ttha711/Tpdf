@@ -10,8 +10,8 @@ host `tools[]`.
 | Container | Shell | Navigation | Inspector |
 | --- | --- | --- | --- |
 | under 640px | Original S3 mobile | Bottom dock / Tools sheet | Existing P3 collapsible mobile panel |
-| 640–1023px | Tablet | Compact ribbon; sidebar closed by default, can open | Closed by default; opens on editing tool |
-| 1024px or wider | Desktop | Full seven-group ribbon plus dynamic host groups; sidebar shown | Right inspector shown; P1 Style, P2 and P3 forms |
+| 640–1199px | Tablet | Compact ribbon; sidebar closed by default, can open | Closed by default; opens on editing tool |
+| 1200px or wider | Desktop | Full seven-group ribbon plus dynamic host groups; sidebar shown | Right inspector shown; P1 Style, P2 and P3 forms |
 
 The editor uses ResizeObserver on its own root node; resizing the containing
 Office pane can cross breakpoints without depending on window.innerWidth.
@@ -38,7 +38,7 @@ and only repeats a short filename, saved state and Save action.
   Redact/Measure/Replace panels; edits still go through the same
   ordered `applyChanges` list. Panels do not reduce document height.
 - Reader: continuous tile/canvas pages; initial Fit width is capped at
-  **125%** on desktop and tablet. Status bar has Fit width, Fit page,
+  **105% desktop / 125% tablet**. Status bar has Fit width, Fit page,
   and 50/75/100/125/150/200% presets. Explicit zoom can exceed the
   initial-fit cap, respecting the preexisting `zoom * DPR <= 16` tile bound.
 - Shortcuts while editor is focused: Ctrl/Cmd+F opens sidebar Find,
