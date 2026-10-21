@@ -198,3 +198,55 @@
 .tpdf-desktop-shell[data-tpdf-layout=tablet] .tpdf-desktop-ribbon-commands{min-height:42px}
 .tpdf-desktop-shell[data-tpdf-layout=tablet] .tpdf-desktop-inspector{width:235px;flex-basis:235px;min-width:215px}
 .tpdf-desktop-shell[data-tpdf-layout=tablet] .tpdf-desktop-quick button{padding:4px 5px}
+
+/* S4 parity: ported layout/structure of Tpdf mobile AppHeader/ModeStrip/Dock/Filmstrip. */
+.tpdf-mobile-app-header{position:relative;display:flex;align-items:center;gap:3px;min-width:0;flex:0 0 56px;height:56px;padding:4px 7px;background:var(--tpdf-panel,#fff);border-bottom:1px solid var(--tpdf-border,#ccd6e3)}
+.tpdf-editor .tpdf-mobile-app-header>button{flex:0 0 auto;min-width:44px;min-height:44px;display:grid;place-items:center;border:0;background:transparent;padding:2px}
+.tpdf-editor .tpdf-mobile-app-header>.tpdf-mobile-tab-count{min-width:38px;width:38px;height:38px;min-height:38px;border:1px solid var(--tpdf-border,#ccd6e3);border-radius:8px;font-size:15px;font-weight:700;background:var(--tpdf-input,#f5f7ff)}
+.tpdf-mobile-app-header .tpdf-app-file{margin:0 0 0 5px}
+.tpdf-mobile-app-header .tpdf-app-file strong{font-size:15px}
+.tpdf-mobile-menu-popover{position:absolute;top:52px;left:10px;z-index:60;min-width:170px;background:var(--tpdf-panel,#fff);padding:7px;display:flex;flex-direction:column;box-shadow:0 8px 25px #0003;border:1px solid var(--tpdf-border,#ccd6e3);border-radius:10px}
+.tpdf-editor .tpdf-mobile-menu-popover button{display:block;text-align:left;min-height:44px;background:transparent}
+.tpdf-mobile-tab-switcher{position:absolute;z-index:70;inset:0;display:flex;flex-direction:column;min-height:0;background:var(--tpdf-bg,#f0f3f8);padding:12px}
+.tpdf-mobile-tab-switcher>header,.tpdf-mobile-tab-switcher>footer{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:52px}
+.tpdf-mobile-tab-switcher>header strong{font-size:17px}
+.tpdf-mobile-tab-grid{overflow:auto;display:grid;gap:10px;align-content:start;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))}
+.tpdf-mobile-tab-grid article{display:flex;gap:2px;border-radius:12px;padding:7px;background:var(--tpdf-panel,#fff);border:1px solid var(--tpdf-border,#ccd6e3)}
+.tpdf-mobile-tab-grid article>button:first-child{display:flex;gap:10px;min-width:0;flex:1 1 auto;text-align:left;align-items:center;background:transparent;border:none}
+.tpdf-mobile-tab-grid article>button:first-child>span:last-child{display:flex;flex-direction:column;min-width:0;gap:3px}
+.tpdf-mobile-tab-grid article strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:155px}
+.tpdf-mobile-tab-grid article small,.tpdf-mobile-tab-grid article em{display:block;font-size:11px}
+.tpdf-mobile-tab-sheet{display:grid;place-items:center;flex:0 0 75px;width:75px;height:100px;background:#e6ebf2;overflow:hidden;border-radius:4px}
+.tpdf-mobile-tab-thumbnail{width:75px;height:100px;overflow:hidden}
+.tpdf-mobile-tab-thumbnail .tpdf-page-grid{display:flex;min-width:75px}
+.tpdf-mobile-tab-thumbnail .tpdf-page-grid button{width:75px;min-width:75px;padding:2px!important}
+.tpdf-mobile-tab-thumbnail .tpdf-page-grid canvas{width:66px!important}
+.tpdf-mobile-chrome-actions{display:flex;flex:0 0 44px;min-height:44px;gap:2px;align-items:center;justify-content:space-between;padding:0 7px;background:var(--tpdf-panel,#fff);border-bottom:1px solid var(--tpdf-border,#ccd6e3)}
+.tpdf-editor .tpdf-mobile-chrome-actions button{flex:1 1 0;display:grid;place-items:center;min-height:44px;min-width:44px;max-width:70px;padding:2px;background:transparent;border:none}
+.tpdf-app-group-tools{display:flex;flex:0 0 62px;min-height:62px;min-width:0;gap:4px;padding:4px 8px;background:var(--tpdf-panel,#fff);border-bottom:1px solid var(--tpdf-border,#ccd6e3);overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;overscroll-behavior-x:contain}
+.tpdf-editor .tpdf-web-tool{display:flex;align-items:center;justify-content:center;gap:4px;flex-direction:column;flex:0 0 auto;min-width:66px;max-width:124px;min-height:54px;padding:4px 7px;border:1px solid transparent;background:transparent;font-size:11px;line-height:1.2;white-space:normal;text-align:center}
+.tpdf-editor .tpdf-web-tool[aria-pressed=true]{color:#1264bd;border-color:#8bb1e6;background:#eaf3ff}
+.tpdf-editor .tpdf-web-tool small{font-size:9px}
+.tpdf-app-tool-grid .tpdf-web-tool{width:100%;max-width:none;min-width:0;min-height:62px}
+.tpdf-app-sheet-title>div{min-width:0}
+.tpdf-app-sheet-title p{font-size:12px;margin:4px 0 0;color:var(--tpdf-muted,#596473)}
+.tpdf-mobile-dock-status{position:absolute;bottom:calc(82px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);z-index:15;display:flex;align-items:center;gap:9px;border-radius:22px;background:#1f2f4be6;color:#fff;padding:5px 7px;box-shadow:0 3px 12px #0004;font-size:12px;white-space:nowrap}
+.tpdf-editor .tpdf-mobile-dock-status button{border:0;border-radius:15px;background:#ffffff26;color:#fff;min-height:34px;padding:4px 10px}
+.tpdf-mobile-filmstrip{position:absolute;z-index:38;left:0;right:0;bottom:calc(77px + env(safe-area-inset-bottom,0px));min-height:175px;max-height:265px;background:var(--tpdf-panel,#fff);border:1px solid var(--tpdf-border,#ccd6e3);border-radius:15px 15px 0 0;box-shadow:0 -4px 18px #0004;padding:10px;display:flex;flex-direction:column;gap:8px}
+.tpdf-mobile-filmstrip-header{display:flex;align-items:center;gap:6px;flex:0 0 auto;flex-wrap:wrap;font-size:13px}
+.tpdf-mobile-filmstrip-header strong{font-size:16px;margin-right:auto}
+.tpdf-mobile-filmstrip-header form{display:flex;align-items:center;gap:4px}
+.tpdf-mobile-filmstrip-header input{width:60px;min-width:40px;max-width:60px}
+.tpdf-editor .tpdf-mobile-filmstrip-header button{min-width:40px;min-height:40px}
+.tpdf-mobile-filmstrip-scroll{flex:1 1 auto;min-height:0;overflow-x:auto;overflow-y:hidden}
+.tpdf-mobile-filmstrip-scroll .tpdf-page-grid,.tpdf-mobile-filmstrip-numbers{display:flex;width:max-content;gap:8px;flex-wrap:nowrap}
+.tpdf-mobile-filmstrip-scroll .tpdf-page-grid button,.tpdf-mobile-filmstrip-numbers button{flex:0 0 110px;max-width:110px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;padding:5px}
+.tpdf-mobile-filmstrip-scroll [aria-current=page]{outline:2px solid #2979d1;outline-offset:-2px}
+.tpdf-mobile-nav-sheet{position:absolute;z-index:40;inset:auto 0 calc(77px + env(safe-area-inset-bottom,0px)) 0;max-height:min(65%,500px);min-height:245px;display:flex;flex-direction:column;border-radius:16px 16px 0 0;background:var(--tpdf-panel,#fff);box-shadow:0 -8px 25px #0004}
+.tpdf-mobile-nav-sheet>header{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;min-height:49px}
+.tpdf-mobile-nav-sheet>nav{display:flex;gap:5px;padding:0 12px}
+.tpdf-mobile-nav-sheet>nav button[aria-selected=true]{background:#d8eaff;color:#0e60ae}
+.tpdf-mobile-nav-sheet>.tpdf-mobile-filmstrip{position:relative;bottom:auto;left:auto;right:auto;flex:1 1 auto;min-height:0;box-shadow:none;border-radius:0}
+.tpdf-mobile-nav-outline{overflow:auto;flex:1 1 auto;padding:8px 12px}
+.tpdf-mobile-nav-outline button{display:block;width:100%;text-align:left;min-height:44px}
+.tpdf-mobile-nav-outline small{float:right}
