@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DesktopRibbon } from "./DesktopRibbon.js";
 import { DesktopSidebar, type SidebarTab } from "./DesktopSidebar.js";
-import { P1StyleBar } from "./P1StyleBar.js";
+import { DesktopInspector } from "./DesktopInspector.js";
 import { P3SaveToast } from "./P3SaveToast.js";
 import { usePdfBookmarks } from "./usePdfBookmarks.js";
 import type { AppShellProps } from "./AppShell.js";
@@ -106,26 +106,10 @@ export function DesktopShell(p:DesktopShellProps) {
           {p.tile&&<span className="tpdf-app-viewer-badge">Lightweight viewer</span>}
         </div>
       </section>
-      {inspectorOpen&&<aside className="tpdf-desktop-inspector" data-testid="desktop-inspector">
-        <div className="tpdf-desktop-inspector-head">
-          <strong>Inspector</strong>
-          <button type="button" aria-label="Close inspector"
-            onClick={()=>setInspectorOpen(false)}>×</button>
-        </div>
-        <div className="tpdf-desktop-inspector-body">
-          {p.canEdit&&p.style&&p.onStyle&&
-            <section className="tpdf-desktop-inspector-section">
-              <h3>Annotation style</h3>
-              <P1StyleBar style={p.style} onChange={p.onStyle} locale={p.locale}/>
-            </section>}
-          {p.p2Panel}{p.p3Panel}
-          {!p.p2Panel&&!p.p3Panel&&<section className="tpdf-desktop-inspector-section">
-            <h3>Selection</h3>
-            {p.selection ? <p>Page {p.selection.page}: {p.selection.x.toFixed(1)}%,
-              {p.selection.y.toFixed(1)}%</p> : <p>Select a tool or region to inspect.</p>}
-          </section>}
-        </div>
-      </aside>}
+      {inspectorOpen&&<DesktopInspector {...p}
+        onClose={()=>setInspectorOpen(false)}
+        onSearchPanel={()=>{setSidebarOpen(true);setSidebarTab("search");}}
+        onComments={()=>{setSidebarOpen(true);setSidebarTab("comments");}}/>}
     </div>
     <footer className="tpdf-desktop-statusbar">
       <label>Page <input type="number" aria-label="Go to page" min={1}
