@@ -15,7 +15,7 @@ async function draw(page:Page,moves:Array<[number,number]>=[[30,30],[95,58]]){
   await page.mouse.up();
 }
 async function save(page:Page){
-  await page.getByRole("button",{name:"Save version"}).first().click();
+  await page.getByRole("button",{name:"Save",exact:true}).last().click();
 }
 async function getChanges(page:Page){
   await expect(page.getByTestId("p1-payload")).not.toHaveText("",{timeout:10000});
