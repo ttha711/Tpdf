@@ -139,3 +139,21 @@ test("S4 ResizeObserver switches desktop → mobile → tablet → desktop witho
   const width=await page.locator(".tpdf-editor").evaluate(node=>node.getBoundingClientRect().width);
   expect(width).toBeGreaterThanOrEqual(1024);
 });
+
+test("S4 PDF.js canvas mode supports desktop Ctrl+wheel without tile adapter",async({page})=>{
+  await page.setViewportSize({width:1280,height:800});
+  await page.goto("/office/pdf?shell=app");
+  await expect(page.locator(".tpdf-editor")).toHaveAttribute("data-tpdf-layout","desktop",
+    {timeout:30000});
+  await expect(page.locator(".tpdf-page-canvas").first()).toBeVisible({timeout:30000});
+  const zoom=page.locator('.tpdf-desktop-statusbar option[value="manual"]');
+  const before=Number((await zoom.textContent())?.replace("%",""));
+  const rect=await page.locator(".tpdf-scroll").boundingBox();
+  expect(rect).toBeTruthy();
+  await page.mouse.move(rect!.x+rect!.width/2,rect!.y+rect!.height/2);
+  await page.keyboard.down("Control");
+  await page.mouse.wheel(0,-80);
+  await page.keyboard.up("Control");
+  await expect.poll(async()=>Number((await zoom.textContent())?.replace("%","")))
+    .toBeGreaterThan(before);
+});
