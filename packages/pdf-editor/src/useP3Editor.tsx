@@ -94,5 +94,5 @@ export function useP3Editor(input: {
     setLength={setLength} setUnit={setUnit} redactTerms={redactTerms}
     setRedactTerms={setRedactTerms} termPages={termPages} setTermPages={setTermPages}
     addTerms={addTerms} addReplace={addReplace} report={report}/> : null;
-  return {panel,onRegion,canTool,calibrations,calibrated:!!active};
+  return {panel,onRegion,canTool,calibrations,calibrated:!!active,addReplace};
 }

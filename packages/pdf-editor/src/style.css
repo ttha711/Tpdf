@@ -363,3 +363,5 @@
 .tpdf-vertex-actions button{min-height:34px;padding:4px 10px;border-radius:8px;border:1px solid #1d4ed8;background:#fff;color:#1d4ed8;font:600 13px system-ui}
 .tpdf-vertex-actions button:disabled{opacity:.5}
 .tpdf-editor .tpdf-p2-panel input[type=checkbox]{min-height:0;min-width:0;padding:0}
+.tpdf-p3-replaced{position:absolute;container-type:size;overflow:hidden;display:flex;align-items:center;box-sizing:border-box;background:#fffffff2;color:#111;white-space:nowrap;outline:1px dashed #e57d18}
+.tpdf-p3-replaced>span{font-family:system-ui,sans-serif;line-height:1;padding:0 2px}

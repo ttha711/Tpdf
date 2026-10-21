@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import { usePdfEngine } from "./usePdfEngine.js";
 import { InlineTextContext } from "./InlineTextEditor.js";
 import { TileTextSelectContext } from "./TileTextSelect.js";
+import { changedWords } from "./textDiff.js";
 import { CommentPinsContext } from "./CommentPins.js";
 import { CommentsPanel } from "./CommentsPanel.js";
 import { useP4Comments } from "./useP4Comments.js";
@@ -122,7 +123,29 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   const comments = useP4Comments({ adapter: props.adapter, changes: engine.history.current, canEdit, record: engine.record, report: engine.report });
   const [selectedComment, setSelectedComment] = useState<string | null>(null);
   const [commentsSignal, setCommentsSignal] = useState(0);
-  const [inlineText, setInlineText] = useState<{ region: PdfRegion; points?: Array<[number, number]> } | null>(null);
+  const [inlineText, setInlineText] = useState<{ region: PdfRegion; points?: Array<[number, number]>; initial?: string; apply?: (text: string) => void } | null>(null);
+  async function editTextInPlace(drag: PdfRegion) {
+    try {
+      const picked = await props.adapter.resolveTextSelection!(drag.page, drag);
+      const original = picked.text.trim();
+      if ((picked.lines ?? picked.quads.length) !== 1 || !original) throw Error("Drag across one line of text to edit it.");
+      const corners = picked.quads.flat();
+      const xs = corners.map((p) => p.x), ys = corners.map((p) => p.y);
+      const left = Math.max(0, Math.min(...xs) - 0.4), top = Math.max(0, Math.min(...ys) - 0.4);
+      const box = { page: drag.page, x: left, y: top, width: Math.min(100 - left, Math.max(...xs) + 0.4 - left), height: Math.min(100 - top, Math.max(...ys) + 0.4 - top), note: "" };
+      setRegion(box);
+      setInlineText({ region: box, initial: original, apply: (text) => {
+        setRegion(null);
+        const diff = changedWords(original, text);
+        if (!diff) return;
+        const scope = { kind: "region" as const, region: box };
+        void props.adapter.countTextMatches!({ search: diff.search, caseSensitive: true, scope }).then((found) => {
+          if (!found.count) throw Error("That part of the line is made of separate pieces and cannot be edited as one. Change a smaller part.");
+          p3.addReplace({ kind: "text.replace", schemaVersion: 1, search: diff.search, replacement: diff.replacement, scope, caseSensitive: true, preview: text.trim() });
+        }).catch((error) => engine.report("edit-text", error, false));
+      } });
+    } catch (error) { engine.report("edit-text", error, false); }
+  }
   function commitSelection(value:PdfRegion,points:Array<[number,number]>|undefined,text:string) {
     void recordP1Selection({tool,region:value,points,adapter:props.adapter,
       note:text,style:p1Style,record:engine.record,report:engine.report,
@@ -132,6 +155,9 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     setRegion(value);props.onRegionSelected?.(value);
     if(!canEdit||tool==="region")return;
     if(tool==="comment"){if(comments.canAnnotate)setInlineText({region:value});return;}
+    if(tool==="replaceText"&&props.adapter.resolveTextSelection&&props.adapter.countTextMatches){
+      void editTextInPlace(value);return;
+    }
     if(p3.onRegion(value,points))return;
     if(tool==="callout"&&props.adapter.applyChanges&&points?.length){
       const tip=points[0],end=points[points.length-1];
@@ -145,8 +171,10 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   }
   const inlineState = inlineText && {
     region: inlineText.region,
+    initial: inlineText.initial,
     commit: (text: string) => {
-      if (tool === "comment") { const id = comments.add(inlineText.region.page, { x: inlineText.region.x, y: inlineText.region.y }, text); setSelectedComment(id); setRegion(null); }
+      if (inlineText.apply) inlineText.apply(text);
+      else if (tool === "comment") { const id = comments.add(inlineText.region.page, { x: inlineText.region.x, y: inlineText.region.y }, text); setSelectedComment(id); setRegion(null); }
       else commitSelection(inlineText.region, inlineText.points, text);
       setInlineText(null);
     },

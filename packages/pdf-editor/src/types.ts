@@ -28,7 +28,7 @@ export interface TpdfPdfAdapter {
   searchPages?(query: string): Promise<PdfSearchHit[]>;
   resolveTextQuads?(page: number, region: PdfRegion): Promise<P1Quad[]>;
   /** Quads and text under a region, so server-rendered pages can offer text selection and copy. */
-  resolveTextSelection?(page: number, region: PdfRegion): Promise<{ quads: P1Quad[]; text: string }>;
+  resolveTextSelection?(page: number, region: PdfRegion): Promise<{ quads: P1Quad[]; text: string; lines?: number }>;
   selectAsset?(kind: P1Asset): Promise<{ assetId: string } | null>;
   assetUrl?(assetId: string): string;
   formCapabilities?: P2FormCapabilities;

@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { P1Quad } from "./p1Types.js";
 import type { PdfRegion } from "./types.js";
 
-export type TextSelectionResolver = (page: number, region: PdfRegion) => Promise<{ quads: P1Quad[]; text: string }>;
+export type TextSelectionResolver = (page: number, region: PdfRegion) => Promise<{ quads: P1Quad[]; text: string; lines?: number }>;
 export const TileTextSelectContext = createContext<TextSelectionResolver | null>(null);
 
 /** Text selection for server-rendered pages: drag to pick text, see the lines picked, copy them. */

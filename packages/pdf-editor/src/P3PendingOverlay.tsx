@@ -13,6 +13,10 @@ export function P3PendingOverlay({changes,page,width,height}:{
             width:r.width+"%",height:r.height+"%"}}>
           Pending redaction
         </div>):[])}
+    {changes.flatMap((c,i)=>c.kind==="text.replace"&&c.scope.kind==="region"&&c.scope.region.page===page?
+      [<div key={"r"+i} data-tpdf-p3="text.replace" className="tpdf-p3-replaced"
+        style={{left:c.scope.region.x+"%",top:c.scope.region.y+"%",
+          width:c.scope.region.width+"%",height:c.scope.region.height+"%"}}><span style={{fontSize:"min(68cqh,"+(170/Math.max(1,(c.preview??c.replacement).length)).toFixed(2)+"cqw)"}}>{c.preview??c.replacement}</span></div>]:[])}
     {changes.filter(c=>c.kind==="measure"&&c.page===page ||
       c.kind==="measure.calibrate"&&c.calibration.page===page).map((c,i)=>{
       const points=c.kind==="measure.calibrate"?c.calibration.points:c.kind==="measure"?c.points:[];
