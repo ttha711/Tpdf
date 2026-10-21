@@ -40,6 +40,22 @@ for(const size of sizes){
     });
     expect(bounds.overflow).toBeLessThanOrEqual(1);
     expect(bounds.readerHeight).toBeGreaterThan(200);
+    if(size.layout!=="mobile"){
+      const boxes=await page.evaluate(()=>{
+        const rect=(selector:string)=>document.querySelector(selector)!.getBoundingClientRect();
+        return {ribbon:rect(".tpdf-desktop-ribbon").bottom,
+          workspace:rect(".tpdf-desktop-workspace").top,
+          readerLeft:rect(".tpdf-desktop-center").left,
+          readerRight:rect(".tpdf-desktop-center").right,
+          sidebarRight:document.querySelector(".tpdf-desktop-sidebar-wrap")?.getBoundingClientRect().right,
+          inspectorLeft:document.querySelector(".tpdf-desktop-inspector")?.getBoundingClientRect().left};
+      });
+      expect(boxes.workspace).toBeGreaterThanOrEqual(boxes.ribbon-1);
+      if(boxes.sidebarRight!==undefined)
+        expect(boxes.readerLeft).toBeGreaterThanOrEqual(boxes.sidebarRight-1);
+      if(boxes.inspectorLeft!==undefined)
+        expect(boxes.inspectorLeft).toBeGreaterThanOrEqual(boxes.readerRight-1);
+    }
     console.log("S4_LAYOUT",size,bounds);
     await page.screenshot({path:"test-results/screenshots/s4-"+size.width+"x"+size.height+".png"});
   });
@@ -88,6 +104,8 @@ test("S4 inspector uses existing P3 without editing adapter contracts",async({pa
   await page.getByRole("combobox",{name:"Desktop zoom"}).selectOption("125");
   await expect(page.getByRole("combobox",{name:"Desktop zoom"})).toContainText("125%");
   await page.getByRole("combobox",{name:"Desktop zoom"}).selectOption("width");
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible();
+  await page.getByRole("combobox",{name:"Desktop zoom"}).selectOption("page");
   await expect(page.locator(".tpdf-tile-document")).toBeVisible();
 });
 test("S4 sidebar resize via keyboard and toolbar keys do not scroll host page",async({page})=>{
