@@ -36,7 +36,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   const canvasGeometry = useCanvasPageGeometry(engine.pdf,engine.page);
   const pageWidth = tileMeta?.pages[0]?.width || canvasGeometry.sizes[0]?.width || 612;
   const scale = engine.zoom === "fit" ? Math.max(0.05,
-    Math.min(16 / dpr, layout === "mobile" ? 16 : 1.25,
+    Math.min(16 / dpr, layout === "mobile" ? 16 : layout === "desktop" ? 1.05 : 1.25,
       (viewWidth - (props.shell === "app" ? 24 : 42)) / pageWidth)) : Math.min(engine.zoom, 16 / dpr);
   const oversized = tileMeta && tileMeta.pages.some((page) => page.width * page.height * scale * scale * dpr * dpr > 8_000_000);
   const sourceSize = engine.source && ("size" in engine.source ? engine.source.size :
