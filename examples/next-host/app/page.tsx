@@ -18,6 +18,7 @@ export default function PdfOfficePage() {
   const p3Mode = params.get("p3") === "1";
   const purgeHistory = params.get("purgehistory") === "1";
   const p3Fail = params.get("p3fail") === "1";
+  const embedWidth = Math.max(0, Math.min(1400, Number(params.get("embedwidth") || 0)));
   const [saved, setSaved] = useState("");
   const [selected, setSelected] = useState<PdfRegion | null>(null);
   const [error, setError] = useState("");
@@ -90,6 +91,8 @@ export default function PdfOfficePage() {
               "Page 1 measure used its recorded calibration"]} : {}) };
         },
       } : {}),
+      listBookmarks: async () => [{title:"Overview",page:1},{title:"Floor plans",page:12},
+        {title:"Schedule",page:35}],
       async loadDocument() {
         // Next serves public/fixture.pdf from the host application's own disk.
         return { url: "/fixture.pdf", name: appShell ? "Nghi-quyet-91-NQ-ban-ve-A0.pdf" : "building-plan.pdf",
@@ -119,11 +122,11 @@ export default function PdfOfficePage() {
     };
   }, [tileMode, appShell, p1Mode, p2Mode, p3Mode, p3Fail, purgeHistory]);
   const hostTools = useMemo(() => [
-    { id: "page-numbers", label: "Page numbers", group: "Edit PDF",
+    { id: "page-numbers", label: "Page numbers", group: "Pages",
       run: (context: { page: number }) => setToolResult("page-numbers page " + context.page) },
-    { id: "watermark", label: "Watermark", group: "Edit PDF",
+    { id: "watermark", label: "Watermark", group: "Mark up",
       run: (context: { page: number }) => setToolResult("watermark page " + context.page) },
-    { id: "compress", label: "Compress", group: "Optimize",
+    { id: "compress", label: "Compress", group: "Protect",
       run: () => setToolResult("compress") },
     { id: "pdf-to-word", label: "PDF to Word", group: "Convert",
       run: () => setToolResult("pdf-to-word") },
@@ -143,7 +146,8 @@ export default function PdfOfficePage() {
     <span data-testid="tool-run" style={{ display: "none" }}>{toolResult}</span>
     <span data-testid="host-saved" style={{ display: "none" }}>{saved}</span>
     <span data-testid="p1-payload" style={{ display: "none" }}>{p1Payload}</span>
-    <div style={{ flex: 1, minHeight: 0 }}>
+    <div data-testid="editor-container" style={{ flex: 1, minHeight: 0,
+      width: embedWidth || "100%", maxWidth:"100%", alignSelf:"center" }}>
       <StrictMode><Editor key={mountId} adapter={adapter} renderMode={tileMode ? "tiles" : "auto"}
         shell={appShell ? "app" : "classic"} tools={appShell ? hostTools : undefined}
         tilesOnly={tilesOnly} locale="en" density="office" assets={{
