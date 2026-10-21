@@ -85,8 +85,6 @@ export function AppShell(p:AppShellProps){
         openFile:p.onOpenFile,onOpenDocument:p.onOpenDocument,
         onCloseDocument:p.onCloseDocument,onSearch:showSearch,
         onPages:showPages,onTools:()=>setSheet(true),onSave:p.onSave}}/>
-    <MobileToolStrip mode={mode} setMode={setMode} shell={p}
-      actions={actions} openTools={()=>setSheet(true)}/>
     <div className="tpdf-mobile-chrome-actions" role="toolbar"
       aria-label="PDF navigation actions">
       <button type="button" aria-label="PDF menu" onClick={()=>setSheet(true)}>
@@ -100,6 +98,8 @@ export function AppShell(p:AppShellProps){
       <button type="button" aria-label="Comments" onClick={showComments}>
         <AppShellIcon name="comments"/></button>
     </div>
+    <MobileToolStrip mode={mode} setMode={setMode} shell={p}
+      actions={actions} openTools={()=>setSheet(true)}/>
     {search&&<div className="tpdf-app-search" data-testid="shell-search">
       <input aria-label={words.search} value={p.query} placeholder={words.search}
         onChange={e=>p.onSearchQuery(e.target.value)}
