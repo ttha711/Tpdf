@@ -3,7 +3,9 @@ import { usePdfEngine } from "./usePdfEngine.js";
 import { PageSurface } from "./PageSurface.js";
 import { TileViewer } from "./TileViewer.js";
 import { TileGrid } from "./TileGrid.js";
-import { AppShell } from "./AppShell.js";
+import { ResponsivePdfShell } from "./ResponsivePdfShell.js";
+import { useContainerLayout } from "./useContainerLayout.js";
+import { handleDesktopKeys } from "./desktopKeys.js";
 import { useP2Editor } from "./useP2Editor.js";
 import { useP3Editor } from "./useP3Editor.js";
 import { useP3SaveGuard } from "./useP3SaveGuard.js";
@@ -14,7 +16,6 @@ import { validMeta, tileLevel } from "./tiles.js";
 import type { PdfTileMeta } from "./types.js";
 import { validRegion, type Mark } from "./history.js";
 import type { PdfRegion, PdfSearchHit, PdfTool, PdfVersion, TpdfPdfEditorHandle, TpdfPdfEditorProps } from "./types.js";
-
 const words = {
   vi: { save: "Lưu phiên bản", search: "Tìm", pages: "Trang", fit: "Vừa khung",
     undo: "Hoàn tác", redo: "Làm lại", region: "Chọn vùng", highlight: "Tô sáng",
@@ -29,29 +30,26 @@ const words = {
     insert: "Insert page", moveUp: "Move up", moveDown: "Move down",
     ocr: "OCR", form: "Form", versions: "Versions", loading: "Working…" },
 };
-
 export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>(function TpdfPdfEditor(props, ref) {
   const engine = usePdfEngine(props);
   const root = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const layout = useContainerLayout(root);
   const [scrollNode, setScrollNode] = useState<HTMLElement | null>(null);
   const [viewWidth, setViewWidth] = useState(800);
-  const [grid, setGrid] = useState(false);
-  const [tileMeta, setTileMeta] = useState<PdfTileMeta | null>(null);
-  const [tileError, setTileError] = useState("");
-  const [dpr, setDpr] = useState(1);
+  const [grid, setGrid] = useState(false), [tileMeta, setTileMeta] = useState<PdfTileMeta | null>(null);
+  const [tileError, setTileError] = useState(""), [dpr, setDpr] = useState(1);
   const [tool, setTool] = useState<PdfTool>("region");
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<PdfSearchHit[]>([]);
-  const [note, setNote] = useState("");
-  const [p1Style, setP1Style] = useState<P1Style>(DEFAULT_P1_STYLE);
+  const [query, setQuery] = useState(""), [results, setResults] = useState<PdfSearchHit[]>([]);
+  const [note, setNote] = useState(""), [p1Style, setP1Style] = useState<P1Style>(DEFAULT_P1_STYLE);
   const [region, setRegion] = useState<PdfRegion | null>(null);
-  const [fields, setFields] = useState<string[] | null>(null);
-  const [versions, setVersions] = useState<PdfVersion[] | null>(null);
+  const [fields, setFields] = useState<string[] | null>(null), [versions, setVersions] = useState<PdfVersion[] | null>(null);
   const text = { ...words[props.locale || "vi"], ...props.messages };
-  const pageWidth = tileMeta?.pages[0]?.width || 612;
+  const canvasGeometry = useCanvasPageGeometry(engine.pdf,engine.page);
+  const pageWidth = tileMeta?.pages[0]?.width || canvasGeometry.sizes[0]?.width || 612;
   const scale = engine.zoom === "fit" ? Math.max(0.05,
-    Math.min(16 / dpr, (viewWidth - (props.shell === "app" ? 24 : 42)) / pageWidth)) : Math.min(engine.zoom, 16 / dpr);
+    Math.min(16 / dpr, layout === "mobile" ? 16 : 1.25,
+      (viewWidth - (props.shell === "app" ? 24 : 42)) / pageWidth)) : Math.min(engine.zoom, 16 / dpr);
   const oversized = tileMeta && tileMeta.pages.some((page) => page.width * page.height * scale * scale * dpr * dpr > 8_000_000);
   const sourceSize = engine.source && ("size" in engine.source ? engine.source.size :
     "bytes" in engine.source ? engine.source.bytes.byteLength : undefined);
@@ -86,7 +84,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     const observer = new ResizeObserver(([entry]) => setViewWidth(entry.contentRect.width));
     observer.observe(scroller.current);
     return () => observer.disconnect();
-  }, []);
+  }, [layout]);
   function goto(n: number) {
     if ((!engine.pdf && !tileMeta) || !Number.isInteger(n)) return;
     const page = Math.max(1, Math.min(tileMeta?.pages.length || engine.pdf!.numPages, n));
@@ -119,7 +117,6 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     changes: engine.history.current, record: engine.record, report: engine.report,
     versionId: tileMeta?.versionId, pageCount: tileMeta?.pages.length ||
       engine.pdf?.numPages || 0, readOnly: !canEdit, onPlaced: () => setRegion(null) });
-  const canvasGeometry = useCanvasPageGeometry(engine.pdf,engine.page);
   const p3=useP3Editor({adapter:props.adapter,tool,page:engine.page,
     pages:tileMeta?.pages||canvasGeometry.sizes, versionId:tileMeta?.versionId,
     changes:engine.history.current,readOnly:!canEdit,
@@ -154,8 +151,18 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
         engine.page + (id === "moveUp" ? -1 : 1)),
     });
   }
+  function fitPage() {
+    const size=tileMeta?.pages[engine.page-1]||canvasGeometry.sizes[engine.page-1];
+    if(!size)return setZoom("fit");
+    setZoom(Math.max(0.05,Math.min(1.25,16/dpr,(viewWidth-32)/size.width,
+      ((scroller.current?.clientHeight||700)-32)/size.height)));
+  }
   function keyboard(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (useTiles && ["+", "=","-"].includes(event.key) && !event.ctrlKey && !event.metaKey) {
+    if(handleDesktopKeys(event,layout,{root,goto,page:engine.page,
+      redo:engine.redo,readOnly:Boolean(props.readOnly)}))return;
+    const typing=Boolean((event.target as HTMLElement).closest("input,textarea,select"));
+    if (!typing && (useTiles || layout!=="mobile") && ["+", "=","-"].includes(event.key) &&
+      !event.ctrlKey && !event.metaKey) {
       event.preventDefault(); setZoom(scale * (event.key === "-" ? 0.8 : 1.25)); return;
     }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
@@ -224,9 +231,12 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   </>;
   return <div ref={root} className={"tpdf-editor " + (props.className || "")}
     data-theme={props.theme || "system"} data-density={props.density || "office"}
-    data-shell={props.shell || "classic"}
+    data-shell={props.shell || "classic"} data-tpdf-layout={layout}
     onKeyDown={keyboard} tabIndex={0} role="region" aria-label="TPDF PDF editor">
-    {props.shell === "app" ? <AppShell locale={props.locale || "vi"} text={text}
+    {props.shell === "app" ? <ResponsivePdfShell layout={layout}
+      adapter={props.adapter} meta={tileMeta} pdf={engine.pdf}
+      onZoom={(value)=>setZoom(value)} onFitWidth={()=>setZoom("fit")} onFitPage={fitPage}
+      locale={props.locale || "vi"} text={text}
       name={engine.source?.name || "Document.pdf"} dirty={engine.dirty} busy={engine.busy}
       page={engine.page} total={tileMeta?.pages.length || engine.pdf?.numPages || 0}
       zoom={scale} tile={useTiles} canEdit={canEdit} canForms={!useTiles && Boolean(engine.pdf)}
@@ -245,7 +255,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       onSearchQuery={setQuery} onSearch={() => void engine.search(query).then(setResults)}
       onGoto={goto} onBuiltin={builtIn} onSave={() => { void saveGuard.saveSafely().catch(()=>{}); }}
       onUndo={engine.undo} onRedo={engine.redo}
-      onToolError={(error) => engine.report("host-tool", error)}>{viewer}</AppShell>
+      onToolError={(error) => engine.report("host-tool", error)}>{viewer}</ResponsivePdfShell>
       : <><div className="tpdf-toolbar" role="toolbar" aria-label="PDF controls">
       <button type="button" onClick={() => setGrid(!grid)}>{text.pages}</button>
       <button type="button" aria-label="Previous page" onClick={() => goto(engine.page - 1)}>‹</button>
