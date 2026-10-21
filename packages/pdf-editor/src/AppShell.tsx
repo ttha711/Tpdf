@@ -8,7 +8,7 @@ import { toolLabel } from "./p1Labels.js";
 import type { P1Style } from "./p1Types.js";
 import type { PdfHostTool, PdfRegion, PdfSearchHit, PdfTool } from "./types.js";
 
-type Props = {
+export type AppShellProps = {
   children: ReactNode; locale: "vi" | "en"; text: Record<string, string>;
   name: string; dirty: boolean; busy: boolean; page: number; total: number; zoom: number;
   tile: boolean; canEdit: boolean; canForms: boolean; canSave: boolean;
@@ -24,7 +24,7 @@ type Props = {
   onSave: () => void; onUndo: () => void; onRedo: () => void;
   onToolError: (error: unknown) => void;
 };
-export function AppShell(props: Props) {
+export function AppShell(props: AppShellProps) {
   const { text: base, locale } = props;
   const words: Record<string, string> = { ...APP_WORDS[locale], ...base };
   const [tab, setTab] = useState<ShellTab>("view");
