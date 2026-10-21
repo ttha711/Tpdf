@@ -34,7 +34,8 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   const engine = usePdfEngine(props);
   const root = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
-  const layout = useContainerLayout(root);
+  const measuredLayout = useContainerLayout(root);
+  const layout = props.shell === "app" ? measuredLayout : "mobile";
   const [scrollNode, setScrollNode] = useState<HTMLElement | null>(null);
   const [viewWidth, setViewWidth] = useState(800);
   const [grid, setGrid] = useState(false), [tileMeta, setTileMeta] = useState<PdfTileMeta | null>(null);
