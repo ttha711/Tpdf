@@ -124,3 +124,23 @@ test("Tpdf mobile sidebar has Thumbnails and Outline and remains independent of 
   await page.keyboard.press("Escape");
   await expect(nav).toHaveCount(0);
 });
+
+test("360i optional openDocuments supports opening and closing distinct host files",async({page})=>{
+  await page.setViewportSize({width:375,height:812});
+  await page.goto(base+"&tabs=1");
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible({timeout:30000});
+  const header=page.getByTestId("mobile-app-header");
+  await header.getByRole("button",{name:"Open tabs overview (2 tabs)"}).click();
+  let overview=page.getByRole("dialog",{name:"Open documents"});
+  await expect(overview.locator("[data-tpdf-tab-card]")).toHaveCount(2);
+  await overview.getByRole("button",{name:"Open Floor-B.pdf"}).click();
+  await expect(overview).toHaveCount(0);
+  await expect(header.locator(".tpdf-app-file strong")).toContainText("Floor-B.pdf");
+  await header.getByRole("button",{name:"Open tabs overview (2 tabs)"}).click();
+  overview=page.getByRole("dialog",{name:"Open documents"});
+  await expect(overview.locator('[data-tpdf-tab-card="doc-b"]')).toContainText("Currently open");
+  await overview.getByRole("button",{name:"Close tab Floor-A.pdf"}).click();
+  await expect(overview.locator("[data-tpdf-tab-card]")).toHaveCount(1);
+  await overview.getByRole("button",{name:"Open Floor-B.pdf"}).click();
+  await expect(header.getByRole("button",{name:"Open tabs overview (1 tabs)"})).toBeVisible();
+});
