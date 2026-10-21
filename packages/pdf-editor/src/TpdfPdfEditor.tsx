@@ -169,7 +169,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
       event.preventDefault(); void saveGuard.saveSafely().catch(()=>{});
     } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z" && !props.readOnly) {
-      event.preventDefault(); if (event.shiftKey) engine.redo(); else engine.undo();
+      if (layout==="mobile"||!typing) { event.preventDefault(); if (event.shiftKey) engine.redo(); else engine.undo(); }
     }
   }
   function scroll() {
