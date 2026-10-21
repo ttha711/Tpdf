@@ -3,6 +3,7 @@ import { AppShellIcon } from "./AppShellIcon.js";
 import { APP_WORDS, SHELL_TABS, SHEET_GROUPS, SHELL_BUILTINS, TAB_TEXT,
   enabledBuiltin, visibleBuiltins, type ShellTab, type P3Availability } from "./appShellModel.js";
 import { P1StyleBar } from "./P1StyleBar.js";
+import { P3SaveToast } from "./P3SaveToast.js";
 import { toolLabel } from "./p1Labels.js";
 import type { P1Style } from "./p1Types.js";
 import type { PdfHostTool, PdfRegion, PdfSearchHit, PdfTool } from "./types.js";
@@ -139,9 +140,7 @@ export function AppShell(props: Props) {
         placeholder={words[props.tool]} /></div>}
     {props.p2Panel}
     {props.p3Panel}
-    {!!props.saveNotes?.length && <aside role="status" className="tpdf-p3-notes"
-      data-testid="p3-save-notes"><strong>Save notes</strong>
-      {props.saveNotes.map((note,i)=><p key={i}>{note}</p>)}</aside>}
+    <P3SaveToast notes={props.saveNotes || []}/>
     <div className="tpdf-app-viewer">
       {props.children}
       {props.tile && <span className="tpdf-app-viewer-badge">{words.lightweight}</span>}
