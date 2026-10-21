@@ -34,9 +34,10 @@ function Thumb({ page, width, height, tiles, scheduler, tick }: {
       aspectRatio: width + "/" + height, background: "#fff" }} />;
 }
 
-export function TileGrid({ adapter, meta, parent, currentPage, onGoto }: {
+export function TileGrid({ adapter, meta, parent, currentPage, onGoto, pageNumbers }: {
   adapter: PdfTileAdapter; meta: PdfTileMeta; parent: HTMLElement | null;
   currentPage: number; onGoto: (page: number) => void;
+  pageNumbers?: number[];
 }) {
   const [visible, setVisible] = useState<number[]>([]);
   useEffect(() => {
@@ -75,7 +76,8 @@ export function TileGrid({ adapter, meta, parent, currentPage, onGoto }: {
   void revision;
   return <div className="tpdf-page-grid" data-tpdf-thumbnail-count={visible.length}
     data-tpdf-thumbnail-active={scheduler?.active ?? 0}>
-    {meta.pages.map((p, i) => <button key={i} type="button"
+    {meta.pages.map((p, i) => ({p,i})).filter(({i}) =>
+      !pageNumbers || pageNumbers.includes(i+1)).map(({p,i}) => <button key={i} type="button"
       data-tpdf-thumb-page={i} onClick={() => onGoto(i + 1)}
       aria-label={"Open page " + (i + 1)} style={{ padding: 7, minWidth: 0 }}>
       {visible.includes(i) && scheduler && <Thumb page={i} width={p.width} height={p.height}
