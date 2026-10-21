@@ -81,7 +81,7 @@ export function AppShell(p:AppShellProps){
     <MobileAppHeader name={p.name} page={p.page} total={p.total}
       busy={p.busy} dirty={p.dirty} documents={p.openDocuments}
       currentId={p.activeDocumentId} tiles={p.adapter?.tiles} meta={p.meta}
-      actions={{showHome:p.showHomeButton!==false,home:p.onHome,
+      actions={{showHome:p.showHomeButton!==false&&Boolean(p.onHome),home:p.onHome,
         openFile:p.onOpenFile,onOpenDocument:p.onOpenDocument,
         onCloseDocument:p.onCloseDocument,onSearch:showSearch,
         onPages:showPages,onTools:()=>setSheet(true),onSave:p.onSave}}/>

@@ -22,7 +22,7 @@ test("Tpdf mobile AppHeader exact order, 1-tab overview, Select dock, no titleba
   await expect(header).toBeVisible();
   const order=await header.locator(":scope > button").evaluateAll(buttons=>
     buttons.map(button=>button.getAttribute("aria-label")));
-  expect(order).toEqual(["Go to Home","Application menu","Open tabs overview (1 tabs)"]);
+  expect(order).toEqual(["Application menu","Open tabs overview (1 tabs)"]);
   await expect(header.getByTestId("shell-save-status")).toContainText("Saved");
   await expect(header.getByRole("button",{name:"Save"})).toHaveCount(0);
   await expect(header.getByRole("button",{name:"Search"})).toHaveCount(0);

@@ -291,3 +291,8 @@
 .tpdf-editor .tpdf-app-quick-list button{display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:0 6px;border:0;border-bottom:1px solid var(--tpdf-border,#e3e8ef);background:transparent;font-size:15px;text-align:left}
 .tpdf-editor .tpdf-app-quick-list button:disabled{opacity:.6}
 .tpdf-app-quick-list small{font-size:11px;color:#64748b}
+
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-mobile-app-header{padding:2px 8px;gap:6px}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-mobile-app-header .tpdf-app-file{margin:0 0 0 2px}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-mobile-chrome-actions{padding:0 8px;gap:6px}
+.tpdf-editor[data-tpdf-layout=mobile] .tpdf-mobile-app-header>button,.tpdf-editor[data-tpdf-layout=mobile] .tpdf-mobile-chrome-actions button{color:var(--tpdf-fg,#16233c)}
