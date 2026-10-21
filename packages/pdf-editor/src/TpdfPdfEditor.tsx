@@ -27,7 +27,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   const [viewWidth, setViewWidth] = useState(800);
   const [grid, setGrid] = useState(false), [tileMeta, setTileMeta] = useState<PdfTileMeta | null>(null);
   const [tileError, setTileError] = useState(""), [dpr, setDpr] = useState(1);
-  const [tool, setTool] = useState<PdfTool>("region");
+  const [tool, setTool] = useState<PdfTool>("region"), [panMode,setPanMode] = useState(false);
   const [query, setQuery] = useState(""), [results, setResults] = useState<PdfSearchHit[]>([]);
   const [note, setNote] = useState(""), [p1Style, setP1Style] = useState<P1Style>(DEFAULT_P1_STYLE);
   const [region, setRegion] = useState<PdfRegion | null>(null);
@@ -125,6 +125,9 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   function builtIn(id: string) {
     if (id === "pages") { setGrid((value) => !value); return; }
     if (id === "fit") { setZoom("fit"); return; }
+    if (id === "fitPage") { fitPage(); return; }
+    if (id === "pan") { setPanMode(p=>!p); return; }
+    if (id === "zoomIn" || id === "zoomOut") { setZoom(scale*(id==="zoomIn"?1.25:0.8)); return; }
     if (id.startsWith("zoom")) {
       const percent = Number(id.slice(4));
       if (Number.isFinite(percent) && percent >= 25 && percent <= 800) setZoom(percent / 100);
@@ -208,11 +211,11 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
         : <div className="tpdf-page-grid">{Array.from({ length: engine.pdf?.numPages || 0 }, (_, i) =>
             <button type="button" key={i} onClick={() => goto(i + 1)}>{text.pages} {i + 1}</button>)}</div>)
         : useTiles && tileMeta && props.adapter.tiles ? <TileViewer tiles={props.adapter.tiles} meta={tileMeta}
-          zoom={scale} parent={scrollNode} selected={region} onRegion={selected} tool={tool} marks={marks} assetUrl={props.adapter.assetUrl} p2Changes={p2Changes}
+          zoom={scale} parent={scrollNode} selected={region} forcePan={panMode} onRegion={selected} tool={tool} marks={marks} assetUrl={props.adapter.assetUrl} p2Changes={p2Changes}
           p3Changes={p3Changes} onPage={(value) => { if (value !== engine.page) engine.setPage(value); }} />
         : engine.pdf && Array.from({ length: engine.pdf.numPages }, (_, i) =>
           <PageSurface key={i} pdf={engine.pdf!} number={i + 1} scale={scale} parent={scrollNode}
-            tool={tool} marks={marks} highlight={region} onRegion={selected}
+            tool={tool} marks={marks} highlight={region} onRegion={selected} pan={panMode}
             readOnly={Boolean(props.readOnly) && tool !== "region"}
             assetUrl={props.adapter.assetUrl} p2Changes={p2Changes} p3Changes={p3Changes} />)}
     </div>
@@ -224,6 +227,9 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     onKeyDown={keyboard} tabIndex={0} role="region" aria-label="TPDF PDF editor">
     {props.shell === "app" ? <ResponsivePdfShell layout={layout}
       adapter={props.adapter} meta={tileMeta} pdf={engine.pdf}
+      openDocuments={props.openDocuments} activeDocumentId={props.activeDocumentId}
+      onOpenDocument={props.onOpenDocument} onCloseDocument={props.onCloseDocument}
+      onOpenFile={props.onOpenFile} onHome={props.onHome} showHomeButton={props.showHomeButton}
       onZoom={(value)=>setZoom(value)} onFitWidth={()=>setZoom("fit")} onFitPage={fitPage}
       locale={props.locale || "vi"} text={text}
       name={engine.source?.name || "Document.pdf"} dirty={engine.dirty} busy={engine.busy}
@@ -232,7 +238,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       canSave={canSave} undoEnabled={canEdit && engine.history.past.length > 0}
       redoEnabled={canEdit && engine.history.future.length > 0} tool={tool}
       query={query} results={results} note={note} selection={region}
-      tools={props.tools || []} onTool={setTool} onNote={setNote}
+      tools={props.tools || []} onTool={next=>{setPanMode(false);setTool(next);}} onNote={setNote}
       canText={Boolean(props.adapter.resolveTextQuads)} canAsset={Boolean(props.adapter.selectAsset)}
       canP1={Boolean(props.adapter.applyChanges) && canEdit}
       canP2={p2.canP2} canFill={p2.canFill} canAttachment={p2.canAttachment}
