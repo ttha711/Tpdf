@@ -15,7 +15,7 @@ export function handleDesktopKeys(event:KeyboardEvent<HTMLDivElement>,
     options.root.current?.dispatchEvent(new CustomEvent("tpdf-desktop-find",{bubbles:true}));
     return true;
   }
-  if(modifier&&key==="y"&&!options.readOnly){
+  if(modifier&&key==="y"&&!options.readOnly&&!typing){
     event.preventDefault();options.redo();return true;
   }
   if(!modifier&&!typing&&(event.key==="PageDown"||event.key==="PageUp")){
