@@ -119,3 +119,20 @@
 .tpdf-p3-destructive strong{font-size:17px;color:#b32229}
 .tpdf-editor .tpdf-p3-destructive button{min-height:44px;margin-right:8px;margin-bottom:4px}
 @media(max-width:430px){.tpdf-p3-panel input:not([type=checkbox]),.tpdf-p3-panel select,.tpdf-p3-panel textarea{max-width:135px}}
+
+/* P3 polish: compact, independently scrollable mobile editor panel and non-blocking notes. */
+.tpdf-p3-panel{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;overflow:hidden;min-height:0;max-height:min(29dvh,244px)}
+.tpdf-p3-panel-header{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:0 0 auto;padding:4px 12px;min-height:48px}
+.tpdf-p3-panel-header strong{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tpdf-editor .tpdf-p3-panel-header button{min-height:44px;min-width:92px;flex:0 0 auto;border-radius:8px;border:1px solid #a8b5c8;background:var(--tpdf-panel,#fff);color:inherit}
+.tpdf-p3-panel-body{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:6px 12px 12px}
+.tpdf-p3-panel-body[hidden]{display:none}
+.tpdf-p3-panel-body>strong{flex-basis:100%;font-size:13px}
+.tpdf-p3-pending-summary{flex:0 0 auto;max-height:56px;overflow:auto;padding:6px 12px;background:#fff0db;color:#713d0f;font-size:12px;font-weight:600}
+.tpdf-p3-staged-terms{flex-basis:100%;margin:0;padding-left:18px;max-height:64px;overflow:auto}
+.tpdf-app-shell{position:relative}
+.tpdf-p3-save-toast{position:absolute;z-index:35;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom,0px));max-width:480px;max-height:min(35dvh,240px);overflow:auto;background:#fffbea;color:#6c3c0c;border:1px solid #b78b40;border-radius:10px;box-shadow:0 4px 18px #0003;padding:10px 12px;font:13px/1.4 system-ui;overflow-wrap:anywhere}
+.tpdf-p3-save-toast>div{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tpdf-editor .tpdf-p3-save-toast button{border:1px solid #c1a37b;min-height:44px;min-width:44px;border-radius:8px;background:#fff;color:inherit;font-size:22px}
+.tpdf-p3-save-toast ul{margin:3px 0 2px;padding-left:18px}
+@media(min-width:431px){.tpdf-p3-save-toast{left:auto;width:min(480px,calc(100% - 24px))}}
