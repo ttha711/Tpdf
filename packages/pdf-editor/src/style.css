@@ -136,3 +136,65 @@
 .tpdf-editor .tpdf-p3-save-toast button{border:1px solid #c1a37b;min-height:44px;min-width:44px;border-radius:8px;background:#fff;color:inherit;font-size:22px}
 .tpdf-p3-save-toast ul{margin:3px 0 2px;padding-left:18px}
 @media(min-width:431px){.tpdf-p3-save-toast{left:auto;width:min(480px,calc(100% - 24px))}}
+
+/* S4 desktop/tablet office shell: breakpoints follow ResizeObserver container width. */
+.tpdf-desktop-shell{position:relative;display:flex;flex-direction:column;width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;background:var(--tpdf-bg,#eef1f5)}
+.tpdf-desktop-ribbon{display:flex;flex-direction:column;flex:0 0 auto;min-width:0;background:var(--tpdf-panel,#fff);border-bottom:1px solid var(--tpdf-border,#ccd6e3)}
+.tpdf-desktop-ribbon-head{height:42px;display:flex;align-items:center;gap:12px;padding:3px 14px;min-width:0}
+.tpdf-desktop-title{min-width:0;display:flex;align-items:center;gap:14px;flex:1 1 auto}
+.tpdf-desktop-title strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%}
+.tpdf-desktop-title span{font-size:12px;color:var(--tpdf-muted,#64748b);white-space:nowrap}
+.tpdf-desktop-quick{display:flex;align-items:center;gap:5px;flex:0 0 auto}
+.tpdf-editor .tpdf-desktop-quick button{display:flex;align-items:center;gap:6px;min-height:30px;font-size:12px;padding:4px 9px}
+.tpdf-desktop-ribbon-tabs{display:flex;gap:2px;min-width:0;overflow-x:auto;scrollbar-width:thin;border-bottom:1px solid var(--tpdf-border,#ccd6e3);padding:0 10px}
+.tpdf-editor .tpdf-desktop-ribbon-tabs button{min-height:34px;flex:0 0 auto;border:none;border-radius:0;background:transparent;font-size:12px;font-weight:600;padding:5px 10px;white-space:nowrap}
+.tpdf-editor .tpdf-desktop-ribbon-tabs button[aria-selected=true]{border-bottom:2px solid #2469ad;color:#1264bb;background:#ecf4ff}
+.tpdf-desktop-ribbon-commands{display:flex;gap:5px;align-items:stretch;min-height:49px;max-height:64px;min-width:0;overflow-x:auto;overflow-y:hidden;padding:6px 12px}
+.tpdf-editor .tpdf-desktop-ribbon-commands button{display:flex;align-items:center;gap:5px;flex:0 0 auto;max-width:175px;padding:4px 10px;min-height:36px;background:var(--tpdf-input,#f5f7fb);font-size:12px;white-space:nowrap}
+.tpdf-editor .tpdf-desktop-ribbon-commands button[aria-pressed=true]{background:#dfeeff;border-color:#5a8ac4}
+.tpdf-desktop-ribbon-commands button span{overflow:hidden;text-overflow:ellipsis}
+.tpdf-desktop-ribbon-commands button small{font-size:10px}
+.tpdf-desktop-workspace{display:flex;min-width:0;min-height:0;flex:1 1 auto}
+.tpdf-desktop-sidebar-wrap{flex:0 0 var(--tpdf-sidebar-width,220px);min-width:180px;max-width:370px;min-height:0;overflow:hidden;background:var(--tpdf-panel,#fff)}
+.tpdf-desktop-sidebar{display:flex;flex-direction:column;height:100%;min-width:0;min-height:0}
+.tpdf-desktop-side-tabs{display:flex;gap:2px;flex-wrap:wrap;padding:5px;flex:0 0 auto;border-bottom:1px solid var(--tpdf-border,#ccd6e3)}
+.tpdf-editor .tpdf-desktop-side-tabs button{font-size:11px;flex:1 1 auto;min-height:32px;padding:4px 5px}
+.tpdf-editor .tpdf-desktop-side-tabs button[aria-pressed=true]{background:#dcecff;color:#1263b0}
+.tpdf-desktop-sidebar-scroll{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:8px}
+.tpdf-desktop-sidebar-scroll .tpdf-page-grid{grid-template-columns:repeat(auto-fill,minmax(95px,1fr));gap:7px}
+.tpdf-desktop-sidebar-scroll .tpdf-page-grid button{min-width:0;overflow:hidden;font-size:11px}
+.tpdf-desktop-canvas-thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+.tpdf-desktop-canvas-thumbs button{display:flex;flex-direction:column;align-items:center;gap:4px;overflow:hidden}
+.tpdf-desktop-thumb-canvas{display:block;max-width:100%;width:auto;max-height:170px;background:#fff;box-shadow:0 1px 4px #0003}
+.tpdf-desktop-nav-result{display:block;width:100%;text-align:left;margin:3px 0;overflow-wrap:anywhere}
+.tpdf-desktop-nav-result small{float:right;color:var(--tpdf-muted,#586472)}
+.tpdf-desktop-side-empty{font-size:12px;padding:12px;color:var(--tpdf-muted,#586472)}
+.tpdf-desktop-find form{display:flex;gap:4px}
+.tpdf-desktop-find input{min-width:0;flex:1 1 auto;max-width:none}
+.tpdf-desktop-find form button{flex:0 0 auto}
+.tpdf-desktop-resizer{width:7px;flex:0 0 7px;cursor:col-resize;touch-action:none;background:var(--tpdf-border,#ccd6e3)}
+.tpdf-desktop-resizer:hover,.tpdf-desktop-resizer:focus-visible{background:#5e9dde}
+.tpdf-desktop-center{display:flex;flex:1 1 auto;min-width:0;min-height:0;flex-direction:column;background:#dfe4ea}
+.tpdf-desktop-workbench-controls{display:flex;align-items:center;justify-content:space-between;gap:6px;flex:0 0 auto;padding:3px 8px;min-height:38px;background:var(--tpdf-panel,#fff);border-bottom:1px solid var(--tpdf-border,#ccd6e3)}
+.tpdf-editor .tpdf-desktop-workbench-controls button{font-size:12px;min-height:30px}
+.tpdf-desktop-center>.tpdf-app-viewer{flex:1 1 auto;min-height:0}
+.tpdf-desktop-center .tpdf-scroll{min-width:0;min-height:0;max-width:100%;padding:12px 12px;overflow:auto}
+.tpdf-desktop-inspector{display:flex;flex-direction:column;min-width:220px;width:270px;flex:0 0 270px;min-height:0;background:var(--tpdf-panel,#fff);border-left:1px solid var(--tpdf-border,#ccd6e3)}
+.tpdf-desktop-inspector-head{min-height:39px;display:flex;justify-content:space-between;align-items:center;padding:4px 10px;border-bottom:1px solid var(--tpdf-border,#ccd6e3)}
+.tpdf-editor .tpdf-desktop-inspector-head button{min-height:30px;min-width:30px;font-size:18px}
+.tpdf-desktop-inspector-body{flex:1 1 auto;min-height:0;overflow:auto;padding:8px}
+.tpdf-desktop-inspector-section{padding:5px 2px;border-bottom:1px solid var(--tpdf-border,#ccd6e3)}
+.tpdf-desktop-inspector-section h3{font-size:13px;margin:2px 0 8px}
+.tpdf-desktop-inspector-body .tpdf-p2-panel,.tpdf-desktop-inspector-body .tpdf-p3-panel{max-height:none;overflow:visible;border-bottom:none}
+.tpdf-desktop-inspector-body .tpdf-p3-panel-body{max-height:none;overflow:visible}
+.tpdf-desktop-inspector-body .tpdf-p2-panel label,.tpdf-desktop-inspector-body .tpdf-p3-panel label{flex-wrap:wrap}
+.tpdf-desktop-statusbar{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:3px 12px;flex:0 0 39px;min-height:39px;background:var(--tpdf-panel,#fff);border-top:1px solid var(--tpdf-border,#ccd6e3);font-size:12px}
+.tpdf-desktop-statusbar label{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.tpdf-desktop-statusbar input{width:58px;min-width:45px;min-height:29px;text-align:center}
+.tpdf-desktop-statusbar select{min-height:29px;max-width:130px}
+.tpdf-desktop-save-state{margin-left:auto;color:var(--tpdf-muted,#586472);white-space:nowrap}
+.tpdf-desktop-shell .tpdf-p3-save-toast{bottom:51px}
+.tpdf-desktop-shell[data-tpdf-layout=tablet] .tpdf-desktop-ribbon-head{height:40px}
+.tpdf-desktop-shell[data-tpdf-layout=tablet] .tpdf-desktop-ribbon-commands{min-height:42px}
+.tpdf-desktop-shell[data-tpdf-layout=tablet] .tpdf-desktop-inspector{width:235px;flex-basis:235px;min-width:215px}
+.tpdf-desktop-shell[data-tpdf-layout=tablet] .tpdf-desktop-quick button{padding:4px 5px}
