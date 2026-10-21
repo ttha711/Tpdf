@@ -123,9 +123,11 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
   const p3=useP3Editor({adapter:props.adapter,tool,page:engine.page,
     pages:tileMeta?.pages||canvasGeometry.sizes, versionId:tileMeta?.versionId,
     changes:engine.history.current,readOnly:!canEdit,
+    locale:props.locale||"vi",
     record:engine.record,report:engine.report,selection:region,
     clearSelection:()=>setRegion(null)});
-  const saveGuard=useP3SaveGuard(engine.history.current,engine.save);
+  const saveGuard=useP3SaveGuard(engine.history.current,engine.save,
+    props.adapter.p3Capabilities?.redact?.purgesHistory);
   function selected(value:PdfRegion,points?:Array<[number,number]>) {
     setRegion(value);props.onRegionSelected?.(value);
     if(!canEdit||tool==="region")return;
