@@ -16,7 +16,7 @@ async function place(page:Page) {
   await page.mouse.move(x+65,y+26,{steps:4});await page.mouse.up();
 }
 async function payload(page:Page) {
-  await page.getByRole("button",{name:"Save version"}).first().click();
+  await page.getByRole("button",{name:"Save",exact:true}).last().click();
   await expect(page.getByTestId("p1-payload")).not.toHaveText("",{timeout:10000});
   return JSON.parse(await page.getByTestId("p1-payload").textContent()||"[]");
 }
@@ -36,7 +36,7 @@ test("tile-only P2a create text then fill same field before saving keeps ordered
   await page.getByRole("button",{name:"Add field"}).click();
   await expect(page.locator('[data-tpdf-p2="form"]')).toHaveCount(1);
   await page.screenshot({path:"test-results/screenshots/p2a-375-create.png"});
-  await openTool(page,"Fill");
+  await openTool(page,"Fill mode");
   await page.getByLabel("Choose field").selectOption("new-on-board");
   await page.getByLabel("Fill text").fill("Nguyễn Thị Ạ");
   await page.getByRole("button",{name:"Apply fill"}).click();
@@ -78,7 +78,7 @@ test("single-select list box allows only one option, Fill selects one export val
   await page.getByLabel("Field options").fill("High=H\nLow=L");
   await page.getByLabel("Default choice").selectOption("H");
   await page.getByRole("button",{name:"Add field"}).click();
-  await openTool(page,"Fill");
+  await openTool(page,"Fill mode");
   await page.getByLabel("Choose field").selectOption("priority");
   await page.screenshot({path:"test-results/screenshots/p2a-390-fill.png"});
   await page.getByLabel("Fill choice").selectOption("L");
