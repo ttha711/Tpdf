@@ -9,9 +9,9 @@ const iconName=(id:string):"eye"|"search"|"pages"|"comments"|"pen"|"tools"|"save
   ["annotation-style","shape-style","insert-style","form-style"].includes(id)?"tools":"pen";
 export type WebToolCallbacks={showSearch:()=>void;showPages:()=>void;
   showComments:()=>void;showStyle:()=>void;showInspector?:()=>void};
-export function WebToolButton({tool,p,actions,mode="strip"}:{
+export function WebToolButton({tool,p,actions,mode="strip",onSelected}:{
   tool:MobilePdfTool;p:AppShellProps;actions:WebToolCallbacks;
-  mode?:"strip"|"grid";
+  mode?:"strip"|"grid";onSelected?:()=>void;
 }) {
   const enabled=webToolEnabled(tool,p),action=webToolAction(tool);
   const pressed=action.type==="tool" && action.id===p.tool ||
@@ -20,7 +20,7 @@ export function WebToolButton({tool,p,actions,mode="strip"}:{
     data-tpdf-mobile-tool={tool.id} aria-label={tool.label}
     aria-pressed={pressed} disabled={!enabled}
     title={!enabled?"Coming soon":tool.label}
-    onClick={()=>executeWebTool(tool,p,actions)}>
+    onClick={()=>{executeWebTool(tool,p,actions);onSelected?.();}}>
     <AppShellIcon name={iconName(tool.id)} size={18}/>
     <span>{tool.label}</span>
     {!enabled&&<small>Coming soon</small>}
