@@ -11,7 +11,7 @@ export function MobileAppHeader(p:{
   tiles?:PdfTileAdapter;meta?:PdfTileMeta|null;actions:Actions;
 }) {
   const [overview,setOverview]=useState(false),[menu,setMenu]=useState(false);
-  const docs=p.documents?.length?p.documents:[{id:"current",name:p.name,
+  const docs=p.documents??[{id:"current",name:p.name,
     page:p.page,pages:p.total}];
   const current=p.currentId||docs.find(d=>d.name===p.name)?.id||docs[0]?.id;
   useEffect(()=>{
