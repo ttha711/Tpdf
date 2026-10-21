@@ -59,7 +59,9 @@ export function DesktopShell(p:DesktopShellProps) {
     data-testid="desktop-shell" data-tpdf-layout={p.layout}
     style={{"--tpdf-sidebar-width":sidebarWidth+"px"} as React.CSSProperties}>
     <DesktopRibbon {...p} compact={ribbonCompact}
-      onStylePanel={()=>setInspectorOpen(true)}
+      onStylePanel={()=>setInspectorOpen(true)} onShowInspector={()=>setInspectorOpen(true)}
+      onToggleSidebar={()=>setSidebarOpen(value=>!value)}
+      onComments={()=>{setSidebarOpen(true);setSidebarTab("comments");}}
       onSearchPanel={()=>{setSidebarOpen(true);setSidebarTab("search");}}/>
     <div className="tpdf-desktop-workspace">
       {sidebarOpen&&<>
@@ -142,7 +144,7 @@ export function DesktopShell(p:DesktopShellProps) {
         <option value="page">Fit page</option>
         {[50,75,100,125,150,200].map(n=><option value={n} key={n}>{n}%</option>)}
       </select></label>
-      <span className="tpdf-desktop-save-state">{p.busy?"Saving…":p.dirty?"Unsaved":"Saved"}</span>
+      <span className="tpdf-desktop-save-state" data-testid="shell-save-status">{p.busy?"Saving…":p.dirty?"Unsaved":"Saved"}</span>
     </footer>
     <P3SaveToast notes={p.saveNotes||[]}/>
   </div>;
