@@ -48,7 +48,7 @@ test("mobile P3 panel collapses without hiding pending redact summary",async({pa
   await panel.getByRole("button",{name:"Hide P3 panel"}).click();
   await expect(panel).toHaveAttribute("data-collapsed","true");
   await expect(page.getByLabel("Redact terms")).toBeHidden();
-  await expect(page.getByTestId("p3-redact-pending")).toContainText("Client ID".replace("Client ID","2 terms"));
+  await expect(page.getByTestId("p3-redact-pending")).toContainText("2 terms");
   const collapsed=await panel.evaluate(element=>element.getBoundingClientRect().height);
   expect(collapsed).toBeLessThan(initial-15);
   await panel.getByRole("button",{name:"Show P3 panel"}).click();
