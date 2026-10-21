@@ -86,7 +86,7 @@ function CanvasThumb({pdf,page,root}: {
       if(!ctx)return;
       canvasEl.width=Math.max(1,Math.round(viewport.width));
       canvasEl.height=Math.max(1,Math.round(viewport.height));
-      task=pdfPage.render({canvasContext:ctx,viewport,canvas:canvasEl});
+      task=pdfPage.render({canvasContext:ctx,viewport});
     }).catch(()=>{});
     return()=>{alive=false;task?.cancel();};
   },[pdf,page,visible]);
