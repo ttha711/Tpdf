@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { TileGrid } from "./TileGrid.js";
 import { CanvasThumb } from "./DesktopSidebar.js";
 import type { PDFDocumentProxy } from "pdfjs-dist";
@@ -10,6 +10,9 @@ export function MobilePageFilmstrip(p:{
   const [jump,setJump]=useState(String(p.page));
   const [node,setNode]=useState<HTMLDivElement|null>(null);
   const container=useRef<HTMLDivElement|null>(null);
+  const setScroller=useCallback((element:HTMLDivElement|null)=>{
+    container.current=element;setNode(element);
+  },[]);
   const range=p.total<=200?Array.from({length:p.total},(_,i)=>i+1):
     Array.from({length:Math.min(p.total,21)},(_,i)=>
       Math.max(1,Math.min(p.page-10,p.total-20))+i);
@@ -37,9 +40,7 @@ export function MobilePageFilmstrip(p:{
       </form>
       <button type="button" aria-label="Close page previews" onClick={p.onClose}>×</button>
     </header>
-    <div className="tpdf-mobile-filmstrip-scroll" ref={element=>{
-      container.current=element;setNode(before=>before===element?before:element);
-    }}>
+    <div className="tpdf-mobile-filmstrip-scroll" ref={setScroller}>
       {p.tiles&&p.meta?
         <TileGrid adapter={p.tiles} meta={p.meta} parent={node}
           pageNumbers={range} currentPage={p.page} onGoto={goto}/>:
