@@ -31,7 +31,7 @@ export type AppShellProps = {
   openDocuments?:PdfOpenDocument[];activeDocumentId?:string;
   onOpenDocument?:(id:string)=>void;onCloseDocument?:(id:string)=>void;
   onOpenFile?:()=>void;onHome?:()=>void;showHomeButton?:boolean;
-  onFitPage?:()=>void;
+  onFitPage:()=>void;
   onTool:(tool:PdfTool)=>void;onNote:(value:string)=>void;
   onSearchQuery:(value:string)=>void;onSearch:()=>void;
   onGoto:(page:number)=>void;onBuiltin:(id:string)=>void;
