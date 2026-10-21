@@ -1,68 +1,65 @@
 import { useState } from "react";
 import { AppShellIcon } from "./AppShellIcon.js";
-import { SHELL_BUILTINS, SHEET_GROUPS, TAB_TEXT, APP_WORDS,
-  enabledBuiltin, type ShellTab } from "./appShellModel.js";
-import { toolLabel } from "./p1Labels.js";
+import { MOBILE_PDF_GROUPS, type MobilePdfMode } from "./mobilePdfToolCatalog.js";
+import { WebToolButton, type WebToolCallbacks } from "./WebToolButton.js";
+import { MobileToolsSheet } from "./MobileToolsSheet.js";
 import type { AppShellProps } from "./AppShell.js";
 
 export function DesktopRibbon(p:AppShellProps & {
-  onStylePanel:()=>void; onSearchPanel:()=>void; compact:boolean;
+  onStylePanel:()=>void;onSearchPanel:()=>void;onComments:()=>void;
+  onToggleSidebar:()=>void;onToggleInspector:()=>void;compact:boolean;
 }) {
-  const words={...APP_WORDS[p.locale],...p.text};
   const [tab,setTab]=useState<string>("view");
+  const [sheet,setSheet]=useState(false);
   const hostGroups=[...new Set(p.tools.map(t=>t.group))];
-  const groups=[...SHEET_GROUPS,...hostGroups];
-  const builtins=SHELL_BUILTINS.filter(item=>item.group===tab);
-  const host=p.tools.filter(item=>item.group===tab);
-  const enabled=(item:typeof SHELL_BUILTINS[number])=>enabledBuiltin(item,
-    p.canEdit,p.canForms,p.canText,p.canAsset,p.canP1,
-    p.canP2,p.canFill,p.canAttachment,p.p3);
-  function select(id:string) {
-    if(id==="style"||id==="shapeStyle"){p.onStylePanel();return;}
-    const item=SHELL_BUILTINS.find(c=>c.id===id);
-    if(item?.tool)p.onTool(item.tool);
-    else if(item)p.onBuiltin(item.id);
+  const group=MOBILE_PDF_GROUPS.find(item=>item.id===tab);
+  const host=p.tools.filter(tool=>tool.group===tab);
+  const actions:WebToolCallbacks={showSearch:p.onSearchPanel,
+    showPages:p.onToggleSidebar,showComments:p.onComments,
+    showStyle:p.onStylePanel,showInspector:p.onToggleInspector};
+  function invoke(tool:AppShellProps["tools"][number]) {
+    void Promise.resolve().then(()=>tool.run({page:p.page,
+      selection:p.selection||undefined})).catch(p.onToolError);
   }
   return <div className="tpdf-desktop-ribbon" data-testid="desktop-ribbon">
-    <header className="tpdf-desktop-ribbon-head">
-      <div className="tpdf-desktop-title" title={p.name}>
-        <strong>{p.name}</strong>
-        <span data-testid="shell-save-status">{p.busy?"Saving…":
-          p.dirty?words.unsaved:words.saved}</span></div>
-      <div className="tpdf-desktop-quick">
-        <button type="button" aria-label="Undo" disabled={!p.undoEnabled}
-          onClick={p.onUndo}><AppShellIcon name="undo" size={17}/> Undo</button>
-        <button type="button" aria-label="Redo" disabled={!p.redoEnabled}
-          onClick={p.onRedo}><AppShellIcon name="redo" size={17}/> Redo</button>
-        <button type="button" aria-label="Save version"
-          disabled={!p.canSave||p.busy} onClick={p.onSave}>
-          <AppShellIcon name="save" size={17}/> Save</button>
-      </div>
-    </header>
+    <div className="tpdf-desktop-quickbar" role="toolbar" aria-label="PDF view controls">
+      <button type="button" aria-label="Toggle sidebar" onClick={p.onToggleSidebar}>
+        <AppShellIcon name="pages" size={18}/><span>Sidebar</span></button>
+      <span className="tpdf-desktop-zoom-badge">{Math.round(p.zoom*100)}%</span>
+      <button type="button" onClick={()=>p.onBuiltin("pan")} aria-label="Pan">
+        <AppShellIcon name="eye" size={18}/> Pan</button>
+      <button type="button" onClick={()=>p.onTool("region")} aria-label="Select">
+        <AppShellIcon name="pen" size={18}/> Select</button>
+      <button type="button" aria-label="Search" onClick={p.onSearchPanel}>
+        <AppShellIcon name="search" size={18}/> Search</button>
+      <button type="button" aria-label="Comments" onClick={p.onComments}>
+        <AppShellIcon name="comments" size={18}/> Comments</button>
+      <span className="tpdf-desktop-toolbar-spacer"/>
+      <button type="button" disabled={!p.undoEnabled} onClick={p.onUndo}>
+        <AppShellIcon name="undo" size={16}/> Undo</button>
+      <button type="button" disabled={!p.redoEnabled} onClick={p.onRedo}>
+        <AppShellIcon name="redo" size={16}/> Redo</button>
+      <button type="button" aria-label="Save version" disabled={!p.canSave||p.busy}
+        onClick={p.onSave}><AppShellIcon name="save" size={16}/> Save</button>
+    </div>
     <nav className="tpdf-desktop-ribbon-tabs" role="tablist" aria-label="PDF ribbon">
-      {groups.map(group=><button type="button" role="tab" key={group}
-        aria-selected={tab===group} onClick={()=>setTab(group)}>
-        {SHEET_GROUPS.includes(group as ShellTab)
-          ? words[TAB_TEXT[group as ShellTab]]:group}</button>)}
+      {MOBILE_PDF_GROUPS.map(group=><button role="tab" type="button"
+        key={group.id} aria-selected={tab===group.id}
+        onClick={()=>setTab(group.id)}>{group.label}</button>)}
+      {hostGroups.map(name=><button role="tab" type="button" key={name}
+        aria-selected={tab===name} onClick={()=>setTab(name)}>{name}</button>)}
+      <button role="tab" type="button" aria-selected={sheet}
+        onClick={()=>setSheet(true)}>All tools</button>
     </nav>
     <div className="tpdf-desktop-ribbon-commands" role="toolbar"
       aria-label={tab+" commands"}>
-      {builtins.map(item=><button key={item.id} type="button"
-        aria-pressed={Boolean(item.tool&&p.tool===item.tool)}
-        disabled={!enabled(item)} title={!enabled(item)?words.soon:undefined}
-        onClick={()=>select(item.id)}>
-        <AppShellIcon name={item.tool?"pen":"pages"} size={17}/>
-        <span>{toolLabel(item.label,words,p.locale)}</span>
-        {!enabled(item)&&<small>{words.soon}</small>}
-      </button>)}
-      {host.map(item=><button key={item.id} type="button"
-        onClick={()=>Promise.resolve(item.run({page:p.page,selection:p.selection||undefined}))
-          .catch(p.onToolError)}>
-        {item.icon || <AppShellIcon name="tools" size={17}/>}
-        <span>{item.label}</span></button>)}
-      {!host.length&&!builtins.length&&<span>No tools in this group</span>}
-      {p.compact&&<button type="button" onClick={p.onSearchPanel}>
-        <AppShellIcon name="search" size={17}/> Find</button>}
+      {group?.tools.map(tool=><WebToolButton key={tool.id} tool={tool}
+        p={p} actions={actions}/>)}
+      {host.map(tool=><button type="button" key={tool.id}
+        onClick={()=>invoke(tool)}>{tool.icon||<AppShellIcon name="tools" size={17}/>}
+        <span>{tool.label}</span></button>)}
     </div>
+    {sheet&&<MobileToolsSheet shell={p} actions={actions}
+      onClose={()=>setSheet(false)} onMode={(next:MobilePdfMode)=>setTab(next)}/>}
   </div>;
 }
