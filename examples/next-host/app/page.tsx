@@ -16,6 +16,7 @@ export default function PdfOfficePage() {
   const p1Mode = params.get("p1") === "1";
   const p2Mode = params.get("p2") === "1";
   const p3Mode = params.get("p3") === "1";
+  const purgeHistory = params.get("purgehistory") === "1";
   const p3Fail = params.get("p3fail") === "1";
   const [saved, setSaved] = useState("");
   const [selected, setSelected] = useState<PdfRegion | null>(null);
@@ -38,7 +39,8 @@ export default function PdfOfficePage() {
       } } : {}),
       ...(p3Mode ? {
         p3Capabilities: {
-          redact:{secureErase:true,regions:true,terms:true},
+          redact:{secureErase:true,regions:true,terms:true,
+            ...(purgeHistory ? {purgesHistory:true} : {})},
           measure:{calibrate:true,distance:true,perimeter:true,area:true},
           replaceText:{region:true,pages:true,document:true,count:true},
         },
@@ -115,7 +117,7 @@ export default function PdfOfficePage() {
         return versions.map(({ versionId, name, createdAt }) => ({ versionId, name, createdAt }));
       },
     };
-  }, [tileMode, appShell, p1Mode, p2Mode, p3Mode, p3Fail]);
+  }, [tileMode, appShell, p1Mode, p2Mode, p3Mode, p3Fail, purgeHistory]);
   const hostTools = useMemo(() => [
     { id: "page-numbers", label: "Page numbers", group: "Edit PDF",
       run: (context: { page: number }) => setToolResult("page-numbers page " + context.page) },
