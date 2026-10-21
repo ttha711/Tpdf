@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
-import type { PDFDocumentProxy } from "pdfjs-dist";
+import { TextLayer, type PDFDocumentProxy } from "pdfjs-dist";
 import { normalizeRegion } from "./history.js";
 import type { Mark } from "./history.js";
+import { InlineTextEditor } from "./InlineTextEditor.js";
+import { LiveDraft, useLiveDraft } from "./LiveDraft.js";
+import { LegacyMarkPreview } from "./LegacyMarkPreview.js";
 import { P1MarkPreview } from "./P1MarkPreview.js";
 import { P2PlacementOverlay } from "./P2PlacementOverlay.js";
 import type { P2Change } from "./p2Types.js";
@@ -16,8 +19,10 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
   onRegion: (value: PdfRegion, points?: Array<[number, number]>) => void; readOnly: boolean;
   assetUrl?: (id: string) => string; p2Changes?: P2Change[]; p3Changes?:P3Change[]; pan?:boolean;
 }) {
+  const live = useLiveDraft();
   const element = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const textLayer = useRef<HTMLDivElement>(null);
   const drag=useRef<{x:number;y:number;left:number;top:number}|null>(null);
   const gesture = useRef<{ start: [number, number]; points: Array<[number, number]> } | null>(null);
   const [near, setNear] = useState(false);
@@ -52,6 +57,21 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
     });
     return () => { cancelled = true; task?.cancel(); };
   }, [pdf, number, scale, near]);
+  useEffect(() => {
+    if (!near || !textLayer.current) return;
+    let cancelled = false;
+    let layer: TextLayer | undefined;
+    void pdf.getPage(number).then(async (page) => {
+      const container = textLayer.current;
+      if (cancelled || !container) return;
+      container.replaceChildren();
+      for (const name of ["--scale-factor", "--total-scale-factor"]) container.style.setProperty(name, String(scale));
+      container.style.setProperty("--user-unit", "1");
+      layer = new TextLayer({ textContentSource: page.streamTextContent(), container, viewport: page.getViewport({ scale }) });
+      await layer.render();
+    }).catch(() => undefined);
+    return () => { cancelled = true; layer?.cancel(); };
+  }, [pdf, number, scale, near]);
   function coords(e: PointerEvent<HTMLDivElement>): [number, number] {
     const rect = e.currentTarget.getBoundingClientRect();
     return [
@@ -62,6 +82,7 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
   function finish(e: PointerEvent<HTMLDivElement>) {
     const state = gesture.current;
     gesture.current = null;
+    live.clear();
     if (!state) return;
     const end = coords(e);
     const linear = tool === "distance" || tool === "calibrate";
@@ -78,21 +99,20 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
   return <div ref={element} data-tpdf-page={number} role="group" aria-label={"PDF page " + number}
     className="tpdf-page" style={{ width: size.width * scale, height: size.height * scale }}>
     {near && <canvas ref={canvas} className="tpdf-page-canvas" aria-hidden="true" />}
+    <div ref={textLayer} className={"tpdf-text-layer" + (tool === "region" && !pan ? " tpdf-text-select" : "")} aria-hidden="true" />
     <div className="tpdf-page-overlay" aria-label={"Select area on page " + number}
       onPointerDown={(e) => {if(pan&&parent){drag.current={x:e.clientX,y:e.clientY,left:parent.scrollLeft,top:parent.scrollTop};e.currentTarget.setPointerCapture(e.pointerId);return;} if (readOnly) return; e.currentTarget.setPointerCapture(e.pointerId);
-        const start = coords(e); gesture.current = { start, points: [start] }; }}
-      onPointerMove={(e) => { if(pan&&parent&&drag.current){parent.scrollLeft=drag.current.left-(e.clientX-drag.current.x);parent.scrollTop=drag.current.top-(e.clientY-drag.current.y);return;} if (gesture.current &&
-        ["draw","inkHighlight","polygon","polyline","perimeter","area"].includes(tool))
-        gesture.current.points.push(coords(e)); }}
-      onPointerUp={e=>{if(drag.current){drag.current=null;return;}finish(e);}} onPointerCancel={() => { gesture.current = null;drag.current=null; }}
-      style={{ cursor:pan?"grab":readOnly?"default":"crosshair", touchAction: readOnly ? "auto" : "none" }}>
+        const start = coords(e); gesture.current = { start, points: [start] }; live.begin(tool, start); }}
+      onPointerMove={(e) => { if(pan&&parent&&drag.current){parent.scrollLeft=drag.current.left-(e.clientX-drag.current.x);parent.scrollTop=drag.current.top-(e.clientY-drag.current.y);return;} if (!gesture.current) return;
+        const at = coords(e); live.move(at);
+        if (["draw","inkHighlight","polygon","polyline","perimeter","area"].includes(tool)) gesture.current.points.push(at); }}
+      onPointerUp={e=>{if(drag.current){drag.current=null;return;}finish(e);}} onPointerCancel={() => { gesture.current = null;drag.current=null; live.clear(); }}
+      style={{ cursor:pan?"grab":readOnly?"default":"crosshair", touchAction: readOnly ? "auto" : "none", pointerEvents: tool === "region" && !pan ? "none" : undefined }}>
       {marks.filter((m) => m.region.page === number).map((mark, i) =>
         mark.schemaVersion === 1 ? <P1MarkPreview key={i} mark={mark} assetUrl={assetUrl}/> :
-        <div key={i} className={"tpdf-mark tpdf-mark-" + mark.type}
-          style={{ left: mark.region.x + "%", top: mark.region.y + "%",
-            width: mark.region.width + "%", height: mark.region.height + "%" }}>
-          {(mark.type === "note" || mark.type === "signature") && <span>{mark.value || mark.region.note}</span>}
-        </div>)}
+        <LegacyMarkPreview key={i} mark={mark}/>)}
+      <LiveDraft draft={live.draft}/>
+      <InlineTextEditor page={number}/>
       <P2PlacementOverlay changes={p2Changes} page={number}/>
       <P3PendingOverlay changes={p3Changes} page={number} width={size.width} height={size.height}/>
     {highlight?.page === number && <div className="tpdf-mark tpdf-mark-region" style={{

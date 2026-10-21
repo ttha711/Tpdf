@@ -134,7 +134,7 @@ export function AppShell(p:AppShellProps){
       <P1StyleBar style={p.style} onChange={p.onStyle} locale={p.locale}/>
       <button type="button" onClick={()=>setStyleOpen(false)}>Done</button>
     </div>}
-    {["note","signature","addText","insertText","callout"].includes(p.tool)&&
+    {["note","signature"].includes(p.tool)&&
       <div className="tpdf-app-note"><input aria-label={p.tool} value={p.note}
         onChange={e=>p.onNote(e.target.value)} maxLength={160}/></div>}
     {p.p2Panel}{p.p3Panel}

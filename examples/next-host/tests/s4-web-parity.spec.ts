@@ -236,3 +236,19 @@ test("compact phone: Navigation sheet covers the bottom bars and shows one set o
   await expect(nav.getByText("Pages",{exact:true})).toBeHidden();
   await expect(nav.getByRole("button",{name:"Close navigation"})).toBeVisible();
 });
+test("drawing shows the stroke while the pointer is held and removes the preview on release",async({page})=>{
+  await open(page);
+  await page.getByRole("button",{name:"Annotate",exact:true}).click();
+  await page.getByRole("button",{name:"Draw",exact:true}).click();
+  const overlay=page.locator(".tpdf-page-overlay").first();
+  const box=(await overlay.boundingBox())!;
+  const x=box.x+box.width*0.2,y=box.y+box.height*0.3;
+  await page.mouse.move(x,y);
+  await page.mouse.down();
+  await page.mouse.move(x+60,y+30,{steps:6});
+  const live=page.locator(".tpdf-live-draft polyline");
+  await expect(live).toHaveCount(1);
+  expect((await live.getAttribute("points"))!.split(" ").length).toBeGreaterThan(3);
+  await page.mouse.up();
+  await expect(page.locator(".tpdf-live-draft")).toHaveCount(0);
+});

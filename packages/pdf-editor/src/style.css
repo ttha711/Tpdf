@@ -323,3 +323,17 @@
 .tpdf-desktop-zoom-badge{border:0!important;min-width:44px;font-size:13px!important;font-weight:600;color:var(--tpdf-muted,#596473)}
 .tpdf-desktop-quick-divider{flex:0 0 1px;height:20px;margin:0 6px;background:var(--tpdf-border,#ccd6e3)}
 .tpdf-editor .tpdf-desktop-quickbar .tpdf-desktop-quick-save{width:auto;padding:0 12px;gap:6px;font-weight:600;font-size:13px;background:var(--tpdf-input,#eef2f8)}
+.tpdf-inline-text{position:absolute;z-index:6;box-sizing:border-box;padding:2px 4px;border:1px dashed #1d4ed8;background:#ffffffd9;color:#111;font:14px/1.3 system-ui,sans-serif;resize:none;outline:none;pointer-events:auto}
+.tpdf-text-layer{position:absolute;inset:0;overflow:hidden;line-height:1;pointer-events:none;opacity:1}
+.tpdf-text-layer span,.tpdf-text-layer br{color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0 0}
+.tpdf-text-layer.tpdf-text-select{pointer-events:auto;user-select:text;-webkit-user-select:text}
+.tpdf-text-layer ::selection{background:#2167e744}
+.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p3-panel-body{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding:4px 12px 10px;overflow:auto;min-height:0}
+.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p3-panel-body>*{min-width:0;max-width:100%;white-space:normal}
+.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p3-panel-body label{display:grid;grid-template-columns:88px minmax(0,1fr);align-items:center;gap:8px;min-height:0;background:none}
+.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p3-panel-body input:not([type=checkbox]),.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p3-panel-body select,.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p3-panel-body textarea{width:100%;max-width:none;min-width:0}
+.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p3-panel-body label:has(input[type=checkbox]){grid-template-columns:20px minmax(0,1fr)}
+.tpdf-editor .tpdf-p3-panel{flex-wrap:nowrap}
+.tpdf-editor .tpdf-p3-panel-body{flex:1 1 auto;min-height:0;overflow:auto}
+.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p3-panel-body{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch}
+.tpdf-editor[data-tpdf-layout="mobile"] .tpdf-p3-panel-body>*{flex:0 0 auto}

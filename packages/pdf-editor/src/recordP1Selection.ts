@@ -24,6 +24,7 @@ export async function recordP1Selection(input: {
     const oldType=tool as "highlight"|"note"|"draw"|"cover"|"signature";
     record({kind:"mark",mark:{type:oldType,region,
       value:tool==="note"||tool==="signature"?note:undefined,points}});
+    clearSelection();
     return;
   }
   try{

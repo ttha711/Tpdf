@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { usePdfEngine } from "./usePdfEngine.js";
+import { InlineTextContext } from "./InlineTextEditor.js";
 import { PageSurface } from "./PageSurface.js";
 import { TileViewer } from "./TileViewer.js";
 import { TileGrid } from "./TileGrid.js";
@@ -114,14 +115,26 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     clearSelection:()=>setRegion(null)});
   const saveGuard=useP3SaveGuard(engine.history.current,engine.save,
     props.adapter.p3Capabilities?.redact?.purgesHistory);
+  const [inlineText, setInlineText] = useState<{ region: PdfRegion; points?: Array<[number, number]> } | null>(null);
+  function commitSelection(value:PdfRegion,points:Array<[number,number]>|undefined,text:string) {
+    void recordP1Selection({tool,region:value,points,adapter:props.adapter,
+      note:text,style:p1Style,record:engine.record,report:engine.report,
+      clearSelection:()=>setRegion(null)});
+  }
   function selected(value:PdfRegion,points?:Array<[number,number]>) {
     setRegion(value);props.onRegionSelected?.(value);
     if(!canEdit||tool==="region")return;
     if(p3.onRegion(value,points))return;
-    void recordP1Selection({tool,region:value,points,adapter:props.adapter,
-      note,style:p1Style,record:engine.record,report:engine.report,
-      clearSelection:()=>setRegion(null)});
+    if(["addText","insertText","callout"].includes(tool)&&props.adapter.applyChanges){
+      setInlineText({region:value,points});return;
+    }
+    commitSelection(value,points,note);
   }
+  const inlineState = inlineText && {
+    region: inlineText.region,
+    commit: (text: string) => { commitSelection(inlineText.region, inlineText.points, text); setInlineText(null); },
+    cancel: () => { setInlineText(null); setRegion(null); },
+  };
   function builtIn(id: string) {
     if (id === "pages") { setGrid((value) => !value); return; }
     if (id === "fit") { setZoom("fit"); return; }
@@ -221,7 +234,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     </div>
     {props.children}
   </>;
-  return <div ref={root} className={"tpdf-editor " + (props.className || "")}
+  return <InlineTextContext.Provider value={inlineState}><div ref={root} className={"tpdf-editor " + (props.className || "")}
     data-theme={props.theme || "system"} data-density={props.density || "office"}
     data-shell={props.shell || "classic"} data-tpdf-layout={layout}
     onKeyDown={keyboard} tabIndex={0} role="region" aria-label="TPDF PDF editor">
@@ -239,7 +252,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       canSave={canSave} undoEnabled={canEdit && engine.history.past.length > 0}
       redoEnabled={canEdit && engine.history.future.length > 0} tool={tool}
       query={query} results={results} note={note} selection={region}
-      tools={props.tools || []} onTool={next=>{setPanMode(false);setTool(next);}} onNote={setNote}
+      tools={props.tools || []} onTool={next=>{setPanMode(false);setInlineText(null);setTool(next);}} onNote={setNote}
       canText={Boolean(props.adapter.resolveTextQuads)} canAsset={Boolean(props.adapter.selectAsset)}
       canP1={Boolean(props.adapter.applyChanges) && canEdit}
       canP2={p2.canP2} canFill={p2.canFill} canAttachment={p2.canAttachment}
@@ -288,5 +301,5 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       {props.adapter.listVersions && <button type="button" onClick={() => void props.adapter.listVersions!().then(setVersions).catch(
         (err) => engine.report("versions", err))}>{text.versions}</button>}
     </div>{viewer}</>}
-  </div>;
+  </div></InlineTextContext.Provider>;
 });
