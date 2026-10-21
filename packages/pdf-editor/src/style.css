@@ -373,3 +373,10 @@
 .tpdf-selection-strikeout{text-decoration:line-through}
 .tpdf-selection-squiggly{text-decoration:underline wavy #dc2626}
 .tpdf-p2-radio-choice{display:grid;grid-template-columns:1fr minmax(0,1.2fr) auto;gap:6px;align-items:center}
+@media (max-width:700px){
+.tpdf-editor .tpdf-p1-stylebar{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;align-items:center;width:100%;box-sizing:border-box;padding:6px 12px}
+.tpdf-editor .tpdf-p1-stylebar label{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;min-height:40px;align-items:center}
+.tpdf-editor .tpdf-p1-stylebar input,.tpdf-editor .tpdf-p1-stylebar input[type=range]{width:100%;min-width:0;max-width:none;height:40px;box-sizing:border-box}
+.tpdf-editor .tpdf-p1-stylebar input[type=range]{padding:0}
+.tpdf-editor .tpdf-p1-stylebar button{grid-column:1/-1;min-height:40px}
+}
