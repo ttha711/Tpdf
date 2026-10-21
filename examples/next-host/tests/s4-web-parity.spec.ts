@@ -1,0 +1,254 @@
+import {test,expect,type Page} from "@playwright/test";
+const base="/office/pdf?tiles=1&tileonly=1&shell=app&p1=1&p2=1&p3=1";
+const catalog:Record<string,string[]>={
+  View:["Read / Select","Pan","Fit width","Fit page","Zoom in","Zoom out",
+    "Rotate left","Rotate right","Search","Pages","Comments"],
+  Annotate:["Comment","Link","Highlight","Strikeout","Underline","Squiggly",
+    "Draw","Ink highlight","Add text","Insert text","Replace text","Callout","Style"],
+  Shapes:["Rectangle","Circle","Line","Arrow","Polygon","Polyline","Style"],
+  Insert:["Stamp","Attachment","Signature","Image","Style"],
+  Form:["Text field","Checkbox","Radio button","Dropdown","List box","Fill mode","Style"],
+  Redact:["Redact","Redaction panel"],
+  Measure:["Distance","Perimeter","Area","Calibrate"]
+};
+async function open(page:Page){
+  await page.setViewportSize({width:375,height:812});
+  await page.goto(base);
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible({timeout:30000});
+}
+test("Tpdf mobile AppHeader exact order, 1-tab overview, Select dock, no titlebar search/save",async({page})=>{
+  await open(page);
+  const header=page.getByTestId("mobile-app-header");
+  await expect(header).toBeVisible();
+  const order=await header.locator(":scope > button").evaluateAll(buttons=>
+    buttons.map(button=>button.getAttribute("aria-label")));
+  expect(order).toEqual(["Application menu","Open tabs overview (1 tabs)"]);
+  await expect(header.getByTestId("shell-save-status")).toContainText("Saved");
+  await expect(header.getByRole("button",{name:"Save"})).toHaveCount(0);
+  await expect(header.getByRole("button",{name:"Search"})).toHaveCount(0);
+  await expect(page.getByRole("button",{name:"Select",exact:true})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Read",exact:true})).toHaveCount(0);
+  await header.getByRole("button",{name:"Open tabs overview (1 tabs)"}).click();
+  const dialog=page.getByRole("dialog",{name:"Open documents"});
+  await expect(dialog.getByText("Currently open")).toBeVisible();
+  await expect(dialog.getByText(/Page 1 of 100/)).toBeVisible();
+  await dialog.getByRole("button",{name:/Open .*pdf/}).first().click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible();
+});
+for(const [group,labels] of Object.entries(catalog)){
+  test("Tpdf group tab "+group+" shows source-ordered icon+label tools",async({page})=>{
+    await open(page);
+    await page.getByRole("tab",{name:group,exact:true}).click();
+    const toolbar=page.getByRole("toolbar",{name:group+" tools"});
+    await expect(toolbar).toBeVisible();
+    const names=await toolbar.locator("button").evaluateAll(nodes=>
+      nodes.map(node=>node.getAttribute("aria-label")));
+    expect(names).toEqual(labels);
+    expect(await toolbar.locator("button svg").count()).toBe(labels.length);
+    await expect(page.getByLabel("PDF mode")).toHaveCount(0);
+    const root=page.locator(".tpdf-editor");
+    await expect(root).toHaveAttribute("data-tpdf-layout","mobile");
+  });
+}
+test("Tpdf group actions select tools directly and unavailable P4/P2b buttons stay locked",async({page})=>{
+  await open(page);
+  await page.getByRole("tab",{name:"Annotate"}).click();
+  await page.getByRole("toolbar",{name:"Annotate tools"})
+    .getByRole("button",{name:"Highlight",exact:true}).click();
+  await expect(page.getByRole("toolbar",{name:"Annotate tools"})
+    .getByRole("button",{name:"Highlight",exact:true})).toHaveAttribute("aria-pressed","true");
+  await expect(page.getByRole("toolbar",{name:"Annotate tools"})
+    .getByRole("button",{name:"Comment"})).toBeDisabled();
+  await page.getByRole("tab",{name:"Form"}).click();
+  await expect(page.getByRole("toolbar",{name:"Form tools"})
+    .getByRole("button",{name:"Radio button"})).toBeDisabled();
+  await page.getByRole("toolbar",{name:"Form tools"}).getByRole("button",{name:"Text field"}).click();
+  await expect(page.locator(".tpdf-p2-panel")).toBeVisible();
+  await page.getByRole("tab",{name:"Redact"}).click();
+  await page.getByRole("toolbar",{name:"Redact tools"}).getByRole("button",{name:"Redact",exact:true}).click();
+  await expect(page.getByTestId("p3-panel")).toBeVisible();
+  await page.getByRole("tab",{name:"View"}).click();
+  const view=page.getByRole("toolbar",{name:"View tools"});
+  await expect(view.getByRole("button",{name:"Rotate left"})).toBeDisabled();
+  await expect(view.getByRole("button",{name:"Comments"})).toBeDisabled();
+  await view.getByRole("button",{name:"Zoom in"}).click();
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible();
+  await view.getByRole("button",{name:"Fit page"}).click();
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible();
+});
+test("Tpdf All tools source order, host groups appended below Document tools",async({page})=>{
+  await open(page);
+  await page.getByRole("button",{name:"Tools",exact:true}).click();
+  const sheet=page.getByRole("dialog",{name:"All tools"});
+  await expect(sheet.getByText("Every group matches the scrollable PDF toolbar.")).toBeVisible();
+  const groups=await sheet.locator("[data-tpdf-tool-group]").evaluateAll(nodes=>
+    nodes.map(node=>node.getAttribute("data-tpdf-tool-group")));
+  expect(groups).toEqual(["view","annotate","shapes","insert","form","redact","measure","document"]);
+  await expect(sheet.getByRole("button",{name:"Save PDF"})).toBeVisible();
+  await expect(sheet.getByRole("button",{name:"Edit PDF text"})).toBeDisabled();
+  await expect(sheet.locator("[data-tpdf-host-tools]")).toHaveCount(4);
+});
+test("Tpdf floating status chip scroll-idles, opens lazy Page previews and supports Jump/Escape",async({page})=>{
+  await open(page);
+  const scroll=page.locator(".tpdf-scroll");
+  await scroll.evaluate(node=>node.scrollTop=400);
+  const chip=page.getByRole("button",{name:"Choose page"});
+  await expect(chip).toBeVisible();
+  await expect(chip).toContainText(/Page \d+ \/ 100/);
+  await expect(page.locator(".tpdf-mobile-dock-status")).toContainText("%");
+  await expect(chip).toBeHidden({timeout:5000});
+  await scroll.evaluate(node=>node.scrollTop+=500);
+  await chip.click();
+  const dialog=page.getByRole("dialog",{name:"Page previews"});
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator(".tpdf-page-grid button")).toHaveCount(100);
+  await expect(dialog.locator(".tpdf-page-grid [aria-current=page]")).toHaveCount(1);
+  await dialog.getByRole("spinbutton",{name:"Jump to page"}).fill("35");
+  await dialog.getByRole("button",{name:"Go"}).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator('[data-tpdf-page="35"]')).toBeVisible();
+  await page.locator(".tpdf-scroll").evaluate(node=>node.scrollTop+=200);
+  await page.getByRole("button",{name:"Choose page"}).click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog",{name:"Page previews"})).toHaveCount(0);
+  await expect(page.getByRole("button",{name:"Tools",exact:true})).toBeVisible();
+});
+test("Tpdf mobile sidebar has Thumbnails and Outline and remains independent of PDF.js in tilesOnly",async({page})=>{
+  await open(page);
+  await page.getByRole("button",{name:"Pages and outline"}).click();
+  const nav=page.getByRole("dialog",{name:"PDF navigation"});
+  await expect(nav.getByRole("tab",{name:"Thumbnails"})).toBeVisible();
+  await nav.getByRole("tab",{name:"Outline"}).click();
+  await expect(nav.getByRole("button",{name:/Floor plans/})).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(nav).toHaveCount(0);
+});
+
+test("360i optional openDocuments supports opening and closing distinct host files",async({page})=>{
+  await page.setViewportSize({width:375,height:812});
+  await page.goto(base+"&tabs=1");
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible({timeout:30000});
+  const header=page.getByTestId("mobile-app-header");
+  await header.getByRole("button",{name:"Open tabs overview (2 tabs)"}).click();
+  let overview=page.getByRole("dialog",{name:"Open documents"});
+  await expect(overview.locator("[data-tpdf-tab-card]")).toHaveCount(2);
+  await overview.getByRole("button",{name:"Open Floor-B.pdf"}).click();
+  await expect(overview).toHaveCount(0);
+  await expect(header.locator(".tpdf-app-file strong")).toContainText("Floor-B.pdf");
+  await header.getByRole("button",{name:"Open tabs overview (2 tabs)"}).click();
+  overview=page.getByRole("dialog",{name:"Open documents"});
+  await expect(overview.locator('[data-tpdf-tab-card="doc-b"]')).toContainText("Currently open");
+  await overview.getByRole("button",{name:"Close tab Floor-A.pdf"}).click();
+  await expect(overview.locator("[data-tpdf-tab-card]")).toHaveCount(1);
+  await overview.getByRole("button",{name:"Open Floor-B.pdf"}).click();
+  await expect(header.getByRole("button",{name:"Open tabs overview (1 tabs)"})).toBeVisible();
+});
+
+test("Tpdf desktop ribbons preserve seven source tool groups and host-only groups",async({page})=>{
+  await page.setViewportSize({width:1280,height:800});
+  await page.goto(base);
+  await expect(page.getByTestId("desktop-ribbon")).toBeVisible({timeout:30000});
+  const tabs=await page.getByRole("tablist",{name:"PDF ribbon"}).getByRole("tab")
+    .evaluateAll(nodes=>nodes.map(node=>node.textContent?.trim()));
+  expect(tabs).toEqual(["View","Annotate","Shapes","Insert","Form","Redact",
+    "Measure","Pages","Mark up","Protect","Convert","All tools"]);
+  for(const [group,labels] of Object.entries(catalog)){
+    await page.getByRole("tab",{name:group,exact:true}).click();
+    const toolbar=page.getByRole("toolbar",{name:group.toLowerCase()+" commands"});
+    const names=await toolbar.locator("button").evaluateAll(nodes=>
+      nodes.map(node=>node.getAttribute("aria-label")||node.textContent?.trim()));
+    expect(names).toEqual(labels);
+  }
+  await page.getByRole("tab",{name:"Annotate"}).click();
+  await page.getByRole("toolbar",{name:"annotate commands"})
+    .getByRole("button",{name:"Underline"}).click();
+  await expect(page.getByRole("toolbar",{name:"annotate commands"})
+    .getByRole("button",{name:"Underline"})).toHaveAttribute("aria-pressed","true");
+});
+
+test("Tpdf chrome row: menu is the File menu, three dots is the View menu, neither opens All tools",async({page})=>{
+  await open(page);
+  const row=page.getByRole("toolbar",{name:"PDF navigation actions"});
+  const order=await row.locator("button").evaluateAll(nodes=>nodes.map(node=>node.getAttribute("aria-label")));
+  expect(order).toEqual(["PDF menu","Pages and outline","View menu","Search","Comments"]);
+  await row.getByRole("button",{name:"PDF menu"}).click();
+  const file=page.getByRole("dialog",{name:"File menu"});
+  await expect(file.locator("button span")).toHaveText(["Open","Close","Print","Security","Screenshot","Export","Save PDF","Fullscreen"]);
+  await expect(page.getByRole("dialog",{name:"All tools"})).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await row.getByRole("button",{name:"View menu"}).click();
+  const view=page.getByRole("dialog",{name:"View menu"});
+  await expect(view.getByRole("button",{name:"Fit width"})).toBeVisible();
+  await expect(view.getByRole("button",{name:"Zoom in"})).toBeVisible();
+  await view.getByRole("button",{name:"Zoom in"}).click();
+  await expect(view).toHaveCount(0);
+});
+
+test("compactTopBar puts host start/end, menus, file name, search and comments in one row",async({page})=>{
+  await page.setViewportSize({width:375,height:812});
+  await page.goto(base+"&compact=1");
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible({timeout:30000});
+  const header=page.getByTestId("mobile-app-header");
+  const order=await header.locator("button").evaluateAll(nodes=>nodes.map(node=>node.getAttribute("aria-label")));
+  expect(order).toEqual(["Back to host","PDF menu","Pages and outline","View menu","Open tabs overview (1 tabs)","Search","Comments","Open on canvas"]);
+  await expect(header.getByTestId("shell-save-status")).toContainText("Saved");
+  await expect(page.getByRole("toolbar",{name:"PDF navigation actions"})).toHaveCount(0);
+  const box=await header.boundingBox();
+  expect(box!.height).toBeLessThanOrEqual(48);
+  const rows=await header.locator("button").evaluateAll(nodes=>new Set(nodes.map(node=>{const r=node.getBoundingClientRect();return Math.round((r.top+r.height/2)/6);})).size);
+  expect(rows).toBe(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+});
+
+test("compact phone: tool tabs and tools sit at the bottom, bars hide on scroll down and return on scroll up",async({page})=>{
+  await page.setViewportSize({width:375,height:812});
+  await page.goto(base+"&compact=1");
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible({timeout:30000});
+  await expect(page.locator(".tpdf-app-dock")).toHaveCount(0);
+  const tabs=page.getByRole("tablist",{name:"PDF tool groups"});
+  const viewer=page.locator(".tpdf-app-viewer");
+  const [vb,tb]=[await viewer.boundingBox(),await tabs.boundingBox()];
+  expect(tb!.y).toBeGreaterThan(vb!.y+vb!.height-1);
+  expect(tb!.y+tb!.height).toBeGreaterThan(780);
+  for(const name of ["Undo","Redo","Save"])await expect(tabs.getByRole("button",{name})).toBeVisible();
+  const scroll=page.locator(".tpdf-scroll"),header=page.getByTestId("mobile-app-header");
+  await scroll.evaluate(node=>node.scrollTop=300);
+  await scroll.evaluate(node=>node.scrollTop=700);
+  await expect.poll(async()=>(await header.boundingBox())?.height??0).toBeLessThan(2);
+  await expect.poll(async()=>(await tabs.boundingBox())?.height??0).toBeLessThan(2);
+  await scroll.evaluate(node=>node.scrollTop=600);
+  await expect.poll(async()=>(await header.boundingBox())?.height??0).toBeGreaterThan(30);
+  await expect(tabs).toBeVisible();
+  await expect(page.getByRole("toolbar",{name:"View tools"})).toBeVisible();
+});
+
+test("compact phone: Navigation sheet covers the bottom bars and shows one set of thumbnails",async({page})=>{
+  await page.setViewportSize({width:375,height:812});
+  await page.goto(base+"&compact=1");
+  await expect(page.locator(".tpdf-tile-document")).toBeVisible({timeout:30000});
+  await page.getByRole("button",{name:"Pages and outline"}).click();
+  const nav=page.getByRole("dialog",{name:"PDF navigation"});
+  await expect(nav).toBeVisible();
+  const box=await nav.boundingBox();
+  expect(box!.y+box!.height).toBeGreaterThan(805);
+  await expect(nav.getByRole("button",{name:"Close page previews"})).toBeHidden();
+  await expect(nav.getByText("Pages",{exact:true})).toBeHidden();
+  await expect(nav.getByRole("button",{name:"Close navigation"})).toBeVisible();
+});
+test("drawing shows the stroke while the pointer is held and removes the preview on release",async({page})=>{
+  await open(page);
+  await page.getByRole("button",{name:"Annotate",exact:true}).click();
+  await page.getByRole("button",{name:"Draw",exact:true}).click();
+  const overlay=page.locator(".tpdf-page-overlay").first();
+  const box=(await overlay.boundingBox())!;
+  const x=box.x+box.width*0.2,y=box.y+box.height*0.3;
+  await page.mouse.move(x,y);
+  await page.mouse.down();
+  await page.mouse.move(x+60,y+30,{steps:6});
+  const live=page.locator(".tpdf-live-draft polyline");
+  await expect(live).toHaveCount(1);
+  expect((await live.getAttribute("points"))!.split(" ").length).toBeGreaterThan(3);
+  await page.mouse.up();
+  await expect(page.locator(".tpdf-live-draft")).toHaveCount(0);
+});

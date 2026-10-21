@@ -18,7 +18,7 @@ async function select(page: import("@playwright/test").Page, name: string) {
     .getByRole("button", { name, exact: true }).first().click();
 }
 async function save(page: import("@playwright/test").Page) {
-  await page.getByRole("button", { name: "Save version" }).first().click();
+  await page.getByRole("button", { name: "Save", exact:true }).last().click();
   await expect(page.getByTestId("p1-payload")).not.toHaveText("", { timeout: 10000 });
   return JSON.parse(await page.getByTestId("p1-payload").textContent() || "[]");
 }

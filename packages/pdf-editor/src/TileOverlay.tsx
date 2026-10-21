@@ -1,6 +1,11 @@
 import { useRef } from "react";
 import type { PointerEvent } from "react";
 import { normalizeRegion, type Mark } from "./history.js";
+import { CommentPins } from "./CommentPins.js";
+import { InlineTextEditor } from "./InlineTextEditor.js";
+import { TileTextSelection, useTileTextSelect } from "./TileTextSelect.js";
+import { LiveDraft, shapePoints, textBand, TEXT_MARKUP_TOOLS, TRACED_SHAPES, VERTEX_TOOLS, VertexDraft, useLiveDraft } from "./LiveDraft.js";
+import { LegacyMarkPreview } from "./LegacyMarkPreview.js";
 import { P1MarkPreview } from "./P1MarkPreview.js";
 import { P2PlacementOverlay } from "./P2PlacementOverlay.js";
 import type { P2Change } from "./p2Types.js";
@@ -16,24 +21,35 @@ export function TileOverlay({ number, selected, onRegion, pan, tool = "region", 
   assetUrl?: (id: string) => string; p2Changes?: P2Change[];
   p3Changes?:P3Change[]; pageSize?:{width:number;height:number};
 }) {
+  const live = useLiveDraft(tool);
+  const textSelect = useTileTextSelect(number, tool === "region" && !pan);
   const start = useRef<{ origin: [number, number]; points: Array<[number, number]> } | null>(null);
   function coords(event: PointerEvent<HTMLDivElement>): [number, number] {
     const rect = event.currentTarget.getBoundingClientRect();
     return [Math.max(0, Math.min(100, (event.clientX - rect.left) * 100 / rect.width)),
       Math.max(0, Math.min(100, (event.clientY - rect.top) * 100 / rect.height))];
   }
+  const finishShape = () => {
+    const points = live.vertices;
+    const xs = points.map((p) => p[0]), ys = points.map((p) => p[1]);
+    const region = normalizeRegion(number, Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys));
+    live.resetVertices();
+    if (region) onRegion(region, points);
+  };
   return <div className="tpdf-page-overlay" aria-label={"Select area on page " + number}
     style={{ cursor: pan ? "grab" : "crosshair", touchAction: pan ? "auto" : "pan-y" }}
     onPointerDown={(event) => {
       if (pan || event.button !== 0 || event.pointerType === "touch" && !event.isPrimary) return;
-      const origin = coords(event); start.current = { origin, points: [origin] };
+      textSelect.clear();
+      const origin = coords(event); start.current = { origin, points: [origin] }; live.begin(tool, origin);
       event.currentTarget.setPointerCapture(event.pointerId);
     }}
-    onPointerMove={(event) => { if (start.current &&
-      ["draw","inkHighlight","polygon","polyline","perimeter","area"].includes(tool))
-      start.current.points.push(coords(event)); }}
+    onPointerMove={(event) => { if (!start.current) return;
+      const at = coords(event); live.move(at);
+      if (["draw","inkHighlight","polygon","polyline","perimeter","area"].includes(tool)) start.current.points.push(at); }}
     onPointerUp={(event) => {
       if (!start.current) return;
+      live.clear();
       const last = coords(event);
       const origin = start.current.origin;
       const linear = tool === "distance" || tool === "calibrate";
@@ -41,23 +57,30 @@ export function TileOverlay({ number, selected, onRegion, pan, tool = "region", 
         (last[0] < 99.7 ? last[0] + 0.3 : last[0] - 0.3) : last[0];
       const y = linear && Math.abs(origin[1] - last[1]) < 0.2 ?
         (last[1] < 99.7 ? last[1] + 0.3 : last[1] - 0.3) : last[1];
-      const region = normalizeRegion(number, ...origin, x, y);
+      if (VERTEX_TOOLS.includes(tool) && Math.hypot(last[0] - origin[0], last[1] - origin[1]) < 1.5) { start.current = null; live.tap(last); return; }
+      live.resetVertices();
+      if (tool === "comment") { start.current = null; onRegion({ page: number, x: last[0], y: last[1], width: 0, height: 0, note: "" }); return; }
       const points = start.current.points;
+      const all = [...points, last];
+      const region = TRACED_SHAPES.includes(tool)
+        ? normalizeRegion(number, Math.min(...all.map((p) => p[0])), Math.min(...all.map((p) => p[1])), Math.max(...all.map((p) => p[0])), Math.max(...all.map((p) => p[1])))
+        : TEXT_MARKUP_TOOLS.includes(tool) ? textBand(number, origin, [x, y])
+      : normalizeRegion(number, ...origin, x, y);
       start.current = null;
-      if (region) onRegion(region,
-        ["draw","inkHighlight","polygon","polyline","line","arrow","callout",
-          "perimeter","area","distance","calibrate"].includes(tool)
-          ? [...points, last] : undefined);
+      if (tool === "region" && textSelect.enabled) { if (region) void textSelect.pick(region, last); return; }
+      const traced = ["draw","inkHighlight","polygon","polyline","line","arrow","callout",
+        "perimeter","area","distance","calibrate"].includes(tool) ? shapePoints(tool, [...points, last]) : undefined;
+      if (region && traced !== null) onRegion(region, traced);
     }}
-    onPointerCancel={() => { start.current = null; }}>
+    onPointerCancel={() => { start.current = null; live.clear(); }}>
     {marks.filter((mark) => mark.region.page === number).map((mark, index) =>
       mark.schemaVersion === 1 ? <P1MarkPreview key={index} mark={mark} assetUrl={assetUrl}/> :
-      <div key={index} className={"tpdf-mark tpdf-mark-" + mark.type} style={{
-        left: mark.region.x + "%", top: mark.region.y + "%",
-        width: mark.region.width + "%", height: mark.region.height + "%" }}>
-        {(mark.type === "note" || mark.type === "signature") &&
-          <span>{mark.value || mark.region.note}</span>}
-      </div>)}
+      <LegacyMarkPreview key={index} mark={mark}/>)}
+    <LiveDraft draft={live.draft}/>
+    <VertexDraft tool={tool} vertices={live.vertices} onFinish={finishShape} onCancel={live.resetVertices}/>
+    <InlineTextEditor page={number}/>
+    <CommentPins page={number}/>
+    <TileTextSelection page={number} state={textSelect}/>
     <P2PlacementOverlay changes={p2Changes} page={number}/>
     {pageSize && <P3PendingOverlay changes={p3Changes} page={number}
       width={pageSize.width} height={pageSize.height}/>}

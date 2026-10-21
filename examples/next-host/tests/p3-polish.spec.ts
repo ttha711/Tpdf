@@ -24,7 +24,7 @@ for (const purgesHistory of [false,true]){
       const panel=page.getByTestId("p3-panel");
       await expect(panel.getByRole("list",{name:"Staged redaction terms"}))
         .toContainText("Client ID");
-      await page.getByRole("button",{name:"Save version"}).first().click();
+      await page.getByRole("button",{name:"Save",exact:true}).last().click();
       const dialog=page.getByRole("alertdialog",{name:"Confirm permanent redaction"});
       await expect(dialog).toBeVisible();
       if (purgesHistory) {
@@ -73,7 +73,7 @@ test("Save notes show as dismissible toast and do not shrink tile viewer",async(
   await page.getByRole("button",{name:"Confirm replacement"}).click();
   const viewer=page.locator(".tpdf-app-viewer");
   const before=await viewer.evaluate(node=>node.getBoundingClientRect().height);
-  await page.getByRole("button",{name:"Save version"}).first().click();
+  await page.getByRole("button",{name:"Save",exact:true}).last().click();
   const toast=page.getByTestId("p3-save-notes");
   await expect(toast).toBeVisible({timeout:10000});
   await expect(toast).toContainText("rotated text runs");

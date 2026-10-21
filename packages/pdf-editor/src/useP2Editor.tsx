@@ -7,7 +7,7 @@ import { listedFields } from "./p2ViewModel.js";
 import { P2FormPanel, type P2FormTool } from "./P2FormPanel.js";
 import { P2ActionPanel } from "./P2ActionPanel.js";
 
-const FORM_TOOLS: string[] = ["textField", "checkbox", "dropdown", "listBox", "fill"];
+const FORM_TOOLS: string[] = ["textField", "checkbox", "radio", "dropdown", "listBox", "fill"];
 const P2_TOOLS = [...FORM_TOOLS, "link", "attachment"];
 export function useP2Editor(input: {
   tool: PdfTool; adapter: TpdfPdfAdapter; region: PdfRegion | null;

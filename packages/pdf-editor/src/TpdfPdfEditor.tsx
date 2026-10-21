@@ -1,63 +1,58 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { usePdfEngine } from "./usePdfEngine.js";
+import { InlineTextContext } from "./InlineTextEditor.js";
+import { TileTextSelectContext } from "./TileTextSelect.js";
+import { changedWords } from "./textDiff.js";
+import { CommentPinsContext } from "./CommentPins.js";
+import { CommentsPanel } from "./CommentsPanel.js";
+import { useP4Comments } from "./useP4Comments.js";
 import { PageSurface } from "./PageSurface.js";
 import { TileViewer } from "./TileViewer.js";
 import { TileGrid } from "./TileGrid.js";
-import { AppShell } from "./AppShell.js";
+import { ResponsivePdfShell } from "./ResponsivePdfShell.js";
+import { useContainerLayout } from "./useContainerLayout.js";
+import { handleDesktopKeys } from "./desktopKeys.js";
 import { useP2Editor } from "./useP2Editor.js";
 import { useP3Editor } from "./useP3Editor.js";
 import { useP3SaveGuard } from "./useP3SaveGuard.js";
 import { useCanvasPageGeometry } from "./useCanvasPageGeometry.js";
+import { useCanvasWheelGesture } from "./useCanvasWheelGesture.js";
 import { recordP1Selection } from "./recordP1Selection.js";
 import { DEFAULT_P1_STYLE, type P1Style } from "./p1Types.js";
 import { validMeta, tileLevel } from "./tiles.js";
-import type { PdfTileMeta } from "./types.js";
-import { validRegion, type Mark } from "./history.js";
-import type { PdfRegion, PdfSearchHit, PdfTool, PdfVersion, TpdfPdfEditorHandle, TpdfPdfEditorProps } from "./types.js";
-
-const words = {
-  vi: { save: "Lưu phiên bản", search: "Tìm", pages: "Trang", fit: "Vừa khung",
-    undo: "Hoàn tác", redo: "Làm lại", region: "Chọn vùng", highlight: "Tô sáng",
-    note: "Ghi chú", draw: "Vẽ", cover: "Che (không xóa chữ)",
-    signature: "Chữ ký hiển thị", rotate: "Xoay", delete: "Xóa trang",
-    insert: "Chèn trang", moveUp: "Trang trước", moveDown: "Trang sau",
-    ocr: "OCR", form: "Biểu mẫu", versions: "Phiên bản", loading: "Đang xử lý…" },
-  en: { save: "Save version", search: "Find", pages: "Pages", fit: "Fit",
-    undo: "Undo", redo: "Redo", region: "Select region", highlight: "Highlight",
-    note: "Note", draw: "Draw", cover: "Cover (not secure erase)",
-    signature: "Visual signature", rotate: "Rotate", delete: "Delete page",
-    insert: "Insert page", moveUp: "Move up", moveDown: "Move down",
-    ocr: "OCR", form: "Form", versions: "Versions", loading: "Working…" },
-};
-
+import { normalizeRegion, validRegion, type Mark } from "./history.js";
+import type { PdfTileMeta, PdfRegion, PdfSearchHit, PdfTool, PdfVersion, TpdfPdfEditorHandle, TpdfPdfEditorProps } from "./types.js";
+import { words } from "./editorWords.js";
+import { TextMarkupContext, type TextMarkupAction } from "./SelectionMenu.js";
+import { buildP1Mark } from "./p1Marks.js";
 export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>(function TpdfPdfEditor(props, ref) {
   const engine = usePdfEngine(props);
   const root = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const measuredLayout = useContainerLayout(root);
+  const layout = props.shell === "app" ? measuredLayout : "mobile";
   const [scrollNode, setScrollNode] = useState<HTMLElement | null>(null);
   const [viewWidth, setViewWidth] = useState(800);
-  const [grid, setGrid] = useState(false);
-  const [tileMeta, setTileMeta] = useState<PdfTileMeta | null>(null);
-  const [tileError, setTileError] = useState("");
-  const [dpr, setDpr] = useState(1);
-  const [tool, setTool] = useState<PdfTool>("region");
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<PdfSearchHit[]>([]);
-  const [note, setNote] = useState("");
-  const [p1Style, setP1Style] = useState<P1Style>(DEFAULT_P1_STYLE);
+  const [grid, setGrid] = useState(false), [tileMeta, setTileMeta] = useState<PdfTileMeta | null>(null);
+  const [tileError, setTileError] = useState(""), [dpr, setDpr] = useState(1);
+  const [tool, setTool] = useState<PdfTool>("region"), [panMode,setPanMode] = useState(false);
+  const [query, setQuery] = useState(""), [results, setResults] = useState<PdfSearchHit[]>([]);
+  const [note, setNote] = useState(""), [p1Style, setP1Style] = useState<P1Style>(DEFAULT_P1_STYLE);
   const [region, setRegion] = useState<PdfRegion | null>(null);
-  const [fields, setFields] = useState<string[] | null>(null);
-  const [versions, setVersions] = useState<PdfVersion[] | null>(null);
+  const [fields, setFields] = useState<string[] | null>(null), [versions, setVersions] = useState<PdfVersion[] | null>(null);
   const text = { ...words[props.locale || "vi"], ...props.messages };
-  const pageWidth = tileMeta?.pages[0]?.width || 612;
+  const canvasGeometry = useCanvasPageGeometry(engine.pdf,engine.page);
+  const pageWidth = tileMeta?.pages[0]?.width || canvasGeometry.sizes[0]?.width || 612;
   const scale = engine.zoom === "fit" ? Math.max(0.05,
-    Math.min(16 / dpr, (viewWidth - (props.shell === "app" ? 24 : 42)) / pageWidth)) : Math.min(engine.zoom, 16 / dpr);
+    Math.min(16 / dpr, layout === "mobile" ? 16 : layout === "desktop" ? 1.05 : 1.25,
+      (viewWidth - (props.shell === "app" ? 24 : 42)) / pageWidth)) : Math.min(engine.zoom, 16 / dpr);
   const oversized = tileMeta && tileMeta.pages.some((page) => page.width * page.height * scale * scale * dpr * dpr > 8_000_000);
   const sourceSize = engine.source && ("size" in engine.source ? engine.source.size :
     "bytes" in engine.source ? engine.source.bytes.byteLength : undefined);
   const useTiles = Boolean(props.adapter.tiles && tileMeta &&
     (props.tilesOnly || props.renderMode === "tiles" || (props.renderMode !== "canvas" &&
       ((sourceSize || 0) > (props.largeFileBytes ?? 30_000_000) || oversized))));
+  useCanvasWheelGesture(scroller,layout!=="mobile"&&!useTiles,scale,dpr);
   useEffect(() => { setDpr(window.devicePixelRatio || 1); }, []);
   useEffect(() => {
     if (!props.adapter.tiles || (props.renderMode === "canvas" && !props.tilesOnly)) {
@@ -86,7 +81,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     const observer = new ResizeObserver(([entry]) => setViewWidth(entry.contentRect.width));
     observer.observe(scroller.current);
     return () => observer.disconnect();
-  }, []);
+  }, [layout]);
   function goto(n: number) {
     if ((!engine.pdf && !tileMeta) || !Number.isInteger(n)) return;
     const page = Math.max(1, Math.min(tileMeta?.pages.length || engine.pdf!.numPages, n));
@@ -119,7 +114,6 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     changes: engine.history.current, record: engine.record, report: engine.report,
     versionId: tileMeta?.versionId, pageCount: tileMeta?.pages.length ||
       engine.pdf?.numPages || 0, readOnly: !canEdit, onPlaced: () => setRegion(null) });
-  const canvasGeometry = useCanvasPageGeometry(engine.pdf,engine.page);
   const p3=useP3Editor({adapter:props.adapter,tool,page:engine.page,
     pages:tileMeta?.pages||canvasGeometry.sizes, versionId:tileMeta?.versionId,
     changes:engine.history.current,readOnly:!canEdit,
@@ -128,17 +122,80 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
     clearSelection:()=>setRegion(null)});
   const saveGuard=useP3SaveGuard(engine.history.current,engine.save,
     props.adapter.p3Capabilities?.redact?.purgesHistory);
+  const comments = useP4Comments({ adapter: props.adapter, changes: engine.history.current, canEdit, record: engine.record, report: engine.report });
+  const [selectedComment, setSelectedComment] = useState<string | null>(null);
+  const [commentsSignal, setCommentsSignal] = useState(0);
+  const [inlineText, setInlineText] = useState<{ region: PdfRegion; points?: Array<[number, number]>; initial?: string; apply?: (text: string) => void } | null>(null);
+  async function editTextInPlace(drag: PdfRegion) {
+    try {
+      const picked = await props.adapter.resolveTextSelection!(drag.page, drag);
+      const original = picked.text.trim();
+      if ((picked.lines ?? picked.quads.length) !== 1 || !original) throw Error("Drag across one line of text to edit it.");
+      const corners = picked.quads.flat();
+      const xs = corners.map((p) => p.x), ys = corners.map((p) => p.y);
+      const left = Math.max(0, Math.min(...xs) - 0.4), top = Math.max(0, Math.min(...ys) - 0.4);
+      const box = { page: drag.page, x: left, y: top, width: Math.min(100 - left, Math.max(...xs) + 0.4 - left), height: Math.min(100 - top, Math.max(...ys) + 0.4 - top), note: "" };
+      setRegion(box);
+      setInlineText({ region: box, initial: original, apply: (text) => {
+        setRegion(null);
+        const diff = changedWords(original, text);
+        if (!diff) return;
+        const scope = { kind: "region" as const, region: box };
+        void props.adapter.countTextMatches!({ search: diff.search, caseSensitive: true, scope }).then((found) => {
+          if (!found.count) throw Error("That part of the line is made of separate pieces and cannot be edited as one. Change a smaller part.");
+          p3.addReplace({ kind: "text.replace", schemaVersion: 1, search: diff.search, replacement: diff.replacement, scope, caseSensitive: true, preview: text.trim() });
+        }).catch((error) => engine.report("edit-text", error, false));
+      } });
+    } catch (error) { engine.report("edit-text", error, false); }
+  }
+  const markSelectedText: TextMarkupAction | null = canEdit && props.adapter.applyChanges ? (page, markTool, quads) => {
+    try {
+      const pts = quads.flat(), xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+      const region = normalizeRegion(page, Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys));
+      if (!region) return;
+      engine.record({ kind: "mark", mark: buildP1Mark({ tool: markTool, region, style: p1Style, quads }) });
+    } catch (error) { engine.report("p1-mark", error, false); }
+  } : null;
+  function commitSelection(value:PdfRegion,points:Array<[number,number]>|undefined,text:string) {
+    void recordP1Selection({tool,region:value,points,adapter:props.adapter,
+      note:text,style:p1Style,record:engine.record,report:engine.report,
+      clearSelection:()=>setRegion(null)});
+  }
   function selected(value:PdfRegion,points?:Array<[number,number]>) {
     setRegion(value);props.onRegionSelected?.(value);
     if(!canEdit||tool==="region")return;
+    if(tool==="comment"){if(comments.canAnnotate)setInlineText({region:value});return;}
+    if(tool==="replaceText"&&props.adapter.resolveTextSelection&&props.adapter.countTextMatches){
+      void editTextInPlace(value);return;
+    }
     if(p3.onRegion(value,points))return;
-    void recordP1Selection({tool,region:value,points,adapter:props.adapter,
-      note,style:p1Style,record:engine.record,report:engine.report,
-      clearSelection:()=>setRegion(null)});
+    if(tool==="callout"&&props.adapter.applyChanges&&points?.length){
+      const tip=points[0],end=points[points.length-1];
+      const box={page:value.page,x:Math.min(end[0],60),y:Math.max(0,end[1]-3),width:Math.min(40,100-Math.min(end[0],60)),height:6,note:""};
+      setRegion(box);setInlineText({region:box,points:[tip]});return;
+    }
+    if(["addText","insertText"].includes(tool)&&props.adapter.applyChanges){
+      setInlineText({region:value,points});return;
+    }
+    commitSelection(value,points,note);
   }
+  const inlineState = inlineText && {
+    region: inlineText.region,
+    initial: inlineText.initial,
+    commit: (text: string) => {
+      if (inlineText.apply) inlineText.apply(text);
+      else if (tool === "comment") { const id = comments.add(inlineText.region.page, { x: inlineText.region.x, y: inlineText.region.y }, text); setSelectedComment(id); setRegion(null); }
+      else commitSelection(inlineText.region, inlineText.points, text);
+      setInlineText(null);
+    },
+    cancel: () => { setInlineText(null); setRegion(null); },
+  };
   function builtIn(id: string) {
     if (id === "pages") { setGrid((value) => !value); return; }
     if (id === "fit") { setZoom("fit"); return; }
+    if (id === "fitPage") { fitPage(); return; }
+    if (id === "pan") { setPanMode(p=>!p); return; }
+    if (id === "zoomIn" || id === "zoomOut") { setZoom(scale*(id==="zoomIn"?1.25:0.8)); return; }
     if (id.startsWith("zoom")) {
       const percent = Number(id.slice(4));
       if (Number.isFinite(percent) && percent >= 25 && percent <= 800) setZoom(percent / 100);
@@ -154,14 +211,24 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
         engine.page + (id === "moveUp" ? -1 : 1)),
     });
   }
+  function fitPage() {
+    const size=tileMeta?.pages[engine.page-1]||canvasGeometry.sizes[engine.page-1];
+    if(!size)return setZoom("fit");
+    setZoom(Math.max(0.05,Math.min(1.25,16/dpr,(viewWidth-32)/size.width,
+      ((scroller.current?.clientHeight||700)-32)/size.height)));
+  }
   function keyboard(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (useTiles && ["+", "=","-"].includes(event.key) && !event.ctrlKey && !event.metaKey) {
+    if(handleDesktopKeys(event,layout,{root,goto,page:engine.page,
+      redo:engine.redo,readOnly:Boolean(props.readOnly)}))return;
+    const typing=Boolean((event.target as HTMLElement).closest("input,textarea,select"));
+    if (!typing && (useTiles || layout!=="mobile") && ["+", "=","-"].includes(event.key) &&
+      !event.ctrlKey && !event.metaKey) {
       event.preventDefault(); setZoom(scale * (event.key === "-" ? 0.8 : 1.25)); return;
     }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
       event.preventDefault(); void saveGuard.saveSafely().catch(()=>{});
     } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z" && !props.readOnly) {
-      event.preventDefault(); if (event.shiftKey) engine.redo(); else engine.undo();
+      if (layout==="mobile"||!typing) { event.preventDefault(); if (event.shiftKey) engine.redo(); else engine.undo(); }
     }
   }
   function scroll() {
@@ -212,30 +279,41 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
         : <div className="tpdf-page-grid">{Array.from({ length: engine.pdf?.numPages || 0 }, (_, i) =>
             <button type="button" key={i} onClick={() => goto(i + 1)}>{text.pages} {i + 1}</button>)}</div>)
         : useTiles && tileMeta && props.adapter.tiles ? <TileViewer tiles={props.adapter.tiles} meta={tileMeta}
-          zoom={scale} parent={scrollNode} selected={region} onRegion={selected} tool={tool} marks={marks} assetUrl={props.adapter.assetUrl} p2Changes={p2Changes}
+          zoom={scale} parent={scrollNode} selected={region} forcePan={panMode} onRegion={selected} tool={tool} marks={marks} assetUrl={props.adapter.assetUrl} p2Changes={p2Changes}
           p3Changes={p3Changes} onPage={(value) => { if (value !== engine.page) engine.setPage(value); }} />
         : engine.pdf && Array.from({ length: engine.pdf.numPages }, (_, i) =>
           <PageSurface key={i} pdf={engine.pdf!} number={i + 1} scale={scale} parent={scrollNode}
-            tool={tool} marks={marks} highlight={region} onRegion={selected}
+            tool={tool} marks={marks} highlight={region} onRegion={selected} pan={panMode}
             readOnly={Boolean(props.readOnly) && tool !== "region"}
             assetUrl={props.adapter.assetUrl} p2Changes={p2Changes} p3Changes={p3Changes} />)}
     </div>
     {props.children}
   </>;
-  return <div ref={root} className={"tpdf-editor " + (props.className || "")}
+  const pinsState = { comments: comments.view, selectedId: selectedComment, onPin: (id: string) => { setSelectedComment(id); setCommentsSignal((n) => n + 1); } };
+  const commentsPanel = <CommentsPanel c={comments} page={engine.page} selectedId={selectedComment}
+    onSelect={(item) => { setSelectedComment(item.id); goto(item.page); }} />;
+  return <TextMarkupContext.Provider value={markSelectedText}><TileTextSelectContext.Provider value={props.adapter.resolveTextSelection ?? null}><CommentPinsContext.Provider value={pinsState}><InlineTextContext.Provider value={inlineState}><div ref={root} className={"tpdf-editor " + (props.className || "")}
     data-theme={props.theme || "system"} data-density={props.density || "office"}
-    data-shell={props.shell || "classic"}
+    data-shell={props.shell || "classic"} data-tpdf-layout={layout}
     onKeyDown={keyboard} tabIndex={0} role="region" aria-label="TPDF PDF editor">
-    {props.shell === "app" ? <AppShell locale={props.locale || "vi"} text={text}
+    {props.shell === "app" ? <ResponsivePdfShell layout={layout}
+      adapter={props.adapter} meta={tileMeta} pdf={engine.pdf}
+      openDocuments={props.openDocuments} activeDocumentId={props.activeDocumentId}
+      onOpenDocument={props.onOpenDocument} onCloseDocument={props.onCloseDocument}
+      onOpenFile={props.onOpenFile} onHome={props.onHome} showHomeButton={props.showHomeButton}
+      compactTopBar={props.compactTopBar} topBarStart={props.topBarStart} topBarEnd={props.topBarEnd}
+      onZoom={(value)=>setZoom(value)} onFitWidth={()=>setZoom("fit")} onFitPage={fitPage}
+      locale={props.locale || "vi"} text={text}
       name={engine.source?.name || "Document.pdf"} dirty={engine.dirty} busy={engine.busy}
       page={engine.page} total={tileMeta?.pages.length || engine.pdf?.numPages || 0}
       zoom={scale} tile={useTiles} canEdit={canEdit} canForms={!useTiles && Boolean(engine.pdf)}
       canSave={canSave} undoEnabled={canEdit && engine.history.past.length > 0}
       redoEnabled={canEdit && engine.history.future.length > 0} tool={tool}
       query={query} results={results} note={note} selection={region}
-      tools={props.tools || []} onTool={setTool} onNote={setNote}
+      tools={props.tools || []} onTool={next=>{setPanMode(false);setInlineText(null);setTool(next);}} onNote={setNote}
       canText={Boolean(props.adapter.resolveTextQuads)} canAsset={Boolean(props.adapter.selectAsset)}
       canP1={Boolean(props.adapter.applyChanges) && canEdit}
+      canComment={comments.canAnnotate} commentsPanel={commentsPanel} commentsSignal={commentsSignal}
       canP2={p2.canP2} canFill={p2.canFill} canAttachment={p2.canAttachment}
       p2Panel={p2.p2Panel} p3Panel={p3.panel}
       p3={{ caps:props.adapter.p3Capabilities,enabled:canEdit,
@@ -245,7 +323,7 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       onSearchQuery={setQuery} onSearch={() => void engine.search(query).then(setResults)}
       onGoto={goto} onBuiltin={builtIn} onSave={() => { void saveGuard.saveSafely().catch(()=>{}); }}
       onUndo={engine.undo} onRedo={engine.redo}
-      onToolError={(error) => engine.report("host-tool", error)}>{viewer}</AppShell>
+      onToolError={(error) => engine.report("host-tool", error)}>{viewer}</ResponsivePdfShell>
       : <><div className="tpdf-toolbar" role="toolbar" aria-label="PDF controls">
       <button type="button" onClick={() => setGrid(!grid)}>{text.pages}</button>
       <button type="button" aria-label="Previous page" onClick={() => goto(engine.page - 1)}>‹</button>
@@ -282,5 +360,5 @@ export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>
       {props.adapter.listVersions && <button type="button" onClick={() => void props.adapter.listVersions!().then(setVersions).catch(
         (err) => engine.report("versions", err))}>{text.versions}</button>}
     </div>{viewer}</>}
-  </div>;
+  </div></InlineTextContext.Provider></CommentPinsContext.Provider></TileTextSelectContext.Provider></TextMarkupContext.Provider>;
 });

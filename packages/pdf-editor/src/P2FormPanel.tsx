@@ -4,7 +4,7 @@ import type { P2Change, P2ExistingField, P2FormCapabilities,
   P2FieldType } from "./p2Types.js";
 import { optionsFromText } from "./p2ViewModel.js";
 
-export type P2FormTool = "textField" | "checkbox" | "dropdown" | "listBox" | "fill";
+export type P2FormTool = "textField" | "checkbox" | "radio" | "dropdown" | "listBox" | "fill";
 export function P2FormPanel({ tool, region, fields, caps, onRecord, onError, loading = false }: {
   tool: P2FormTool; region: PdfRegion | null; fields: P2ExistingField[];
   caps: P2FormCapabilities; loading?: boolean; onRecord: (change: P2Change) => void;
@@ -26,6 +26,13 @@ export function P2FormPanel({ tool, region, fields, caps, onRecord, onError, loa
   const [fillText, setFillText] = useState("");
   const [fillChecked, setFillChecked] = useState(false);
   const [fillSelected, setFillSelected] = useState("");
+  const [choices, setChoices] = useState<Array<{ region: PdfRegion; exportValue: string }>>([]);
+  const [radioDefault, setRadioDefault] = useState("");
+  useEffect(() => {
+    if (tool !== "radio" || !region) return;
+    setChoices((list) => list.some((c) => c.region === region) ? list
+      : [...list, { region, exportValue: "Choice" + (list.length + 1) }]);
+  }, [tool, region]);
   const field = fields.find(f=>f.name===fieldName) || fields[0];
   const creating = tool !== "fill";
   useEffect(() => {
@@ -42,6 +49,16 @@ export function P2FormPanel({ tool, region, fields, caps, onRecord, onError, loa
     event.preventDefault();
     try {
       if (creating) {
+        if (type === "radio") {
+          const values = choices.map((c) => c.exportValue.trim());
+          if (choices.length < 2) throw Error("Drag a box on the page for each radio choice (at least 2)");
+          if (values.some((v) => !v) || new Set(values).size !== values.length) throw Error("Each radio choice needs a different value");
+          onRecord({ kind: "form.create", schemaVersion: 1, field: { name: name.trim(), required, readOnly, tooltip, type: "radio",
+            choices: choices.map((c, i) => ({ region: c.region, label: values[i], exportValue: values[i] })),
+            defaultValue: values.includes(radioDefault) ? radioDefault : null } });
+          setChoices([]); setRadioDefault("");
+          return;
+        }
         if (!region) throw Error("Select a rectangle on the PDF page first");
         const base = { name: name.trim(), region, required, readOnly, tooltip };
         const create = type === "text" ? {
@@ -75,7 +92,7 @@ export function P2FormPanel({ tool, region, fields, caps, onRecord, onError, loa
     <strong>{tool === "fill" ? "Fill form" : "Create " + type + " field"}</strong>
     {loading && <span role="status">Loading form fields…</span>}
     {creating ? <>
-      <span className="tpdf-p2-hint">{region ? "Page " + region.page + " selected" :
+      <span className="tpdf-p2-hint">{type === "radio" ? choices.length + " choice(s) placed" : region ? "Page " + region.page + " selected" :
         "Drag to select field placement on the page"}</span>
       <label>Field name <input aria-label="Field name" required value={name}
         onChange={e=>setName(e.target.value)} /></label>
@@ -85,6 +102,19 @@ export function P2FormPanel({ tool, region, fields, caps, onRecord, onError, loa
         onChange={e=>setRequired(e.target.checked)} /> Required</label>
       <label><input type="checkbox" checked={readOnly}
         onChange={e=>setReadOnly(e.target.checked)} /> Read-only</label>
+      {type === "radio" && <>
+        <span className="tpdf-p2-hint">Drag one box on the page for each choice; the value of each choice is below.</span>
+        {choices.map((choice, index) => <label key={index} className="tpdf-p2-radio-choice">Choice {index + 1} (page {choice.region.page})
+          <input aria-label={"Radio choice " + (index + 1)} value={choice.exportValue}
+            onChange={(e) => setChoices((list) => list.map((c, i) => i === index ? { ...c, exportValue: e.target.value } : c))} />
+          <button type="button" aria-label={"Remove choice " + (index + 1)}
+            onClick={() => setChoices((list) => list.filter((_, i) => i !== index))}>×</button></label>)}
+        <label>Selected by default
+          <select aria-label="Default choice" value={radioDefault} onChange={(e) => setRadioDefault(e.target.value)}>
+            <option value="">None</option>
+            {choices.map((c, i) => <option key={i} value={c.exportValue}>{c.exportValue}</option>)}
+          </select></label>
+      </>}
       {type === "text" && <>
         <label>Default text <input aria-label="Default text" value={defaultValue}
           onChange={e=>setDefaultValue(e.target.value)} /></label>
@@ -140,10 +170,13 @@ export function P2FormPanel({ tool, region, fields, caps, onRecord, onError, loa
             <option value="">None</option>
             {field.options?.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
           </select>}</label>}
-        {field.type === "radio" && <span>Radio: Coming soon</span>}
+        {field.type === "radio" && <label>Selected choice
+          <select aria-label="Fill choice" value={fillSelected} onChange={e=>setFillSelected(e.target.value)}>
+            <option value="">None</option>
+            {field.widgets.map(w=>w.exportValue).filter((v): v is string => !!v).map(v=><option key={v} value={v}>{v}</option>)}
+          </select></label>}
       </>}
     </>}
-    <button type="submit" disabled={loading || (creating ? !region : !field || field.readOnly ||
-      field.type==="radio")}>{creating ? "Add field" : "Apply fill"}</button>
+    <button type="submit" disabled={loading || (creating ? (type === "radio" ? choices.length < 2 : !region) : !field || field.readOnly)}>{creating ? "Add field" : "Apply fill"}</button>
   </form>;
 }

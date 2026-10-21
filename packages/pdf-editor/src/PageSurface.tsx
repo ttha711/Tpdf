@@ -1,25 +1,34 @@
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
-import type { PDFDocumentProxy } from "pdfjs-dist";
+import { TextLayer, type PDFDocumentProxy } from "pdfjs-dist";
 import { normalizeRegion } from "./history.js";
 import type { Mark } from "./history.js";
+import { CommentPins } from "./CommentPins.js";
+import { InlineTextEditor } from "./InlineTextEditor.js";
+import { LiveDraft, shapePoints, textBand, TEXT_MARKUP_TOOLS, TRACED_SHAPES, VERTEX_TOOLS, VertexDraft, useLiveDraft } from "./LiveDraft.js";
+import { LegacyMarkPreview } from "./LegacyMarkPreview.js";
 import { P1MarkPreview } from "./P1MarkPreview.js";
+import { SelectionMenu, useDomTextSelect } from "./SelectionMenu.js";
 import { P2PlacementOverlay } from "./P2PlacementOverlay.js";
 import type { P2Change } from "./p2Types.js";
 import type { P3Change } from "./p3Types.js";
 import { P3PendingOverlay } from "./P3PendingOverlay.js";
 import type { PdfRegion, PdfTool } from "./types.js";
 
-export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight, onRegion, readOnly, assetUrl, p2Changes = [], p3Changes=[] }: {
+export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight, onRegion, readOnly, assetUrl, p2Changes = [], p3Changes=[],pan=false }: {
   pdf: PDFDocumentProxy; number: number; scale: number; parent: HTMLElement | null; tool: PdfTool;
   marks: Mark[]; highlight: PdfRegion | null;
   onRegion: (value: PdfRegion, points?: Array<[number, number]>) => void; readOnly: boolean;
-  assetUrl?: (id: string) => string; p2Changes?: P2Change[]; p3Changes?:P3Change[];
+  assetUrl?: (id: string) => string; p2Changes?: P2Change[]; p3Changes?:P3Change[]; pan?:boolean;
 }) {
+  const live = useLiveDraft(tool);
   const element = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const textLayer = useRef<HTMLDivElement>(null);
+  const drag=useRef<{x:number;y:number;left:number;top:number}|null>(null);
   const gesture = useRef<{ start: [number, number]; points: Array<[number, number]> } | null>(null);
   const [near, setNear] = useState(false);
+  const domSelect = useDomTextSelect(textLayer, tool === "region" && !pan);
   const [size, setSize] = useState({ width: 612, height: 792 });
   useEffect(() => {
     if (!element.current || !parent) return;
@@ -51,6 +60,21 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
     });
     return () => { cancelled = true; task?.cancel(); };
   }, [pdf, number, scale, near]);
+  useEffect(() => {
+    if (!near || !textLayer.current) return;
+    let cancelled = false;
+    let layer: TextLayer | undefined;
+    void pdf.getPage(number).then(async (page) => {
+      const container = textLayer.current;
+      if (cancelled || !container) return;
+      container.replaceChildren();
+      for (const name of ["--scale-factor", "--total-scale-factor"]) container.style.setProperty(name, String(scale));
+      container.style.setProperty("--user-unit", "1");
+      layer = new TextLayer({ textContentSource: page.streamTextContent(), container, viewport: page.getViewport({ scale }) });
+      await layer.render();
+    }).catch(() => undefined);
+    return () => { cancelled = true; layer?.cancel(); };
+  }, [pdf, number, scale, near]);
   function coords(e: PointerEvent<HTMLDivElement>): [number, number] {
     const rect = e.currentTarget.getBoundingClientRect();
     return [
@@ -58,9 +82,17 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
       Math.max(0, Math.min(100, (e.clientY - rect.top) * 100 / rect.height)),
     ];
   }
+  const finishShape = () => {
+    const points = live.vertices;
+    const xs = points.map((p) => p[0]), ys = points.map((p) => p[1]);
+    const region = normalizeRegion(number, Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys));
+    live.resetVertices();
+    if (region) onRegion(region, points);
+  };
   function finish(e: PointerEvent<HTMLDivElement>) {
     const state = gesture.current;
     gesture.current = null;
+    live.clear();
     if (!state) return;
     const end = coords(e);
     const linear = tool === "distance" || tool === "calibrate";
@@ -68,30 +100,40 @@ export function PageSurface({ pdf, number, scale, parent, tool, marks, highlight
       (end[0] < 99.7 ? end[0] + 0.3 : end[0] - 0.3) : end[0];
     const y = linear && Math.abs(state.start[1] - end[1]) < 0.2 ?
       (end[1] < 99.7 ? end[1] + 0.3 : end[1] - 0.3) : end[1];
-    const region = normalizeRegion(number, ...state.start, x, y);
+    if (VERTEX_TOOLS.includes(tool) && Math.hypot(end[0] - state.start[0], end[1] - state.start[1]) < 1.5) { live.tap(end); return; }
+    live.resetVertices();
+    if (tool === "comment") { onRegion({ page: number, x: end[0], y: end[1], width: 0, height: 0, note: "" }); return; }
+    const all = [...state.points, end];
+    const region = TRACED_SHAPES.includes(tool)
+      ? normalizeRegion(number, Math.min(...all.map((p) => p[0])), Math.min(...all.map((p) => p[1])), Math.max(...all.map((p) => p[0])), Math.max(...all.map((p) => p[1])))
+      : TEXT_MARKUP_TOOLS.includes(tool) ? textBand(number, state.start, [x, y])
+      : normalizeRegion(number, ...state.start, x, y);
     if (!region) return;
-    onRegion(region, ["draw","inkHighlight","polygon","polyline","line","arrow","callout",
-      "perimeter","area","distance","calibrate"].includes(tool)
-      ? [...state.points, end] : undefined);
+    const traced = ["draw","inkHighlight","polygon","polyline","line","arrow","callout",
+      "perimeter","area","distance","calibrate"].includes(tool) ? shapePoints(tool, [...state.points, end]) : undefined;
+    if (traced === null) return;
+    onRegion(region, traced);
   }
   return <div ref={element} data-tpdf-page={number} role="group" aria-label={"PDF page " + number}
     className="tpdf-page" style={{ width: size.width * scale, height: size.height * scale }}>
     {near && <canvas ref={canvas} className="tpdf-page-canvas" aria-hidden="true" />}
+    <div ref={textLayer} className={"tpdf-text-layer" + (tool === "region" && !pan ? " tpdf-text-select" : "")} aria-hidden="true" />
     <div className="tpdf-page-overlay" aria-label={"Select area on page " + number}
-      onPointerDown={(e) => { if (readOnly) return; e.currentTarget.setPointerCapture(e.pointerId);
-        const start = coords(e); gesture.current = { start, points: [start] }; }}
-      onPointerMove={(e) => { if (gesture.current &&
-        ["draw","inkHighlight","polygon","polyline","perimeter","area"].includes(tool))
-        gesture.current.points.push(coords(e)); }}
-      onPointerUp={finish} onPointerCancel={() => { gesture.current = null; }}
-      style={{ cursor: readOnly ? "default" : "crosshair", touchAction: readOnly ? "auto" : "none" }}>
+      onPointerDown={(e) => {if(pan&&parent){drag.current={x:e.clientX,y:e.clientY,left:parent.scrollLeft,top:parent.scrollTop};e.currentTarget.setPointerCapture(e.pointerId);return;} if (readOnly) return; e.currentTarget.setPointerCapture(e.pointerId);
+        const start = coords(e); gesture.current = { start, points: [start] }; live.begin(tool, start); }}
+      onPointerMove={(e) => { if(pan&&parent&&drag.current){parent.scrollLeft=drag.current.left-(e.clientX-drag.current.x);parent.scrollTop=drag.current.top-(e.clientY-drag.current.y);return;} if (!gesture.current) return;
+        const at = coords(e); live.move(at);
+        if (["draw","inkHighlight","polygon","polyline","perimeter","area"].includes(tool)) gesture.current.points.push(at); }}
+      onPointerUp={e=>{if(drag.current){drag.current=null;return;}finish(e);}} onPointerCancel={() => { gesture.current = null;drag.current=null; live.clear(); }}
+      style={{ cursor:pan?"grab":readOnly?"default":"crosshair", touchAction: readOnly ? "auto" : "none", pointerEvents: tool === "region" && !pan ? "none" : undefined }}>
       {marks.filter((m) => m.region.page === number).map((mark, i) =>
         mark.schemaVersion === 1 ? <P1MarkPreview key={i} mark={mark} assetUrl={assetUrl}/> :
-        <div key={i} className={"tpdf-mark tpdf-mark-" + mark.type}
-          style={{ left: mark.region.x + "%", top: mark.region.y + "%",
-            width: mark.region.width + "%", height: mark.region.height + "%" }}>
-          {(mark.type === "note" || mark.type === "signature") && <span>{mark.value || mark.region.note}</span>}
-        </div>)}
+        <LegacyMarkPreview key={i} mark={mark}/>)}
+      <LiveDraft draft={live.draft}/>
+      <VertexDraft tool={tool} vertices={live.vertices} onFinish={finishShape} onCancel={live.resetVertices}/>
+      <InlineTextEditor page={number}/>
+      <CommentPins page={number}/>
+      {domSelect.picked && <SelectionMenu page={number} picked={domSelect.picked} onDone={domSelect.clear}/>}
       <P2PlacementOverlay changes={p2Changes} page={number}/>
       <P3PendingOverlay changes={p3Changes} page={number} width={size.width} height={size.height}/>
     {highlight?.page === number && <div className="tpdf-mark tpdf-mark-region" style={{

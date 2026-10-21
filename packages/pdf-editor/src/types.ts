@@ -1,3 +1,4 @@
+import type { CommentCapabilities, PdfComment } from "./p4Types.js";
 import type { ReactNode } from "react";
 import type { P1Asset, P1Quad, P1Tool } from "./p1Types.js";
 import type { P2FieldInventory, P2FormCapabilities } from "./p2Types.js";
@@ -14,6 +15,7 @@ export type PdfTileLevel = 0.25 | 0.5 | 1 | 2 | 4 | 8 | 16;
 export type PdfTileMeta = { versionId: string; pages: Array<{ width: number; height: number }> };
 export type PdfTileAdapter = { meta(): Promise<PdfTileMeta>; tileUrl(page: number, level: PdfTileLevel, x: number, y: number): string };
 export type PdfChangeRequest = import("./history.js").PdfChange;
+export type PdfOpenDocument = { id:string;name:string;page:number;pages:number };
 export type PdfHostTool = { id: string; label: string; group: string;
   icon?: ReactNode; run(context: { page: number; selection?: PdfRegion }): void | Promise<void> };
 export interface TpdfPdfAdapter {
@@ -25,17 +27,24 @@ export interface TpdfPdfAdapter {
   runOcr?(options: { bytes: Uint8Array; name: string }): Promise<{ bytes: Uint8Array }>;
   searchPages?(query: string): Promise<PdfSearchHit[]>;
   resolveTextQuads?(page: number, region: PdfRegion): Promise<P1Quad[]>;
+  /** Quads and text under a region, so server-rendered pages can offer text selection and copy. */
+  resolveTextSelection?(page: number, region: PdfRegion): Promise<{ quads: P1Quad[]; text: string; lines?: number }>;
   selectAsset?(kind: P1Asset): Promise<{ assetId: string } | null>;
   assetUrl?(assetId: string): string;
   formCapabilities?: P2FormCapabilities;
   listFormFields?(): Promise<P2FieldInventory>;
   selectAttachment?(): Promise<{ assetId: string; size?: number } | null>;
   p3Capabilities?: P3Capabilities;
+  /** Comments stored as PDF note annotations; without listComments the Comments panel says the host must support them. */
+  listComments?(): Promise<{ versionId: string; comments: PdfComment[] }>;
+  commentCapabilities?: CommentCapabilities;
   listPageCalibrations?(): Promise<P3CalibrationInventory>;
   countTextMatches?(query: { search:string; caseSensitive?:boolean; scope:P3Scope }): Promise<P3MatchCount>;
+  /** Optional host bookmarks for tilesOnly (never loads PDF.js in that mode). */
+  listBookmarks?(): Promise<Array<{ title:string; page:number }>>;
 }
 export type PdfTool = "region" | "highlight" | "note" | "draw" | "cover" | "signature" | P1Tool | "textField" | "checkbox" | "radio" | "dropdown" | "listBox" |
-  "fill" | "link" | "attachment" | P3Tool;
+  "fill" | "link" | "attachment" | "comment" | P3Tool;
 export type PdfAssets = { pdfiumWasmUrl?: string; workerUrl: string };
 export type PdfEditorMessages = Partial<Record<
   "save" | "search" | "pages" | "fit" | "undo" | "redo" | "open" | "loading" | "error" |
@@ -51,6 +60,11 @@ export type TpdfPdfEditorProps = {
   readOnly?: boolean;
   shell?: "classic" | "app";
   tools?: PdfHostTool[];
+  openDocuments?:PdfOpenDocument[];activeDocumentId?:string;
+  onOpenDocument?:(id:string)=>void;onCloseDocument?:(id:string)=>void;
+  onOpenFile?:()=>void;onHome?:()=>void;showHomeButton?:boolean;
+  /** Phones: put file name, menus, search and comments in one row; the host fills both ends of it (e.g. back and open-on-canvas). */
+  compactTopBar?:boolean;topBarStart?:ReactNode;topBarEnd?:ReactNode;
   tilesOnly?: boolean;
   renderMode?: "auto" | "canvas" | "tiles";
   largeFileBytes?: number;

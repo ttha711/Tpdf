@@ -12,7 +12,9 @@ export type P3Change =
   | { kind:"measure"; schemaVersion:1; type:"distance"|"perimeter"|"area";
     page:number; points:P3Point[]; calibration:P3PageCalibration }
   | { kind:"text.replace"; schemaVersion:1; search:string; replacement:string;
-    scope:P3Scope; caseSensitive?:boolean };
+    scope:P3Scope; caseSensitive?:boolean;
+    /** The whole new line, shown over the old one until the change is saved. Not sent to the host. */
+    preview?:string };
 export type P3Capabilities = {
   redact?: {secureErase?:boolean; regions?:boolean; terms?:boolean; purgesHistory?:boolean};
   measure?: {calibrate?:boolean; distance?:boolean; perimeter?:boolean; area?:boolean};

@@ -46,12 +46,17 @@ export function P1MarkPreview({ mark, assetUrl }: {
           }))}/> :
           <line key={i} {...common} x1={start.x} y1={start.y} x2={end.x} y2={end.y}/>;
       })}
+    {mark.type === "callout" && (() => {
+      const a = mark.anchor || { x: r.x, y: r.y }, ex = Math.min(Math.max(a.x, r.x), r.x + r.width), ey = Math.min(Math.max(a.y, r.y), r.y + r.height);
+      return <><rect x={r.x} y={r.y} width={r.width} height={Math.max(r.height, 3)} {...common} strokeWidth={1} />
+        <line x1={a.x} y1={a.y} x2={ex} y2={ey} {...common} /></>;
+    })()}
     {(mark.type === "addText" || mark.type === "insertText" || mark.type === "callout") &&
       <text x={r.x} y={r.y + 1.5} fontSize="2.5" fill={s.strokeColor}>
         {mark.text.slice(0, 60)}</text>}
     {isAsset && assetUrl && <image x={r.x} y={r.y} width={r.width} height={r.height}
       href={assetUrl(mark.assetId)} preserveAspectRatio="xMidYMid meet" opacity={s.opacity}/>}
-    {isAsset && <><rect x={r.x} y={r.y} width={r.width} height={r.height}
+    {isAsset && !assetUrl && <><rect x={r.x} y={r.y} width={r.width} height={r.height}
       {...common} strokeDasharray="1 .5"/>
       <text x={r.x + 1} y={r.y + 3} fontSize="2.3" fill={s.strokeColor}>
         {mark.type + ": " + mark.assetId.slice(0, 12)}</text></>}
