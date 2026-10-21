@@ -138,8 +138,9 @@ export function AppShell(p:AppShellProps){
     {commentNotice&&<div className="tpdf-app-notice" role="status">
       Comments: Coming soon — host has not enabled P4.</div>}
     {styleOpen&&p.style&&p.onStyle&&<div className="tpdf-app-p1-style">
+      <header className="tpdf-style-head"><strong>{p.locale==="vi"?"Kiểu":"Style"}</strong>
+        <button type="button" onClick={()=>setStyleOpen(false)}>{p.locale==="vi"?"Xong":"Done"}</button></header>
       <P1StyleBar style={p.style} onChange={p.onStyle} locale={p.locale}/>
-      <button type="button" onClick={()=>setStyleOpen(false)}>Done</button>
     </div>}
     {["note","signature"].includes(p.tool)&&
       <div className="tpdf-app-note"><input aria-label={p.tool} value={p.note}
