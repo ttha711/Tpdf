@@ -27,6 +27,8 @@ export function DesktopShell(p:DesktopShellProps) {
   const bookmarks=usePdfBookmarks(p.pdf,p.adapter.listBookmarks);
   useEffect(()=>{
     setRibbonCompact(p.layout==="tablet");
+    setSidebarOpen(p.layout==="desktop");
+    setInspectorOpen(p.layout==="desktop"||inspectorTools.has(p.tool));
   },[p.layout]);
   useEffect(()=>{
     if(inspectorTools.has(p.tool))setInspectorOpen(true);
