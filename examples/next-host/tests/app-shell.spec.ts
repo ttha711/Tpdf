@@ -31,7 +31,9 @@ for (const viewport of screens) {
     await page.screenshot({ path: `test-results/screenshots/s3-${viewport.width}-open.png` });
     await page.getByRole("tab", { name: "Annotate" }).click();
     await expect(page.getByRole("tab", { name: "Annotate" })).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByLabel("PDF mode")).toHaveValue("highlight");
+    await expect(page.getByRole("toolbar",{name:"Annotate tools"})).toBeVisible();
+    await page.getByRole("toolbar",{name:"Annotate tools"})
+      .getByRole("button",{name:"Highlight"}).click();
     await page.screenshot({ path: `test-results/screenshots/s3-${viewport.width}-annotate.png` });
     await page.getByRole("button", { name: "Tools", exact: true }).click();
     await expect(page.getByRole("dialog", { name: "All tools" })).toBeVisible();
@@ -52,11 +54,11 @@ test("tilesOnly searchPages results navigate via metadata with no PDF.js source 
   page.on("request", (request) => { if (request.url().includes("fixture.pdf")) pdfRequests.push(request.url()); });
   await page.goto(url);
   await expect(page.locator(".tpdf-tile-document")).toBeVisible({ timeout: 30000 });
-  await page.getByRole("button", { name: "Find" }).first().click();
+  await page.getByRole("button", { name: "Search", exact:true }).first().click();
   await page.getByTestId("shell-search").locator("input").fill("stair");
   await page.getByTestId("shell-search").getByRole("button", { name: "Find" }).click();
   await page.getByRole("button", { name: /Page 35:/ }).click();
-  await expect(page.locator(".tpdf-app-status")).toContainText("Page 35 / 100");
+  await expect(page.locator(".tpdf-mobile-dock-status")).toContainText("Page 35 / 100");
   expect(pdfRequests).toEqual([]);
 });
 
@@ -65,6 +67,7 @@ test("tilesOnly host applyChanges saves annotation as change list, no PDF bytes"
   await page.goto(url);
   await expect(page.locator(".tpdf-tile-document")).toBeVisible({ timeout: 30000 });
   await page.getByRole("tab", { name: "Annotate" }).click();
+  await page.getByRole("toolbar",{name:"Annotate tools"}).getByRole("button",{name:"Highlight"}).click();
   const overlay = page.locator('[data-tpdf-page="1"] .tpdf-page-overlay');
   await expect(overlay).toBeVisible();
   const rect = await overlay.boundingBox();
@@ -76,7 +79,7 @@ test("tilesOnly host applyChanges saves annotation as change list, no PDF bytes"
   await page.mouse.up();
   await expect(page.locator(".tpdf-mark-highlight")).toHaveCount(1);
   await expect(page.getByTestId("shell-save-status")).toContainText("Unsaved");
-  await page.getByRole("button", { name: "Save version" }).first().click();
+  await page.getByRole("button", { name: "Save", exact:true }).last().click();
   await expect(page.getByTestId("shell-save-status")).toContainText("Saved");
   await expect(page.locator(".tpdf-mark-highlight")).toHaveCount(0);
   await expect(page.getByTestId("host-saved")).toContainText("applied=1");
@@ -92,9 +95,9 @@ test("tile page mutation is sent to host applyChanges without downloading PDF", 
   await expect(page.locator(".tpdf-tile-document")).toBeVisible({ timeout: 30000 });
   await page.getByRole("button", { name: "Tools", exact: true }).click();
   await page.getByRole("dialog", { name: "All tools" })
-    .getByRole("button", { name: "Rotate" }).click();
+    .getByRole("button", { name: "Rotate right" }).click();
   await expect(page.getByTestId("shell-save-status")).toContainText("Unsaved");
-  await page.getByRole("button", { name: "Save version" }).first().click();
+  await page.getByRole("button", { name: "Save", exact:true }).last().click();
   await expect(page.getByTestId("host-saved")).toContainText("applied=1");
   expect(pdfRequests).toEqual([]);
 });
@@ -106,12 +109,12 @@ test("A0 landscape Fit shrinks below 25% without horizontal scroll on 375px", as
   await expect(page.locator(".tpdf-tile-document")).toBeVisible({ timeout: 30000 });
   await expect.poll(async () => scroller.evaluate((node) => ({
     scroll: node.scrollWidth, client: node.clientWidth,
-    zoom: Number(document.querySelector(".tpdf-app-status span:last-child")?.textContent?.replace("%","")),
+    zoom: (document.querySelector('[data-tpdf-page="1"]')?.getBoundingClientRect().width||0)/3370*100,
   })), { timeout: 15000 }).toMatchObject({ scroll: 375, client: 375 });
   const metrics = await scroller.evaluate((node) => ({
     scrollWidth: node.scrollWidth, clientWidth: node.clientWidth,
     pageWidth: document.querySelector('[data-tpdf-page="1"]')?.getBoundingClientRect().width,
-    zoom: Number(document.querySelector(".tpdf-app-status span:last-child")?.textContent?.replace("%","")),
+    zoom: (document.querySelector('[data-tpdf-page="1"]')?.getBoundingClientRect().width||0)/3370*100,
     level: document.querySelector(".tpdf-tile-document")?.getAttribute("data-tpdf-level"),
   }));
   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth);
