@@ -16,20 +16,7 @@ import { DEFAULT_P1_STYLE, type P1Style } from "./p1Types.js";
 import { validMeta, tileLevel } from "./tiles.js";
 import { validRegion, type Mark } from "./history.js";
 import type { PdfTileMeta, PdfRegion, PdfSearchHit, PdfTool, PdfVersion, TpdfPdfEditorHandle, TpdfPdfEditorProps } from "./types.js";
-const words = {
-  vi: { save: "Lưu phiên bản", search: "Tìm", pages: "Trang", fit: "Vừa khung",
-    undo: "Hoàn tác", redo: "Làm lại", region: "Chọn vùng", highlight: "Tô sáng",
-    note: "Ghi chú", draw: "Vẽ", cover: "Che (không xóa chữ)",
-    signature: "Chữ ký hiển thị", rotate: "Xoay", delete: "Xóa trang",
-    insert: "Chèn trang", moveUp: "Trang trước", moveDown: "Trang sau",
-    ocr: "OCR", form: "Biểu mẫu", versions: "Phiên bản", loading: "Đang xử lý…" },
-  en: { save: "Save version", search: "Find", pages: "Pages", fit: "Fit",
-    undo: "Undo", redo: "Redo", region: "Select region", highlight: "Highlight",
-    note: "Note", draw: "Draw", cover: "Cover (not secure erase)",
-    signature: "Visual signature", rotate: "Rotate", delete: "Delete page",
-    insert: "Insert page", moveUp: "Move up", moveDown: "Move down",
-    ocr: "OCR", form: "Form", versions: "Versions", loading: "Working…" },
-};
+import { words } from "./editorWords.js";
 export const TpdfPdfEditor = forwardRef<TpdfPdfEditorHandle, TpdfPdfEditorProps>(function TpdfPdfEditor(props, ref) {
   const engine = usePdfEngine(props);
   const root = useRef<HTMLDivElement>(null);
