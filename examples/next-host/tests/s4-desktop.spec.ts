@@ -133,11 +133,11 @@ test("S4 ResizeObserver switches desktop → mobile → tablet → desktop witho
   await container.evaluate(node=>(node as HTMLElement).style.width="780px");
   await ready(page,"tablet");
   await expect(page.getByTestId("desktop-ribbon")).toBeVisible();
-  await container.evaluate(node=>(node as HTMLElement).style.width="1100px");
+  await container.evaluate(node=>(node as HTMLElement).style.width="1220px");
   await ready(page,"desktop");
   await expect(page.getByTestId("desktop-sidebar")).toBeVisible();
   const width=await page.locator(".tpdf-editor").evaluate(node=>node.getBoundingClientRect().width);
-  expect(width).toBeGreaterThanOrEqual(1024);
+  expect(width).toBeGreaterThanOrEqual(1200);
 });
 
 test("S4 PDF.js canvas mode supports desktop Ctrl+wheel without tile adapter",async({page})=>{
